@@ -1,0 +1,32 @@
+Die Spytool Anwendung ist ein modulares, interaktives System zur Suche und Analyse von Publikationen in mehreren wissenschaftlichen Datenbanken, das speziell für den akademischen Einsatz – beispielsweise im Dekanat – entwickelt wurde. Das Gesamtprojekt besteht aus mehreren eigenständigen Modulen, die jeweils eine Datenbank adressieren und dabei eine einheitliche, auf Tkinter basierende GUI nutzen. Die Module greifen auf PubMed, die Deutsche Nationalbibliothek (DNB), Web of Science und Scopus zu und bieten dabei jeweils angepasste Funktionalitäten und Schnittstellen.
+
+Das PubMed-Modul (siehe ​
+
+) stellt eine umfangreiche GUI bereit, die über mehr als 1100 Zeilen Code verfügt. Es erlaubt neben der grundlegenden Publikationssuche – basierend auf benutzerdefinierten Suchbegriffen – auch die Verwaltung von Personen, die den jeweiligen Suchanfragen zugeordnet werden. Erweiterte Filter wie Datumsauswahl, Sprachoptionen und Publikationstypen können eingestellt werden. Zudem sind Funktionen wie asynchrone API-Anfragen, robustes Fehlerhandling, Logging und eine Echtzeit-Statusleiste integriert. Ein besonderer Aspekt ist auch die Implementierung eines Caching-Mechanismus (mittels lru_cache), um die wiederholte Abfrage der Zitationsanzahl zu optimieren.
+
+Das DNB-Modul (siehe ​
+
+) ermöglicht die Suche in der Deutschen Nationalbibliothek über die SRU-Schnittstelle. Hierbei wird die RDF/XML-Antwort seitenweise abgerufen, geparst und die relevanten Informationen wie Titel, Creator, Erscheinungsjahr, Identifier und URL extrahiert. Auch hier gibt es eine Personenverwaltung, Funktionen zum Speichern und Laden von Suchanfragen sowie erweiterte Ausgabeoptionen und Logging, die die Analyse der Suchergebnisse unterstützen.
+
+In der integrierten Version der Medical Spytool Anwendung (siehe ​
+
+) werden die Funktionen der PubMed- und DNB-Module kombiniert. Diese Version ermöglicht eine parallele und kombinierte Suche in beiden Datenbanken, wobei die Benutzeroberfläche konsistent bleibt. Neben den Suchfunktionen umfasst die Anwendung auch Steuerungselemente wie Start-, Pause- und Stop-Buttons, Fortschrittsanzeigen sowie eine Statusleiste, die den laufenden Prozess transparent macht.
+
+Das Web of Science-Modul (siehe ​
+
+) folgt einem ähnlichen Aufbau. Es bietet eine GUI zur Suche in der Web of Science-Datenbank. Ist kein gültiger API‑Key vorhanden, arbeitet das Modul im Dummy‑Modus und liefert Testdaten. Auch hier stehen Funktionen wie die Verwaltung von Suchbegriffen und -personen, detailliertes Logging und die Möglichkeit zum Export der Suchergebnisse zur Verfügung.
+
+Schließlich wurde auch ein Scopus-Modul (siehe ​
+
+) entwickelt. Dieses Modul nutzt die Elsevier-API zur Abfrage der Scopus-Datenbank. Die JSON-Antworten werden geparst, sodass Informationen wie Titel, Veröffentlichungsjahr, Autoren, DOI, Scopus URL, EID und Zitationsanzahl extrahiert und in einem konsistenten Format dargestellt werden. Auch hier finden sich die typischen Funktionen zur Verwaltung von Personen, erweiterte Filteroptionen, Logging und Exportfunktionen.
+
+Alle Module teilen ein gemeinsames Designkonzept:
+• Eine mehrschichtige GUI mit Tabs wie „Personen & Suche“, „Erweiterte Optionen“, „Ausgabe“, „Suchergebnisse“, „Log“, „Einstellungen“ und „Analyse“.
+• Einheitliche Mechanismen zur Personenverwaltung, bei denen Nutzer Namen, zugehörige Suchbegriffe und Zusatzparameter erfassen und verwalten können.
+• Erweiterte Filteroptionen, beispielsweise zur Datumsauswahl (unter Verwendung von tkcalendar) und zur Sprachfilterung, die es erlauben, die Suchanfragen präzise zu steuern.
+• Detailliertes Logging und Echtzeit-Statusanzeigen, die den Suchprozess transparent machen und bei der Fehlerdiagnose helfen.
+• Optionen zum Export der Ergebnisse in gängige Formate wie Excel oder CSV, was eine Weiterverarbeitung der Daten erleichtert.
+• Robuste Fehlerbehandlung und Optimierungen wie Caching für wiederkehrende API-Aufrufe, die die Effizienz und Stabilität der Anwendung erhöhen.
+• Ein modularer Aufbau, der es ermöglicht, einzelne Komponenten separat zu entwickeln oder in eine integrierte Anwendung (wie die Medical Spytool Version) zusammenzuführen.
+
+Zusammengefasst handelt es sich bei der Spytool Anwendung um ein umfassendes, flexibles und benutzerfreundliches System, das alle wichtigen Datenbanken für wissenschaftliche Publikationen abdeckt. Die modulare Architektur und die konsistente GUI ermöglichen sowohl eine einfache Erweiterung als auch eine zentrale Steuerung aller Suchvorgänge. Dies bietet eine ideale Grundlage, um als Prompt an eine KI heranzutreten, die auf Basis dieser detaillierten Zusammenfassung den kompletten Programmcode generieren soll.

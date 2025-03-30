@@ -58,6 +58,7 @@ def index():
 def search():
     """Handle search requests."""
     global search_results, GLOBAL_LOG
+    from datetime import datetime
     
     if request.method == 'POST':
         # Get form data
@@ -153,7 +154,8 @@ def search():
                                    count=len(results),
                                    search_term=search_term,
                                    database=database,
-                                   config=app_config)
+                                   config=app_config,
+                                   now=datetime.now())
             
         except Exception as e:
             logger.error(f"Search error: {e}", exc_info=True)
@@ -161,33 +163,39 @@ def search():
             return render_template('search.html', 
                                    error=str(e), 
                                    database=database,
-                                   config=app_config)
+                                   config=app_config,
+                                   now=datetime.now())
     
     # GET request, show search form
-    return render_template('search.html', config=app_config)
+    return render_template('search.html', config=app_config, now=datetime.now())
 
 @app.route('/results')
 def results():
     """Display search results."""
     global search_results
+    from datetime import datetime
     return render_template('results.html', 
                           results=search_results, 
                           count=len(search_results),
-                          config=app_config)
+                          config=app_config,
+                          now=datetime.now())
 
 @app.route('/analysis')
 def analysis():
     """Show data analysis and visualization."""
     global search_results
+    from datetime import datetime
     return render_template('analysis.html', 
                           results=search_results,
                           count=len(search_results),
-                          config=app_config)
+                          config=app_config,
+                          now=datetime.now())
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     """Handle settings page."""
     global app_config
+    from datetime import datetime
     
     if request.method == 'POST':
         # Update settings from form
@@ -224,7 +232,7 @@ def settings():
         
         return redirect(url_for('settings', saved=True))
     
-    return render_template('settings.html', config=app_config, saved=request.args.get('saved'))
+    return render_template('settings.html', config=app_config, saved=request.args.get('saved'), now=datetime.now())
 
 @app.route('/export/<format>')
 def export(format):
@@ -263,6 +271,7 @@ def export(format):
 @app.route('/persons', methods=['GET', 'POST'])
 def persons():
     """Handle person management."""
+    from datetime import datetime
     persons_file = os.path.join(app_config.get('person_list_path', './person_lists'), 'persons.json')
     
     # Ensure directory exists
@@ -308,7 +317,8 @@ def persons():
                         return render_template('persons.html', 
                                               persons=person_list, 
                                               error=f"Error saving: {str(e)}",
-                                              config=app_config)
+                                              config=app_config,
+                                              now=datetime.now())
         
         elif action == 'delete':
             # Delete a person
@@ -325,14 +335,16 @@ def persons():
                     return render_template('persons.html', 
                                           persons=person_list, 
                                           error=f"Error saving: {str(e)}",
-                                          config=app_config)
+                                          config=app_config,
+                                          now=datetime.now())
     
-    return render_template('persons.html', persons=person_list, config=app_config)
+    return render_template('persons.html', persons=person_list, config=app_config, now=datetime.now())
 
 @app.route('/logs')
 def logs():
     """Show application logs."""
     global GLOBAL_LOG
+    from datetime import datetime
     
     # Try to read log file content
     try:
@@ -342,7 +354,7 @@ def logs():
         logger.error(f"Error reading log file: {e}", exc_info=True)
         log_content = "Error loading log file."
     
-    return render_template('logs.html', log_content=log_content, config=app_config)
+    return render_template('logs.html', log_content=log_content, config=app_config, now=datetime.now())
 
 @app.route('/api/get_database_fields')
 def get_database_fields():
