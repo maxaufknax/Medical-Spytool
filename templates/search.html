@@ -3,11 +3,37 @@
 {% block title %}Medical Spytool - Suche{% endblock %}
 
 {% block content %}
-<div class="search-container py-4">
-    <h1 class="section-title">Publikationssuche</h1>
+<div class="container py-4">
+    <h1 class="section-title mb-3">
+        <i class="fas fa-search me-2"></i>Publikationssuche
+    </h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="alert alert-info">
+                <div class="d-flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle fa-2x me-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="alert-heading mb-1">Verschiedene Suchmodi verfügbar</h5>
+                        <p class="mb-0">Wählen Sie einen Tab für Ihre bevorzugte Suchmethode. Sie können 
+                        <a href="/persons" class="alert-link">Personen mit zugehörigen Suchbegriffen verwalten</a> und diese dann in allen Sucharten verwenden.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="d-grid gap-2">
+                <a href="/persons" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-user-edit me-2"></i>Personenverzeichnis verwalten
+                </a>
+            </div>
+        </div>
+    </div>
     
     {% if error %}
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
         <i class="fas fa-exclamation-triangle me-2"></i> <strong>Fehler:</strong> {{ error }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
@@ -58,11 +84,14 @@
                             
                             <div class="col-md-6">
                                 <label for="combined_person_name" class="form-label">Personenname (optional)</label>
-                                <input type="text" class="form-control" id="combined_person_name" name="person_name" placeholder="Name der Person">
-                                <small class="form-text text-muted">
-                                    <a href="/persons" target="_blank">
-                                        <i class="fas fa-external-link-alt me-1"></i>Personenverzeichnis verwalten
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="combined_person_name" name="person_name" placeholder="Name der Person" autocomplete="off">
+                                    <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
+                                        <i class="fas fa-user-edit"></i>
                                     </a>
+                                </div>
+                                <small class="form-text text-muted mt-1">
+                                    <i class="fas fa-info-circle me-1"></i> Bei Auswahl einer Person werden die gespeicherten Suchbegriffe übernommen.
                                 </small>
                             </div>
                         </div>
@@ -124,7 +153,15 @@
                         
                         <div class="mb-3">
                             <label for="person_name" class="form-label">Personenname (optional)</label>
-                            <input type="text" class="form-control" id="person_name" name="person_name" placeholder="Name der Person, für die die Suche durchgeführt wird">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="person_name" name="person_name" placeholder="Name der Person" autocomplete="off">
+                                <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
+                                    <i class="fas fa-user-edit"></i>
+                                </a>
+                            </div>
+                            <small class="form-text text-muted mt-1">
+                                <i class="fas fa-info-circle me-1"></i> Bei Auswahl einer Person werden die zugehörigen Suchbegriffe automatisch übernommen.
+                            </small>
                         </div>
                         
                         <div class="mb-3">
@@ -283,6 +320,13 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Loading-Indikator verstecken, falls er durch einen abgebrochenen Ladevorgang 
+    // noch angezeigt wird
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+
     // Datum-Filter anzeigen/ausblenden
     const useFilterCheckbox = document.getElementById('use_date_filter');
     const dateFilterSection = document.getElementById('dateFilterSection');
@@ -340,22 +384,22 @@ document.addEventListener('DOMContentLoaded', function() {
         databaseSelect.addEventListener('change', updateSearchFields);
         updateSearchFields(); // Initial ausführen
     }
-    
-    // Personen laden für die Personensuche
-    const personSelector = document.getElementById('person_selector');
-    const personSearchDb = document.getElementById('person_search_db');
-    const personSearchButton = document.getElementById('personSearchButton');
-    const personDetails = document.getElementById('personDetails');
-    const personDetailName = document.getElementById('person_detail_name');
-    const personDetailSearchTerm = document.getElementById('person_detail_search_term');
-    const personDetailAdditionalTerms = document.getElementById('person_detail_additional_terms');
-    const personDatabase = document.getElementById('person_database');
-    
-    if (personSelector) {
-        // Personen aus der gespeicherten Liste laden
+
+    // Funktion zum Laden und Anzeigen der Personenliste in allen relevanten Auswahlfeldern
+    function loadPersonList() {
+        // Sammle alle Personenauswahl-Elemente (in verschiedenen Tabs oder Formularen)
+        const personSelectors = [
+            document.getElementById('person_selector'),     // Im Personen-Tab
+            document.getElementById('combined_person_name'), // Im Kombinierte-Suche-Tab
+            document.getElementById('person_name')          // Im Spezifische-Suche-Tab
+        ].filter(element => element !== null);
+
+        if (personSelectors.length === 0) return;
+
+        // Lade Personen von der API
         fetch('/persons/list', { headers: { 'Accept': 'application/json' }})
             .catch(() => {
-                // Fallback wenn die API nicht existiert: Einfach einen Dummy-Eintrag anzeigen
+                // Fallback wenn API nicht existiert
                 return { 
                     json: () => Promise.resolve([
                         {
@@ -368,22 +412,143 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => response.json())
             .then(persons => {
-                // Personen zur Auswahl hinzufügen
-                persons.forEach((person, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = person.Name;
-                    option.dataset.searchTerm = person['Search Term'];
-                    option.dataset.additionalTerms = person['Additional Terms'] || '';
-                    personSelector.appendChild(option);
+                // Für das Personen-Tab Dropdown
+                const personSelector = document.getElementById('person_selector');
+                if (personSelector) {
+                    // Bestehende Optionen entfernen (außer die erste "Auswählen" Option)
+                    while (personSelector.options.length > 1) {
+                        personSelector.remove(1);
+                    }
+
+                    if (persons.length === 0) {
+                        // Wenn keine Personen vorhanden, deaktivierte Option hinzufügen
+                        const option = document.createElement('option');
+                        option.disabled = true;
+                        option.textContent = "-- Keine Personen vorhanden --";
+                        personSelector.appendChild(option);
+                        
+                        // Button zum Hinzufügen von Personen
+                        const personSearchButton = document.getElementById('personSearchButton');
+                        if (personSearchButton) {
+                            personSearchButton.disabled = true;
+                        }
+                    } else {
+                        // Personen zur Auswahl hinzufügen
+                        persons.forEach((person, index) => {
+                            const option = document.createElement('option');
+                            option.value = index;
+                            option.textContent = person.Name;
+                            option.dataset.searchTerm = person['Search Term'] || '';
+                            option.dataset.additionalTerms = person['Additional Terms'] || '';
+                            personSelector.appendChild(option);
+                        });
+                        
+                        // Wenn bereits eine Person ausgewählt ist (z.B. nach Seitenneuladen)
+                        if (personSelector.value && personSelector.value !== "") {
+                            const selectedOption = personSelector.options[personSelector.selectedIndex];
+                            const personDetails = document.getElementById('personDetails');
+                            const personDetailName = document.getElementById('person_detail_name');
+                            const personDetailSearchTerm = document.getElementById('person_detail_search_term');
+                            const personDetailAdditionalTerms = document.getElementById('person_detail_additional_terms');
+                            const personSearchButton = document.getElementById('personSearchButton');
+                            
+                            if (personDetails && personDetailName && personDetailSearchTerm && personSearchButton) {
+                                personDetailName.value = selectedOption.textContent;
+                                personDetailSearchTerm.value = selectedOption.dataset.searchTerm;
+                                personDetailAdditionalTerms.value = selectedOption.dataset.additionalTerms;
+                                personDetails.style.display = 'block';
+                                personSearchButton.disabled = false;
+                            }
+                        }
+                    }
+                }
+
+                // Für das Eingabefeld im kombinierten Tab und im spezifischen Tab - Datalist hinzufügen
+                const inputFields = [
+                    document.getElementById('combined_person_name'),
+                    document.getElementById('person_name')
+                ].filter(element => element !== null);
+
+                inputFields.forEach(inputField => {
+                    // Datalist ID erstellen
+                    const datalistId = `${inputField.id}_list`;
+                    
+                    // Bestehende Datalist entfernen, falls vorhanden
+                    let datalist = document.getElementById(datalistId);
+                    if (datalist) {
+                        datalist.remove();
+                    }
+                    
+                    // Neue Datalist erstellen
+                    datalist = document.createElement('datalist');
+                    datalist.id = datalistId;
+                    
+                    // Personen zur Datalist hinzufügen
+                    persons.forEach(person => {
+                        const option = document.createElement('option');
+                        option.value = person.Name;
+                        option.dataset.searchTerm = person['Search Term'];
+                        option.dataset.additionalTerms = person['Additional Terms'] || '';
+                        datalist.appendChild(option);
+                    });
+                    
+                    // Datalist zum DOM hinzufügen
+                    document.body.appendChild(datalist);
+                    
+                    // Datalist mit dem Eingabefeld verknüpfen
+                    inputField.setAttribute('list', datalistId);
+                    
+                    // Event-Listener für Änderungen im Eingabefeld hinzufügen
+                    inputField.addEventListener('input', function() {
+                        const selectedPerson = this.value;
+                        const options = datalist.querySelectorAll('option');
+                        
+                        // Suche nach übereinstimmender Option
+                        for (const option of options) {
+                            if (option.value === selectedPerson) {
+                                // Beim Treffer überprüfen, ob es ein zusätzliches Suchfeld im selben Formular gibt
+                                const form = this.closest('form');
+                                if (form) {
+                                    const searchTermInput = form.querySelector('[name="search_term"]');
+                                    const additionalTermsInput = form.querySelector('[name="additional_terms"]');
+                                    
+                                    // Wenn Suchbegriffe vorhanden und Suchfeld leer ist, füllen
+                                    if (searchTermInput && !searchTermInput.value && option.dataset.searchTerm) {
+                                        searchTermInput.value = option.dataset.searchTerm;
+                                    }
+                                    
+                                    // Wenn zusätzliche Begriffe vorhanden und Feld leer ist, füllen
+                                    if (additionalTermsInput && !additionalTermsInput.value && option.dataset.additionalTerms) {
+                                        additionalTermsInput.value = option.dataset.additionalTerms;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    });
                 });
             })
             .catch(error => console.error('Fehler beim Laden der Personen:', error));
-            
+    }
+    
+    // Personen laden für alle relevanten Felder
+    loadPersonList();
+    
+    // Speziell für die Personensuche im Personen-Tab
+    const personSelector = document.getElementById('person_selector');
+    const personSearchDb = document.getElementById('person_search_db');
+    const personSearchButton = document.getElementById('personSearchButton');
+    const personDetails = document.getElementById('personDetails');
+    const personDetailName = document.getElementById('person_detail_name');
+    const personDetailSearchTerm = document.getElementById('person_detail_search_term');
+    const personDetailAdditionalTerms = document.getElementById('person_detail_additional_terms');
+    const personDatabase = document.getElementById('person_database');
+    
+    if (personSelector && personDetails) {
         // Person auswählen
         personSelector.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value !== "") {
+            if (selectedOption.value !== "" && !selectedOption.disabled) {
                 personDetailName.value = selectedOption.textContent;
                 personDetailSearchTerm.value = selectedOption.dataset.searchTerm;
                 personDetailAdditionalTerms.value = selectedOption.dataset.additionalTerms;
@@ -409,22 +574,42 @@ document.addEventListener('DOMContentLoaded', function() {
         tabLink.addEventListener('click', function() {
             // Tab-ID speichern für spätere Verwendung
             localStorage.setItem('lastSearchTab', this.id);
+
+            // Eventuelle Ladeindikatoren ausblenden
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
         });
     });
     
     // Letzten Tab wiederherstellen, wenn vorhanden
     const lastTab = localStorage.getItem('lastSearchTab');
     if (lastTab && document.getElementById(lastTab)) {
-        const tabToShow = new bootstrap.Tab(document.getElementById(lastTab));
-        tabToShow.show();
+        try {
+            const tabToShow = new bootstrap.Tab(document.getElementById(lastTab));
+            tabToShow.show();
+        } catch (error) {
+            console.error('Fehler beim Wiederherstellen des letzten Tabs:', error);
+        }
     }
     
     // Loading-Indikatoren für alle Formulare
-    const loadingIndicator = document.getElementById('loadingIndicator');
     const allForms = document.querySelectorAll('form');
     
     allForms.forEach(form => {
-        form.addEventListener('submit', function() {
+        form.addEventListener('submit', function(e) {
+            // Überprüfen, ob mindestens ein Feld ausgefüllt ist
+            const searchTermInput = form.querySelector('[name="search_term"]');
+            const personNameInput = form.querySelector('[name="person_name"]');
+            
+            if (searchTermInput && !searchTermInput.value.trim() && 
+                personNameInput && !personNameInput.value.trim()) {
+                // Verhindern, dass das Formular gesendet wird, wenn weder Suchbegriff noch Person angegeben wurde
+                e.preventDefault();
+                alert('Bitte geben Sie mindestens einen Suchbegriff oder eine Person ein.');
+                return;
+            }
+            
             const submitButton = this.querySelector('button[type="submit"]');
             if (submitButton) {
                 submitButton.disabled = true;
@@ -432,6 +617,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (loadingIndicator) {
                 loadingIndicator.style.display = 'block';
             }
+            
+            // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
+            setTimeout(() => {
+                if (loadingIndicator && loadingIndicator.style.display === 'block') {
+                    loadingIndicator.style.display = 'none';
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
+                }
+            }, 20000); // Nach 20 Sekunden den Ladeindikator entfernen
         });
     });
 });

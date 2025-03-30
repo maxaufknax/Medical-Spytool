@@ -4,7 +4,17 @@
 
 {% block content %}
 <div class="container py-4">
-    <h1 class="section-title">Personenverwaltung</h1>
+    <h1 class="section-title mb-4">Personenverwaltung</h1>
+    
+    <div class="alert alert-info mb-4">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle fa-2x me-3"></i>
+            <div>
+                <h5 class="mb-1">Hinweis zur Personenverwaltung</h5>
+                <p class="mb-0">Hier können Sie Personen mit individuellen Suchbegriffen verwalten. Diese Personen werden dann in den Suchformularen zur Verfügung stehen.</p>
+            </div>
+        </div>
+    </div>
     
     {% if error %}
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -48,23 +58,69 @@
             </div>
             
             <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h2 class="h5 mb-0">Schnellsuche</h2>
+                <div class="card-header bg-success bg-opacity-25">
+                    <h2 class="h5 mb-0">
+                        <i class="fas fa-search-plus me-2"></i>Schnellsuche-Optionen
+                    </h2>
                 </div>
                 <div class="card-body">
-                    <p>Mit gespeicherten Personen direkt suchen:</p>
-                    <div class="list-group">
+                    <p class="mb-4">Folgende Optionen stehen Ihnen zur Verfügung:</p>
+                    
+                    <div class="d-grid gap-3">
+                        <!-- Option 1: Zur dedizierten Personensuche -->
+                        <a href="/search?db=Person" class="btn btn-outline-success">
+                            <i class="fas fa-user-tie me-2"></i>Zur speziellen Personensuche
+                            <small class="d-block mt-1 text-muted">Wählen Sie eine Person aus einer Dropdown-Liste und beginnen Sie direkt die Suche.</small>
+                        </a>
+                        
+                        <!-- Option 2: Kombinierte Suche -->
+                        <a href="/search?db=Combined" class="btn btn-outline-primary">
+                            <i class="fas fa-search-plus me-2"></i>Zur kombinierten Suche
+                            <small class="d-block mt-1 text-muted">Suchen Sie über alle Datenbanken und geben Sie einen Personennamen ein.</small>
+                        </a>
+                        
+                        <!-- Option 3: Spezifische Datenbanksuche -->
+                        <a href="/search?db=Specific" class="btn btn-outline-secondary">
+                            <i class="fas fa-database me-2"></i>Zur spezifischen Datenbanksuche
+                            <small class="d-block mt-1 text-muted">Wählen Sie eine bestimmte Datenbank aus und verfeinern Sie Ihre Suche.</small>
+                        </a>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h5 class="mb-3"><i class="fas fa-bolt me-2"></i>Direktsuche nach Person</h5>
+                    <p class="small mb-3">Klicken Sie auf einen Namen, um sofort eine kombinierte Suche mit dieser Person zu starten:</p>
+                    
+                    <div class="list-group mb-0">
                         {% for person in persons %}
-                        <a href="/search?person_name={{ person.Name }}&search_term={{ person.Search_Term }}&additional_terms={{ person.Additional_Terms }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <a href="/search?db=Combined&person_name={{ person.Name }}&search_term={{ person.Search_Term | default('') }}&additional_terms={{ person.Additional_Terms | default('') }}" 
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
                                 <strong>{{ person.Name }}</strong>
-                                <small class="d-block text-muted">{{ person.Search_Term }}</small>
+                                <small class="d-block text-muted">{{ person.Search_Term | default('Ohne Suchbegriff') }}</small>
                             </div>
-                            <span class="badge bg-primary rounded-pill">
-                                <i class="fas fa-search"></i>
-                            </span>
+                            <div class="btn-group">
+                                <a href="/search?db=Combined&person_name={{ person.Name }}" 
+                                   class="btn btn-sm btn-outline-primary" title="Kombinierte Suche">
+                                    <i class="fas fa-search-plus"></i>
+                                </a>
+                                <a href="/search?db=Specific&database=PubMed&person_name={{ person.Name }}" 
+                                   class="btn btn-sm btn-outline-danger" title="PubMed-Suche">
+                                    <i class="fas fa-book-medical"></i>
+                                </a>
+                                <a href="/search?db=Specific&database=DNB&person_name={{ person.Name }}" 
+                                   class="btn btn-sm btn-outline-info" title="DNB-Suche">
+                                    <i class="fas fa-book"></i>
+                                </a>
+                            </div>
                         </a>
                         {% endfor %}
+                        
+                        {% if not persons %}
+                        <div class="list-group-item text-center text-muted py-3">
+                            <i class="fas fa-info-circle me-2"></i>Keine Personen vorhanden
+                        </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -95,16 +151,39 @@
                                     <td>{{ person.Additional_Terms }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
-                                            <a href="/search?person_name={{ person.Name }}&search_term={{ person.Search_Term }}&additional_terms={{ person.Additional_Terms }}" class="btn btn-outline-primary" title="Mit dieser Person suchen">
-                                                <i class="fas fa-search"></i>
+                                            <a href="/search?db=Person" class="btn btn-outline-success" title="In Personensucbe verwenden">
+                                                <i class="fas fa-user-tie"></i>
                                             </a>
-                                            <form method="post" action="/persons" class="d-inline">
-                                                <input type="hidden" name="action" value="delete">
-                                                <input type="hidden" name="index" value="{{ loop.index0 }}">
-                                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Sind Sie sicher, dass Sie diese Person löschen möchten?')" title="Person löschen">
-                                                    <i class="fas fa-trash"></i>
+                                            <a href="/search?db=Combined&person_name={{ person.Name }}&search_term={{ person.Search_Term | default('') }}&additional_terms={{ person.Additional_Terms | default('') }}" class="btn btn-outline-primary" title="In kombinierter Suche verwenden">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <div class="btn-group btn-group-sm">
+                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Weitere Optionen">
+                                                    <i class="fas fa-cog"></i>
                                                 </button>
-                                            </form>
+                                                <ul class="dropdown-menu dropdown-menu-end">
+                                                    <li>
+                                                        <a href="/search?db=Specific&database=PubMed&person_name={{ person.Name }}" class="dropdown-item">
+                                                            <i class="fas fa-book-medical me-2"></i>PubMed-Suche
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a href="/search?db=Specific&database=DNB&person_name={{ person.Name }}" class="dropdown-item">
+                                                            <i class="fas fa-book me-2"></i>DNB-Suche
+                                                        </a>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form method="post" action="/persons" class="d-inline">
+                                                            <input type="hidden" name="action" value="delete">
+                                                            <input type="hidden" name="index" value="{{ loop.index0 }}">
+                                                            <button type="submit" class="dropdown-item text-danger" onclick="return confirm('Sind Sie sicher, dass Sie diese Person löschen möchten?')">
+                                                                <i class="fas fa-trash me-2"></i>Person löschen
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
