@@ -407,34 +407,29 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Funktion zum Ausblenden des Ladeindikators
-function hideLoadingIndicator() {
-    const indicator = document.getElementById('loadingIndicator');
-    if (indicator) {
-        indicator.style.display = 'none';
-    }
-    
-    // Submit-Buttons wieder aktivieren
-    const submitButtons = document.querySelectorAll('button[type="submit"]');
-    submitButtons.forEach(button => {
-        button.disabled = false;
-    });
-    
-    // Event-Listener für Escape-Taste entfernen
-    document.removeEventListener('keydown', escapeKeyHandler);
-}
+// Diese Funktion wird nicht mehr benötigt und wurde durch direkte Referenzen ersetzt
 
 // Event-Handler für Escape-Taste
 function escapeKeyHandler(evt) {
     if (evt.key === 'Escape') {
-        hideLoadingIndicator();
+        // Ladeindikator ausblenden, wenn ESC gedrückt wird
+        const indicator = document.getElementById('loadingIndicator');
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+        
+        // Submit-Buttons wieder aktivieren
+        const submitButtons = document.querySelectorAll('button[type="submit"]');
+        submitButtons.forEach(button => {
+            button.disabled = false;
+        });
+        
+        // Event-Listener entfernen
+        document.removeEventListener('keydown', escapeKeyHandler);
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Verweise auf wichtige Elemente
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    
     // Loading-Indikator initial verstecken und nur bei tatsächlichen Suchen anzeigen
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
