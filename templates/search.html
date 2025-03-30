@@ -342,7 +342,7 @@
         </div>
     </div>
     
-    <!-- Loading Indicator -->
+    <!-- Loading Indicator (only shown during active searches) -->
     <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" id="loadingIndicator" style="display: none; z-index: 9999;">
         <div class="card p-4 text-center shadow-lg">
             <div class="spinner-border text-primary mx-auto mb-3" style="width: 3rem; height: 3rem;" role="status">
@@ -435,9 +435,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verweise auf wichtige Elemente
     const loadingIndicator = document.getElementById('loadingIndicator');
     
-    // Loading-Indikator verstecken, falls er durch einen abgebrochenen Ladevorgang 
-    // noch angezeigt wird
-    hideLoadingIndicator();
+    // Loading-Indikator initial verstecken und nur bei tatsächlichen Suchen anzeigen
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
 
     // Datum-Filter anzeigen/ausblenden
     const useFilterCheckbox = document.getElementById('use_date_filter');
