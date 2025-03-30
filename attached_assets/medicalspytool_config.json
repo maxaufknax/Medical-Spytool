@@ -1,0 +1,19 @@
+{
+    "output_path": "./output",
+    "person_list_path": "./person_lists",
+    "unique_filenames": false,
+    "pubmed_api_key": "",
+    "wos_api_key": "",
+    "scopus_api_key": "",
+    "output_columns": [
+        "Datenbank",
+        "Name",
+        "Titel",
+        "Erscheinungsjahr",
+        "Autoren",
+        "Identifier",
+        "URL",
+        "Zitationsanzahl"
+    ],
+    "default_database": "Kombiniert"
+}

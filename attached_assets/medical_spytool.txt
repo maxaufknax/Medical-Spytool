@@ -1,0 +1,536 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Integrierte Publikations-Suchanwendung
+
+Diese Anwendung vereint die Suchfunktionalitäten von PubMed, DNB, Web of Science und Scopus.
+Sie bietet separate Tabs für jede Datenbank sowie eine kombinierte Suche und umfassende 
+Konfigurations-, Analyse- und Exportmöglichkeiten.
+
+Version: 1.0
+"""
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox, simpledialog
+import pandas as pd
+import os
+import json
+import time
+import threading
+import requests
+import xml.etree.ElementTree as ET
+import asyncio
+import aiohttp
+import logging
+from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkcalendar import DateEntry
+from functools import lru_cache
+import sys
+import csv
+import re
+
+# Konfigurationsdatei
+CONFIG_FILE = "medicalspytool_config.json"
+
+# Globale Variablen
+GLOBAL_LOG = []
+search_results = []
+
+# Namespace Dictionary für DNB
+DNB_NS = {
+    'srw': 'http://www.loc.gov/zing/srw/',
+    'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+    'dc': 'http://purl.org/dc/elements/1.1/',
+    'dcterms': 'http://purl.org/dc/terms/',
+    'foaf': 'http://xmlns.com/foaf/0.1/',
+    'rdau': 'http://rdaregistry.info/Elements/u/'
+}
+
+#######################################
+# Logging und Hilfsfunktionen
+#######################################
+
+def setup_logging():
+    """Konfiguriert das Logging für die Anwendung."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler("medicalspytool.log"),
+            logging.StreamHandler()
+        ]
+    )
+    return logging.getLogger("MedicalSpyTool")
+
+logger = setup_logging()
+
+def log_message(log_widget, message):
+    """Fügt eine Nachricht zum Log hinzu und zeigt sie im Widget an."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    full_msg = f"[{timestamp}] {message}\n"
+    GLOBAL_LOG.append(full_msg)
+    
+    logger.info(message)
+    
+    if log_widget:
+        try:
+            log_widget.config(state="normal")
+            log_widget.insert(tk.END, full_msg)
+            log_widget.see(tk.END)
+            log_widget.config(state="disabled")
+        except Exception as e:
+            print(f"Fehler beim Logging im GUI: {e}")
+    else:
+        print(full_msg.strip())
+
+def clear_log(log_widget):
+    """Löscht den Inhalt des Logs."""
+    global GLOBAL_LOG
+    GLOBAL_LOG = []
+    log_widget.config(state="normal")
+    log_widget.delete("1.0", tk.END)
+    log_widget.config(state="disabled")
+
+def export_log(log_widget):
+    """Exportiert den Log in eine Datei."""
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".txt",
+        filetypes=[("Text Dateien", "*.txt"), ("Alle Dateien", "*.*")]
+    )
+    if file_path:
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("".join(GLOBAL_LOG))
+        messagebox.showinfo("Log exportiert", f"Log wurde in {file_path} gespeichert.")
+
+#######################################
+# Konfigurationsmanagement
+#######################################
+
+def load_settings():
+    """Lädt die Einstellungen aus der Konfigurationsdatei."""
+    try:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+        logger.info("Einstellungen geladen.")
+        return settings
+    except FileNotFoundError:
+        settings = {
+            "output_path": "./output",
+            "person_list_path": "./person_lists",
+            "unique_filenames": False,
+            "pubmed_api_key": "",
+            "wos_api_key": "",
+            "scopus_api_key": "",
+            "output_columns": [
+                "Datenbank", "Name", "Titel", "Erscheinungsjahr", "Autoren", 
+                "Identifier", "URL", "Zitationsanzahl"
+            ],
+            "default_database": "Kombiniert"
+        }
+        save_settings(settings)
+        logger.info("Standard-Einstellungen erstellt.")
+        return settings
+
+def save_settings(settings):
+    """Speichert die Einstellungen in der Konfigurationsdatei."""
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=4)
+    logger.info("Einstellungen gespeichert.")
+
+#######################################
+# Abstrakte Datenbankconnector-Klasse
+#######################################
+
+class DatabaseConnector:
+    """Basisklasse für Datenbankverbindungen."""
+    
+    def __init__(self, api_key=None, settings=None):
+        self.api_key = api_key
+        self.settings = settings or {}
+        self.name = "Generic Database"
+        self.max_results_per_page = 100
+        self.search_fields = []
+        
+    def search(self, query, params=None, log_widget=None):
+        """In Unterklassen zu implementieren"""
+        raise NotImplementedError("Diese Methode muss in Unterklassen implementiert werden")
+        
+    def parse_results(self, response):
+        """In Unterklassen zu implementieren"""
+        raise NotImplementedError("Diese Methode muss in Unterklassen implementiert werden")
+        
+    def get_citation_count(self, id):
+        """In Unterklassen zu implementieren"""
+        return "N/A"
+    
+    def get_available_fields(self):
+        """Gibt die verfügbaren Suchfelder zurück"""
+        return self.search_fields
+        
+    def construct_query(self, base_query, additional_terms="", date_range=None, 
+                      language=None, pub_type=None, field=None):
+        """Standard-Implementierung für den Aufbau einer Abfrage"""
+        query = base_query
+        if additional_terms:
+            query = f"({query}) AND ({additional_terms})"
+        return query
+
+#######################################
+# PubMed Connector Implementierung
+#######################################
+
+class PubMedConnector(DatabaseConnector):
+    """Connector für PubMed."""
+    
+    def __init__(self, api_key=None, settings=None):
+        super().__init__(api_key, settings)
+        self.name = "PubMed"
+        self.max_results_per_page = 1000
+        self.search_fields = ["Alle Felder", "Autor", "Titel", "Journal", "MESH-Terme"]
+        self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    
+    @lru_cache(maxsize=128)
+    def get_citation_count(self, pmid):
+        """Ruft die Zitationsanzahl für eine PubMed-ID ab."""
+        if not pmid or pmid == "N/A":
+            return "N/A"
+            
+        elink_url = self.base_url + "elink.fcgi"
+        params = {
+            "dbfrom": "pubmed",
+            "linkname": "pubmed_pubmed_citedin",
+            "id": pmid,
+            "retmode": "xml",
+            "api_key": self.api_key
+        }
+        
+        max_retries = 3
+        delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(elink_url, params=params)
+                response.raise_for_status()
+                xml_data = ET.fromstring(response.content)
+                count = len(xml_data.findall(".//LinkSetDb/Link/Id"))
+                return count
+            except requests.exceptions.HTTPError as e:
+                if response.status_code == 429:  # Too Many Requests
+                    logger.warning(f"429 Fehler für PMID {pmid}. Warte {delay} Sekunden...")
+                    time.sleep(delay)
+                    delay *= 2
+                else:
+                    logger.error(f"Fehler beim Abrufen der Zitationsanzahl für PMID {pmid}: {e}")
+                    return "Fehler"
+            except ET.ParseError as e:
+                logger.error(f"Parse-Fehler für PMID {pmid}: {e}")
+                return "Fehler XML"
+                
+        logger.error(f"Maximale Wiederholungen für PMID {pmid} überschritten.")
+        return "Fehler 429"
+    
+    def construct_query(self, base_query, additional_terms="", date_range=None, 
+                      language=None, pub_type=None, field=None):
+        """Baut eine PubMed-Suchanfrage auf."""
+        query = base_query
+
+        if field and field != "Alle Felder":
+            field_map = {
+                "Autor": "[Author]",
+                "Titel": "[Title]",
+                "Journal": "[Journal]",
+                "MESH-Terme": "[MeSH Terms]"
+            }
+            query = f"{query}{field_map.get(field, '')}"
+
+        if additional_terms:
+            query = f"({query}) AND ({additional_terms})"
+            
+        if date_range and date_range.get('start') and date_range.get('end'):
+            start_date = date_range['start'].strftime("%Y/%m/%d")
+            end_date = date_range['end'].strftime("%Y/%m/%d")
+            query = f"{query} AND {start_date}:{end_date}[Date - Publication]"
+            
+        if language:
+            query = f"{query} AND {language}[Language]"
+            
+        if pub_type:
+            query = f"{query} AND {pub_type}[Publication Type]"
+            
+        return query
+    
+    def search(self, query, params=None, log_widget=None):
+        """Führt eine Suche in PubMed durch."""
+        params = params or {}
+        name = params.get('name', 'Allgemeine Suche')
+        max_results = params.get('max_results', 1000)
+        
+        log_message(log_widget, f"PubMed-Suche gestartet: {query}")
+        
+        esearch_url = self.base_url + "esearch.fcgi"
+        efetch_url = self.base_url + "efetch.fcgi"
+        
+        esearch_params = {
+            "db": "pubmed",
+            "term": query,
+            "retmax": max_results,
+            "retmode": "xml",
+            "api_key": self.api_key
+        }
+        
+        try:
+            response = requests.get(esearch_url, params=esearch_params)
+            response.raise_for_status()
+            esearch_xml = ET.fromstring(response.content)
+            id_list = [node.text for node in esearch_xml.findall(".//Id")]
+            
+            count_node = esearch_xml.find(".//Count")
+            total_count = int(count_node.text) if count_node is not None else 0
+            
+            log_message(log_widget, f"PubMed-Suche: {total_count} Ergebnisse gefunden")
+            
+            if not id_list:
+                log_message(log_widget, f"Keine Publikationen für '{query}' gefunden.")
+                return []
+        except requests.exceptions.RequestException as e:
+            log_message(log_widget, f"Fehler bei der PubMed-Suche für '{query}': {e}")
+            return []
+        
+        efetch_params = {
+            "db": "pubmed",
+            "id": ",".join(id_list),
+            "retmode": "xml",
+            "api_key": self.api_key
+        }
+        
+        try:
+            log_message(log_widget, f"Rufe PubMed-Detaildaten für {len(id_list)} Artikel ab...")
+            response = requests.get(efetch_url, params=efetch_params)
+            response.raise_for_status()
+            efetch_xml = ET.fromstring(response.content)
+        except requests.exceptions.RequestException as e:
+            log_message(log_widget, f"Fehler beim Abrufen der PubMed-Detaildaten: {e}")
+            return []
+        
+        return self.parse_results(efetch_xml, name, log_widget)
+    
+    def parse_results(self, efetch_xml, name, log_widget):
+        """Analysiert die PubMed-XML-Antwort und extrahiert relevante Daten."""
+        publications = []
+        articles = efetch_xml.findall(".//PubmedArticle")
+        total = len(articles)
+        
+        log_message(log_widget, f"Beginne mit der Verarbeitung von {total} PubMed-Artikeln...")
+        
+        for i, article in enumerate(articles):
+            if i % 10 == 0:  # Status-Update alle 10 Artikel
+                log_message(log_widget, f"Verarbeite PubMed-Artikel {i+1}/{total}...")
+                
+            try:
+                title_el = article.find(".//ArticleTitle")
+                title = title_el.text if title_el is not None else "Kein Titel"
+                
+                # Verarbeitung des Publikationsdatums
+                pub_date_el = article.find(".//PubDate")
+                year = pub_date_el.find("Year").text if pub_date_el is not None and pub_date_el.find("Year") is not None else "N/A"
+                
+                # Autoren extrahieren
+                authors = []
+                for author in article.findall(".//Author"):
+                    ln = author.find(".//LastName")
+                    fn = author.find(".//ForeName")
+                    if ln is not None and fn is not None:
+                        authors.append(f"{fn.text} {ln.text}")
+                    elif ln is not None:
+                        authors.append(ln.text)
+                authors_str = ", ".join(authors) if authors else "N/A"
+                
+                # Publikationstypen
+                pub_types = [pt.text for pt in article.findall(".//PublicationTypeList/PublicationType") if pt.text]
+                pub_types_str = ", ".join(pub_types) if pub_types else "N/A"
+                
+                # IDs und URLs
+                pmid_el = article.find(".//PMID")
+                pmid = pmid_el.text if pmid_el is not None else "N/A"
+                
+                doi_el = article.find('.//ArticleId[@IdType="doi"]')
+                doi = doi_el.text if doi_el is not None else "N/A"
+                
+                pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid != "N/A" else "N/A"
+                doi_url = f"https://doi.org/{doi}" if doi != "N/A" else "N/A"
+                
+                # Zitationsanzahl abrufen
+                citation_count = self.get_citation_count(pmid)
+                
+                # Publikation zum Ergebnis hinzufügen
+                publications.append({
+                    "Datenbank": "PubMed",
+                    "Name": name,
+                    "Titel": title,
+                    "Erscheinungsjahr": year,
+                    "Autoren": authors_str,
+                    "Publikationstypen": pub_types_str,
+                    "PubMed-ID": pmid,
+                    "DOI": doi,
+                    "URL": pubmed_url,
+                    "DOI-URL": doi_url,
+                    "Zitationsanzahl": citation_count
+                })
+                
+            except Exception as e:
+                log_message(log_widget, f"Fehler beim Parsen eines PubMed-Artikels: {e}")
+                
+        log_message(log_widget, f"PubMed-Ergebnisse verarbeitet: {len(publications)} Publikationen")
+        return publications
+
+#######################################
+# DNB Connector Implementierung
+#######################################
+
+class DNBConnector(DatabaseConnector):
+    """Connector für die Deutsche Nationalbibliothek."""
+    
+    def __init__(self, api_key=None, settings=None):
+        super().__init__(api_key, settings)
+        self.name = "Deutsche Nationalbibliothek"
+        self.max_results_per_page = 100
+        self.search_fields = ["Alle Felder", "Titel", "Autor", "Schlagwort", "Jahr"]
+        self.base_url = "https://services.dnb.de/sru/dnb"
+    
+    def construct_query(self, base_query, additional_terms="", date_range=None, 
+                      language=None, pub_type=None, field=None):
+        """Baut eine CQL-Abfrage für die DNB."""
+        # Transformiert den Suchbegriff für DNB-Format
+        query = self.transform_query(base_query, field)
+        
+        # Zusätzliche Suchbegriffe
+        if additional_terms:
+            add_terms = self.transform_query(additional_terms, "Alle Felder")
+            query = f"({query}) AND ({add_terms})"
+        
+        # Datumsbereich
+        if date_range and date_range.get('start') and date_range.get('end'):
+            start_year = date_range['start'].year
+            end_year = date_range['end'].year
+            query += f" AND jhr >= {start_year} AND jhr <= {end_year}"
+        
+        # Sprache
+        if language:
+            query += f" AND sprache = {language}"
+        
+        return query
+    
+    def transform_query(self, query, field="Alle Felder"):
+        """Transformiert eine Suchabfrage in das CQL-Format der DNB."""
+        field_map = {
+            "Alle Felder": "allfields",
+            "Titel": "tit",
+            "Autor": "per",
+            "Schlagwort": "sw",
+            "Jahr": "jhr"
+        }
+        
+        dnb_field = field_map.get(field, "allfields")
+        
+        # Einfache Bereinigung des Query-Strings
+        query = query.replace('"', '\\"').strip()
+        
+        # Erweiterte Bereinigung für CQL
+        if ' ' in query and not (query.startswith('"') and query.endswith('"')):
+            terms = query.split()
+            # Bei mehreren Wörtern: Einzelne Terme mit AND verknüpfen
+            if len(terms) > 1:
+                query = " AND ".join([f'{dnb_field} = "{term}"' for term in terms])
+            else:
+                query = f'{dnb_field} = "{query}"'
+        else:
+            # Bei Einzelwörtern oder bereits in Anführungszeichen
+            if query.startswith('"') and query.endswith('"'):
+                query = f'{dnb_field} = {query}'
+            else:
+                query = f'{dnb_field} = "{query}"'
+                
+        return query
+    
+    def search(self, query, params=None, log_widget=None):
+        """Führt eine Suche in der DNB durch."""
+        params = params or {}
+        name = params.get('name', 'Allgemeine Suche')
+        max_results = params.get('max_results', 100)
+        start_record = params.get('start_record', 1)
+        
+        log_message(log_widget, f"DNB-Suche gestartet: {query}")
+        
+        search_params = {
+            "operation": "searchRetrieve",
+            "version": "1.1",
+            "query": query,
+            "maximumRecords": max_results,
+            "startRecord": start_record,
+            "recordSchema": "RDFxml"
+        }
+        
+        try:
+            response = requests.get(self.base_url, params=search_params)
+            response.raise_for_status()
+            
+            # XML-Antwort parsen
+            root = ET.fromstring(response.content)
+            
+            # Anzahl der gefundenen Datensätze
+            num_records_node = root.find(".//srw:numberOfRecords", DNB_NS)
+            total_records = int(num_records_node.text) if num_records_node is not None else 0
+            
+            log_message(log_widget, f"DNB-Suche: {total_records} Ergebnisse gefunden")
+            
+            if total_records == 0:
+                return []
+                
+            # Ergebnisse parsen
+            results = self.parse_results(root, name, log_widget)
+            
+            return results
+            
+        except requests.exceptions.RequestException as e:
+            log_message(log_widget, f"Fehler bei der DNB-Suche: {e}")
+            return []
+        except ET.ParseError as e:
+            log_message(log_widget, f"Fehler beim Parsen der DNB-Antwort: {e}")
+            return []
+    
+    def parse_results(self, root, name, log_widget):
+        """Extrahiert die Informationen aus der XML-Antwort der DNB."""
+        results = []
+        records = root.findall(".//srw:record", DNB_NS)
+        total = len(records)
+        
+        log_message(log_widget, f"Beginne mit der Verarbeitung von {total} DNB-Datensätzen...")
+        
+        for i, record in enumerate(records):
+            if i % 10 == 0:  # Status-Update alle 10 Datensätze
+                log_message(log_widget, f"Verarbeite DNB-Datensatz {i+1}/{total}...")
+                
+            try:
+                # Extrahiere recordData
+                record_data = record.find(".//srw:recordData", DNB_NS)
+                if record_data is None:
+                    continue
+                    
+                # Titel extrahieren
+                title_elements = record_data.findall(".//*[@property='http://purl.org/dc/terms/title']", DNB_NS) or \
+                                record_data.findall(".//dc:title", DNB_NS)
+                title = title_elements[0].text if title_elements else "N/A"
+                
+                # Autoren/Ersteller extrahieren
+                creator_elements = record_data.findall(".//dc:creator", DNB_NS)
+                creators = [creator.text for creator in creator_elements if creator.text]
+                creator_str = "; ".join(creators) if creators else "N/A"
+                
+                # Erscheinungsjahr extrahieren
+                year_elements = record_data.findall(".//dcterms:issued", DNB_NS) or \
+                               record_data.findall(".//dc:date", DNB_NS)
+                year = year_elements[0].text if year_elements else "N/A"
+                
+                #
