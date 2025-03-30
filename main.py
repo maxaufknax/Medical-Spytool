@@ -340,6 +340,25 @@ def persons():
     
     return render_template('persons.html', persons=person_list, config=app_config, now=datetime.now())
 
+@app.route('/persons/list')
+def persons_list():
+    """Return the list of persons as JSON for API usage."""
+    persons_file = os.path.join(app_config.get('person_list_path', './person_lists'), 'persons.json')
+    
+    # Initialize persons list
+    person_list = []
+    
+    # Load existing persons if file exists
+    if os.path.exists(persons_file):
+        try:
+            with open(persons_file, 'r', encoding='utf-8') as f:
+                person_list = json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading persons: {e}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify(person_list)
+
 @app.route('/logs')
 def logs():
     """Show application logs."""

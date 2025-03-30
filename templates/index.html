@@ -13,13 +13,36 @@
                         <p class="lead">Ein modulares, interaktives System zur Suche und Analyse von wissenschaftlichen Publikationen</p>
                     </div>
                     
+                    <!-- Schnellstart-Bereich für die kombinierte Suche -->
+                    <div class="card mb-5 border-primary bg-lighter">
+                        <div class="card-body p-4">
+                            <h2 class="h3 card-title mb-3 text-center"><i class="fas fa-search-plus me-2"></i>Schnellsuche über alle Datenbanken</h2>
+                            <p class="card-text text-center mb-4">Führen Sie eine einfache Suche über alle verfügbaren Datenbanken durch.</p>
+                            
+                            <form id="quickSearchForm" method="post" action="/search" class="mb-3">
+                                <input type="hidden" name="database" value="Combined">
+                                <div class="mb-3">
+                                    <label for="quick_search_term" class="form-label">Suchbegriff eingeben:</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="quick_search_term" name="search_term" placeholder="z.B. Diabetes Mellitus" required>
+                                        <button type="submit" class="btn btn-primary">Suchen</button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <div class="text-center">
+                                <a href="/search?db=Combined" class="btn btn-link">Erweiterte kombinierte Suche mit mehr Optionen</a>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="card mb-4 h-100 bg-lighter">
                                 <div class="card-body">
-                                    <h2 class="h4 card-title mb-3"><i class="fas fa-search me-2"></i>Publikationen finden</h2>
-                                    <p class="card-text">Durchsuchen Sie wissenschaftliche Datenbanken wie PubMed und die Deutsche Nationalbibliothek nach relevanten Publikationen.</p>
-                                    <a href="/search" class="btn btn-outline-primary mt-3">Zur Suche</a>
+                                    <h2 class="h4 card-title mb-3"><i class="fas fa-database me-2"></i>Datenbanksuche</h2>
+                                    <p class="card-text">Spezifische Suche in PubMed, Deutsche Nationalbibliothek oder anderen Datenbanken mit angepassten Filtern und Parametern.</p>
+                                    <a href="/search" class="btn btn-outline-primary mt-3">Zur detaillierten Suche</a>
                                 </div>
                             </div>
                         </div>
@@ -28,7 +51,7 @@
                             <div class="card mb-4 h-100 bg-lighter">
                                 <div class="card-body">
                                     <h2 class="h4 card-title mb-3"><i class="fas fa-users me-2"></i>Personenverwaltung</h2>
-                                    <p class="card-text">Verwalten Sie Profile von Personen, Suchanfragen und speichern Sie individuelle Suchen.</p>
+                                    <p class="card-text">Verwalten Sie Profile von Personen mit individuellen Suchbegriffen und starten Sie personenbezogene Suchen.</p>
                                     <a href="/persons" class="btn btn-outline-primary mt-3">Personen verwalten</a>
                                 </div>
                             </div>
