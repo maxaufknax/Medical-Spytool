@@ -64,6 +64,10 @@ def search():
     global search_results, GLOBAL_LOG
     from datetime import datetime
     
+    # Bei GET-Anfragen zeigen wir nur das Suchformular an
+    if request.method == 'GET':
+        return render_template('search.html', config=app_config, now=datetime.now())
+    
     # Geladenes Profil aus Session abrufen, falls vorhanden
     loaded_profile = session.get('loaded_profile', None)
     loaded_profile_name = session.get('loaded_profile_name', None)

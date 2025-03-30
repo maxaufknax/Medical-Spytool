@@ -432,6 +432,9 @@ function escapeKeyHandler(evt) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Verweise auf wichtige Elemente
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
     // Loading-Indikator verstecken, falls er durch einen abgebrochenen Ladevorgang 
     // noch angezeigt wird
     hideLoadingIndicator();
@@ -794,8 +797,9 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('lastSearchTab', this.id);
 
             // Eventuelle Ladeindikatoren ausblenden
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'none';
+            const loadingIndicatorTab = document.getElementById('loadingIndicator');
+            if (loadingIndicatorTab) {
+                loadingIndicatorTab.style.display = 'none';
             }
         });
     });
@@ -814,10 +818,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikatoren für alle Formulare
     const allForms = document.querySelectorAll('form');
     
-    // Stellen Sie sicher, dass der Ladeindikator nach dem Laden sofort ausgeblendet wird
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
-    }
+    // Der Ladeindikator wurde schon durch hideLoadingIndicator() am Anfang versteckt
     
     allForms.forEach(form => {
         form.addEventListener('submit', function(e) {
@@ -838,17 +839,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitButton.disabled = true;
             }
             
+            // Ladeindikator-Element neu referenzieren für den Submit-Fall
+            const loadingIndicatorElem = document.getElementById('loadingIndicator');
+            
             // Nur Ladeindikator anzeigen, wenn es ein normaler POST-Request ist (kein AJAX)
-            if (!this.hasAttribute('data-ajax') && loadingIndicator) {
-                loadingIndicator.style.display = 'block';
+            if (!this.hasAttribute('data-ajax') && loadingIndicatorElem) {
+                loadingIndicatorElem.style.display = 'block';
                 
                 // Escape-Taste kann den Ladevorgang abbrechen für bessere Benutzererfahrung
                 document.addEventListener('keydown', escapeKeyHandler);
                 
                 // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
                 setTimeout(() => {
-                    if (loadingIndicator && loadingIndicator.style.display === 'block') {
-                        loadingIndicator.style.display = 'none';
+                    if (loadingIndicatorElem && loadingIndicatorElem.style.display === 'block') {
+                        loadingIndicatorElem.style.display = 'none';
                         if (submitButton) {
                             submitButton.disabled = false;
                         }
