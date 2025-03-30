@@ -352,7 +352,7 @@
             <p class="mb-0 text-muted">Datenbanken werden durchsucht, bitte warten...</p>
             <hr class="my-3">
             <div class="d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideLoadingIndicator()">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('loadingIndicator').style.display='none'; document.querySelectorAll('button[type=\'submit\']').forEach(b => b.disabled = false);">
                     <i class="fas fa-times me-1"></i>Abbrechen (ESC)
                 </button>
             </div>
@@ -407,6 +407,7 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// Funktionen zum Verwalten des Ladeindikators
 function hideLoadingIndicator() {
     const indicator = document.getElementById('loadingIndicator');
     if (indicator) {
@@ -425,17 +426,22 @@ function hideLoadingIndicator() {
 
 function escapeKeyHandler(evt) {
     if (evt.key === 'Escape') {
-        hideLoadingIndicator();
+        // Ladeindikator ausblenden
+        const indicator = document.getElementById('loadingIndicator');
+        if (indicator) {
+            indicator.style.display = 'none';
+        }
+        
+        // Submit-Buttons wieder aktivieren
+        const submitButtons = document.querySelectorAll('button[type="submit"]');
+        submitButtons.forEach(button => {
+            button.disabled = false;
+        });
+        
+        // Event-Listener entfernen
+        document.removeEventListener('keydown', escapeKeyHandler);
     }
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial loading indicator setup
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
-    }
-});
 
 document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikator initial verstecken und nur bei tatsächlichen Suchen anzeigen
@@ -823,7 +829,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikatoren für alle Formulare
     const allForms = document.querySelectorAll('form');
     
-    // Der Ladeindikator wurde schon durch hideLoadingIndicator() am Anfang versteckt
+    // Der Ladeindikator wurde bereits initial ausgeblendet
     
     allForms.forEach(form => {
         form.addEventListener('submit', function(e) {
