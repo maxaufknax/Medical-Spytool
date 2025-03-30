@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Spytool - Einstellungen{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="section-title">Einstellungen</h1>
+    
+    {% if saved %}
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i> Einstellungen wurden erfolgreich gespeichert!
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="post" action="/settings">
+                <h2 class="h4 mb-3">API-Schlüssel</h2>
+                
+                <div class="mb-3">
+                    <label for="pubmed_api_key" class="form-label">PubMed API-Schlüssel</label>
+                    <input type="text" class="form-control" id="pubmed_api_key" name="pubmed_api_key" value="{{ config.pubmed_api_key }}">
+                    <div class="form-text">Für erweiterte Funktionen und höhere Abfragelimits. <a href="https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/" target="_blank">Mehr erfahren</a></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="dnb_api_key" class="form-label">DNB API-Schlüssel</label>
+                    <input type="text" class="form-control" id="dnb_api_key" name="dnb_api_key" value="{{ config.dnb_api_key }}">
+                    <div class="form-text">Für den Zugriff auf die Deutsche Nationalbibliothek.</div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h2 class="h4 mb-3">Anwendungseinstellungen</h2>
+                
+                <div class="mb-3">
+                    <label for="output_path" class="form-label">Ausgabepfad</label>
+                    <input type="text" class="form-control" id="output_path" name="output_path" value="{{ config.output_path }}">
+                    <div class="form-text">Verzeichnis für exportierte Dateien.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="person_list_path" class="form-label">Personenlisten-Pfad</label>
+                    <input type="text" class="form-control" id="person_list_path" name="person_list_path" value="{{ config.person_list_path }}">
+                    <div class="form-text">Verzeichnis für die Personenliste.</div>
+                </div>
+                
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="unique_filenames" name="unique_filenames" {% if config.unique_filenames %}checked{% endif %}>
+                    <label class="form-check-label" for="unique_filenames">Eindeutige Dateinamen verwenden</label>
+                    <div class="form-text">Fügt einen Zeitstempel zu exportierten Dateien hinzu.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="default_database" class="form-label">Standard-Datenbank</label>
+                    <select class="form-select" id="default_database" name="default_database">
+                        <option value="PubMed" {% if config.default_database == 'PubMed' %}selected{% endif %}>PubMed</option>
+                        <option value="DNB" {% if config.default_database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek</option>
+                        <option value="Combined" {% if config.default_database == 'Combined' %}selected{% endif %}>Kombinierte Suche</option>
+                    </select>
+                </div>
+                
+                <hr class="my-4">
+                
+                <h2 class="h4 mb-3">Export-Optionen</h2>
+                <p class="text-muted mb-3">Spalten auswählen, die in exportierten Dateien enthalten sein sollen:</p>
+                
+                <div class="row">
+                    {% set all_columns = ["Database", "Name", "Title", "Publication Year", "Publication Month", "Authors", "Publication Types", "Affiliations", "Publisher", "Subjects", "Language", "PubMed URL", "DOI URL", "PubMed ID", "PMCID", "DOI", "ISBN", "Identifier", "URL", "Citation Count"] %}
+                    
+                    {% for column in all_columns %}
+                    <div class="col-md-6 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="column_{{ column|replace(' ', '_') }}" name="column_{{ column|replace(' ', '_') }}" 
+                                  {% if column in config.output_columns %}checked{% endif %}>
+                            <label class="form-check-label" for="column_{{ column|replace(' ', '_') }}">
+                                {{ column }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Einstellungen speichern
+                    </button>
+                    <button type="reset" class="btn btn-secondary ms-2">
+                        <i class="fas fa-undo me-2"></i>Zurücksetzen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

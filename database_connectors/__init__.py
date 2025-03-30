@@ -1,18 +1,22 @@
 """
 Database Connectors Package
 
-This package contains database connector classes for various academic databases.
-Each connector follows a common interface defined in the base_connector module.
+This package provides connectors for various publication databases.
 """
 
 from database_connectors.base_connector import DatabaseConnector
 from database_connectors.pubmed_connector import PubMedConnector
 from database_connectors.dnb_connector import DNBConnector
 
-# Dictionary to map database names to connector classes
+# Register available database connectors
 DATABASE_CONNECTORS = {
     "PubMed": PubMedConnector,
-    "DNB": DNBConnector,
+    "DNB": DNBConnector
 }
 
-__all__ = ['DatabaseConnector', 'PubMedConnector', 'DNBConnector', 'DATABASE_CONNECTORS']
+__all__ = [
+    "DATABASE_CONNECTORS",
+    "DatabaseConnector",
+    "PubMedConnector",
+    "DNBConnector"
+]

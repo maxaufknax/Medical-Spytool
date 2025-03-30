@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Spytool - Datenanalyse{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="section-title">Datenanalyse</h1>
+    
+    {% if count == 0 %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i> Keine Daten für die Analyse verfügbar. Führen Sie zuerst eine Suche durch.
+    </div>
+    <a href="/search" class="btn btn-primary mt-3">
+        <i class="fas fa-search me-2"></i>Zur Suche
+    </a>
+    {% else %}
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Visualisierung</h2>
+                    <div class="btn-group" role="group" aria-label="Visualisierungstyp">
+                        <button type="button" class="btn btn-outline-primary active" id="yearChartBtn">
+                            <i class="fas fa-chart-bar me-2"></i>Nach Jahr
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="databaseChartBtn">
+                            <i class="fas fa-database me-2"></i>Nach Datenbank
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="personChartBtn">
+                            <i class="fas fa-users me-2"></i>Nach Person
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="chartContainer" class="text-center p-3">
+                        <div id="chart">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Wird geladen...</span>
+                            </div>
+                            <p class="text-muted mt-2">Lade Visualisierung...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="h5 mb-0">Statistiken</h2>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Gesamtanzahl Publikationen
+                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                        </li>
+                        
+                        {% set databases = {} %}
+                        {% for result in results %}
+                            {% if result.Database in databases %}
+                                {% set _ = databases.update({result.Database: databases[result.Database] + 1}) %}
+                            {% else %}
+                                {% set _ = databases.update({result.Database: 1}) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% for db, count in databases.items() %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ db }}
+                            <span class="badge bg-secondary rounded-pill">{{ count }}</span>
+                        </li>
+                        {% endfor %}
+                        
+                        {% set years = {} %}
+                        {% for result in results %}
+                            {% if result["Publication Year"] and result["Publication Year"] != "N/A" %}
+                                {% if result["Publication Year"] in years %}
+                                    {% set _ = years.update({result["Publication Year"]: years[result["Publication Year"]] + 1}) %}
+                                {% else %}
+                                    {% set _ = years.update({result["Publication Year"]: 1}) %}
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% set earliest_year = years.keys()|list|sort|first if years else "N/A" %}
+                        {% set latest_year = years.keys()|list|sort|last if years else "N/A" %}
+                        
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Zeitraum
+                            <span class="badge bg-info rounded-pill">{{ earliest_year }} - {{ latest_year }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a href="/results" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list me-2"></i>Alle Ergebnisse anzeigen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="h5 mb-0">Meistzitierte Publikationen</h2>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Titel</th>
+                            <th>Autoren</th>
+                            <th>Jahr</th>
+                            <th>Zitationen</th>
+                            <th>Datenbank</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set sorted_results = results|sort(attribute='Citation Count', reverse=True) %}
+                        {% for result in sorted_results[:10] %}
+                        <tr>
+                            <td>
+                                <a href="{{ result.URL }}" target="_blank" class="text-decoration-none">{{ result.Title }}</a>
+                            </td>
+                            <td>{{ result.Authors }}</td>
+                            <td>{{ result["Publication Year"] }}</td>
+                            <td>{{ result["Citation Count"] }}</td>
+                            <td>{{ result.Database }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if count > 0 %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Chart buttons
+    const yearChartBtn = document.getElementById('yearChartBtn');
+    const databaseChartBtn = document.getElementById('databaseChartBtn');
+    const personChartBtn = document.getElementById('personChartBtn');
+    const chartContainer = document.getElementById('chart');
+    
+    // Initial chart
+    loadChart('year');
+    
+    // Button event listeners
+    yearChartBtn.addEventListener('click', function() {
+        setActiveButton(this);
+        loadChart('year');
+    });
+    
+    databaseChartBtn.addEventListener('click', function() {
+        setActiveButton(this);
+        loadChart('database');
+    });
+    
+    personChartBtn.addEventListener('click', function() {
+        setActiveButton(this);
+        loadChart('person');
+    });
+    
+    function setActiveButton(activeBtn) {
+        // Reset all buttons
+        [yearChartBtn, databaseChartBtn, personChartBtn].forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Set active button
+        activeBtn.classList.add('active');
+    }
+    
+    function loadChart(type) {
+        // Show loading spinner
+        chartContainer.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Wird geladen...</span>
+            </div>
+            <p class="text-muted mt-2">Lade Visualisierung...</p>
+        `;
+        
+        // Fetch chart data
+        fetch(`/api/get_visualization?type=${type}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    chartContainer.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>${data.error}
+                        </div>
+                    `;
+                } else {
+                    // Display the chart image
+                    chartContainer.innerHTML = `
+                        <img src="data:image/png;base64,${data.image}" class="img-fluid" alt="Visualisierung">
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching chart:', error);
+                chartContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>Fehler beim Laden der Visualisierung.
+                    </div>
+                `;
+            });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

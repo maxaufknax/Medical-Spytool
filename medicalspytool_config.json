@@ -1,0 +1,18 @@
+{
+  "output_path": "./output",
+  "person_list_path": "./person_lists",
+  "unique_filenames": true,
+  "pubmed_api_key": "",
+  "dnb_api_key": "",
+  "default_database": "PubMed",
+  "output_columns": [
+    "Database",
+    "Name",
+    "Title",
+    "Publication Year",
+    "Authors",
+    "Identifier",
+    "URL",
+    "Citation Count"
+  ]
+}

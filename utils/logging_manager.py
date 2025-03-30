@@ -1,110 +1,59 @@
 """
 Logging Manager
 
-This module handles application logging.
+This module provides functions for logging messages.
 """
 
-import os
 import logging
 from datetime import datetime
 
-# Global log list for the application
-GLOBAL_LOG = []
+logger = logging.getLogger(__name__)
 
-def setup_logging():
-    """
-    Set up application logging.
-    
-    Returns:
-        logging.Logger: Configured logger.
-    """
-    # Create logs directory if it doesn't exist
-    os.makedirs("logs", exist_ok=True)
-    
-    # Get current timestamp for log filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = os.path.join("logs", f"medicalspytool_{timestamp}.log")
-    
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    
-    logger = logging.getLogger("MedicalSpyTool")
-    logger.info("Logging initialized")
-    
-    return logger
+# Global log list to store log messages
+GLOBAL_LOG = []
 
 def log_message(log_widget, message):
     """
-    Add a message to the log and display it in the widget.
+    Log a message both to the file logger and to the global log list.
     
     Args:
-        log_widget (tkinter.Text or None): Widget for displaying log messages.
-        message (str): Message to log.
+        log_widget: Widget or object to update with the message (can be None)
+        message (str): Message to log
+        
+    Returns:
+        str: The logged message with timestamp
     """
-    global GLOBAL_LOG
+    # Create timestamped message
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_entry = f"{timestamp} - {message}"
     
-    # Get current timestamp
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    full_msg = f"[{timestamp}] {message}\n"
+    # Log to file
+    logger.info(message)
     
     # Add to global log
-    GLOBAL_LOG.append(full_msg)
+    global GLOBAL_LOG
+    GLOBAL_LOG.append(log_entry)
     
-    # Log to logger
-    logging.getLogger("MedicalSpyTool").info(message)
+    # Keep only the last 1000 log entries
+    if len(GLOBAL_LOG) > 1000:
+        GLOBAL_LOG = GLOBAL_LOG[-1000:]
     
-    # Display in widget if available
-    if log_widget:
-        try:
-            log_widget.config(state="normal")
-            log_widget.insert("end", full_msg)
-            log_widget.see("end")
-            log_widget.config(state="disabled")
-        except Exception as e:
-            print(f"Error logging to GUI: {e}")
-    else:
-        print(full_msg.strip())
+    return log_entry
 
-def clear_log(log_widget):
+def clear_log():
     """
-    Clear the log content.
-    
-    Args:
-        log_widget (tkinter.Text): Widget containing the log.
+    Clear the global log.
     """
     global GLOBAL_LOG
     GLOBAL_LOG = []
-    
-    if log_widget:
-        log_widget.config(state="normal")
-        log_widget.delete("1.0", "end")
-        log_widget.config(state="disabled")
+    logger.info("Log cleared")
 
-def export_log(log_widget, file_path):
+def get_log():
     """
-    Export the log to a file.
+    Get the current log content.
     
-    Args:
-        log_widget (tkinter.Text): Widget containing the log.
-        file_path (str): Path to save the log file.
-        
     Returns:
-        bool: True if export was successful, False otherwise.
+        list: The global log entries.
     """
-    try:
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write("".join(GLOBAL_LOG))
-        
-        log_message(log_widget, f"Log exported to {file_path}")
-        return True
-    except Exception as e:
-        logging.getLogger("MedicalSpyTool").error(f"Error exporting log: {e}", exc_info=True)
-        log_message(log_widget, f"Error exporting log: {e}")
-        return False
+    global GLOBAL_LOG
+    return GLOBAL_LOG

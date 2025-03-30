@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Spytool - Personenverwaltung{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="section-title">Personenverwaltung</h1>
+    
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i> <strong>Fehler:</strong> {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+    
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Person hinzufügen</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="/persons">
+                        <input type="hidden" name="action" value="add">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="search_term" class="form-label">Suchbegriff</label>
+                            <input type="text" class="form-control" id="search_term" name="search_term" required>
+                            <div class="form-text">Hauptsuchbegriff für diese Person, normalerweise der Name oder ein eindeutiger Identifikator.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="additional_terms" class="form-label">Zusätzliche Suchbegriffe</label>
+                            <input type="text" class="form-control" id="additional_terms" name="additional_terms">
+                            <div class="form-text">Zusätzliche Begriffe zur Eingrenzung, z.B. Fachgebiet oder Institution.</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Hinzufügen
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Schnellsuche</h2>
+                </div>
+                <div class="card-body">
+                    <p>Mit gespeicherten Personen direkt suchen:</p>
+                    <div class="list-group">
+                        {% for person in persons %}
+                        <a href="/search?person_name={{ person.Name }}&search_term={{ person.Search_Term }}&additional_terms={{ person.Additional_Terms }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ person.Name }}</strong>
+                                <small class="d-block text-muted">{{ person.Search_Term }}</small>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Personenliste</h2>
+                </div>
+                <div class="card-body">
+                    {% if persons|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Suchbegriff</th>
+                                    <th>Zusätzliche Begriffe</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for person in persons %}
+                                <tr>
+                                    <td>{{ person.Name }}</td>
+                                    <td>{{ person.Search_Term }}</td>
+                                    <td>{{ person.Additional_Terms }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/search?person_name={{ person.Name }}&search_term={{ person.Search_Term }}&additional_terms={{ person.Additional_Terms }}" class="btn btn-outline-primary" title="Mit dieser Person suchen">
+                                                <i class="fas fa-search"></i>
+                                            </a>
+                                            <form method="post" action="/persons" class="d-inline">
+                                                <input type="hidden" name="action" value="delete">
+                                                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                                                <button type="submit" class="btn btn-outline-danger" onclick="return confirm('Sind Sie sicher, dass Sie diese Person löschen möchten?')" title="Person löschen">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> Keine Personen vorhanden. Fügen Sie eine Person hinzu, um zu beginnen.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

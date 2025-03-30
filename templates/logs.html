@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Spytool - Logs{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="section-title">Log-Einträge</h1>
+    
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">Anwendungslogs</h2>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard()">
+                    <i class="fas fa-copy me-2"></i>Kopieren
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <pre id="logContent" class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto;">{{ log_content }}</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyToClipboard() {
+    const logContent = document.getElementById('logContent');
+    
+    // Create a temporary textarea element to copy from
+    const textarea = document.createElement('textarea');
+    textarea.value = logContent.textContent;
+    document.body.appendChild(textarea);
+    
+    // Select and copy
+    textarea.select();
+    document.execCommand('copy');
+    
+    // Clean up
+    document.body.removeChild(textarea);
+    
+    // Show feedback
+    alert('Log-Inhalt in die Zwischenablage kopiert.');
+}
+</script>
+{% endblock %}

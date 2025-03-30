@@ -1,7 +1,7 @@
 """
 Configuration Manager
 
-This module handles loading, saving, and managing application configuration.
+This module provides functions for loading and saving configuration settings.
 """
 
 import os
@@ -10,104 +10,89 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Configuration file path
-CONFIG_FILE = "medicalspytool_config.json"
-DEFAULT_CONFIG_FILE = os.path.join("assets", "default_config.json")
+# Default configuration
+DEFAULT_CONFIG = {
+    'output_path': './output',
+    'person_list_path': './person_lists',
+    'unique_filenames': True,
+    'pubmed_api_key': '',
+    'dnb_api_key': '',
+    'default_database': 'PubMed',
+    'output_columns': [
+        "Database", "Name", "Title", "Publication Year", "Authors", 
+        "Identifier", "URL", "Citation Count"
+    ]
+}
 
 def load_settings():
     """
-    Load application settings from configuration file.
+    Load application settings from file.
     
     Returns:
         dict: Application settings.
     """
+    config_file = 'medicalspytool_config.json'
+    
+    # If config file doesn't exist, create a default one
+    if not os.path.exists(config_file):
+        logger.info(f"Creating default configuration file: {config_file}")
+        return save_settings(DEFAULT_CONFIG)
+    
     try:
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                settings = json.load(f)
-            logger.info("Settings loaded from configuration file.")
-            return settings
-        elif os.path.exists(DEFAULT_CONFIG_FILE):
-            with open(DEFAULT_CONFIG_FILE, "r", encoding="utf-8") as f:
-                settings = json.load(f)
-            logger.info("Settings loaded from default configuration file.")
-            save_settings(settings)  # Save the default settings to the main config file
-            return settings
-        else:
-            # Create default settings
-            settings = create_default_settings()
-            save_settings(settings)
-            logger.info("Default settings created.")
-            return settings
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            logger.info(f"Loaded configuration from {config_file}")
+            
+            # Update with any missing default settings
+            for key, value in DEFAULT_CONFIG.items():
+                if key not in config:
+                    config[key] = value
+                    
+            return config
     except Exception as e:
-        logger.error(f"Error loading settings: {e}", exc_info=True)
-        return create_default_settings()
+        logger.error(f"Error loading configuration: {e}", exc_info=True)
+        return DEFAULT_CONFIG
 
-def save_settings(settings):
+def save_settings(config):
     """
-    Save application settings to configuration file.
+    Save application settings to file.
     
     Args:
-        settings (dict): Application settings to save.
-    """
-    try:
-        # Ensure the directory exists
-        os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+        config (dict): Application settings.
         
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(settings, f, indent=4)
-        logger.info("Settings saved.")
-    except Exception as e:
-        logger.error(f"Error saving settings: {e}", exc_info=True)
-
-def create_default_settings():
-    """
-    Create default application settings.
-    
     Returns:
-        dict: Default settings.
+        dict: The config that was saved.
     """
-    return {
-        "output_path": "./output",
-        "person_list_path": "./person_lists",
-        "unique_filenames": False,
-        "pubmed_api_key": "",
-        "dnb_api_key": "",
-        "output_columns": [
-            "Database", "Name", "Title", "Publication Year", "Authors", 
-            "Identifier", "URL", "Citation Count"
-        ],
-        "default_database": "PubMed"
-    }
+    config_file = 'medicalspytool_config.json'
+    
+    try:
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2)
+            logger.info(f"Saved configuration to {config_file}")
+        return config
+    except Exception as e:
+        logger.error(f"Error saving configuration: {e}", exc_info=True)
+        return config
 
-def ensure_directories(settings):
+def ensure_directories(config):
     """
     Ensure that necessary directories exist.
     
     Args:
-        settings (dict): Application settings containing directory paths.
+        config (dict): Application settings.
     """
     try:
-        # Create output directory if it doesn't exist
-        os.makedirs(settings["output_path"], exist_ok=True)
-        
-        # Create person list directory if it doesn't exist
-        os.makedirs(settings["person_list_path"], exist_ok=True)
-        
-        logger.info("Directories created.")
+        # Ensure output directory exists
+        output_path = config.get('output_path', './output')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+            logger.info(f"Created output directory: {output_path}")
+            
+        # Ensure person list directory exists
+        person_list_path = config.get('person_list_path', './person_lists')
+        if not os.path.exists(person_list_path):
+            os.makedirs(person_list_path)
+            logger.info(f"Created person list directory: {person_list_path}")
+            
     except Exception as e:
-        logger.error(f"Error creating directories: {e}", exc_info=True)
-
-def get_api_key(database_name, settings):
-    """
-    Get the API key for the specified database.
-    
-    Args:
-        database_name (str): Name of the database.
-        settings (dict): Application settings.
-        
-    Returns:
-        str: API key or empty string if not found.
-    """
-    key_name = f"{database_name.lower()}_api_key"
-    return settings.get(key_name, "")
+        logger.error(f"Error ensuring directories: {e}", exc_info=True)

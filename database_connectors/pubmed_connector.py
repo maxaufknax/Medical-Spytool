@@ -135,7 +135,7 @@ class PubMedConnector(DatabaseConnector):
         Args:
             query (str): Search query.
             params (dict, optional): Additional search parameters.
-            log_widget (tkinter.Text, optional): Widget for logging messages.
+            log_widget (object, optional): Object for logging messages.
             
         Returns:
             list: Search results.
@@ -193,21 +193,24 @@ class PubMedConnector(DatabaseConnector):
             log_message(log_widget, f"Error retrieving PubMed details: {e}")
             return []
         
-        return self.parse_results(efetch_xml, name, log_widget)
+        return self.parse_results(efetch_xml, params={'name': name, 'log_widget': log_widget})
     
-    def parse_results(self, efetch_xml, name=None, log_widget=None):
+    def parse_results(self, efetch_xml, params=None):
         """
         Parse PubMed search results.
         
         Args:
             efetch_xml (xml.etree.ElementTree.Element): XML response from PubMed.
-            name (str, optional): Name associated with the search.
-            log_widget (tkinter.Text, optional): Widget for logging messages.
+            params (dict, optional): Additional parameters.
             
         Returns:
             list: Parsed publications.
         """
         from utils.logging_manager import log_message
+        
+        params = params or {}
+        name = params.get('name', 'Unknown')
+        log_widget = params.get('log_widget', None)
         
         publications = []
         articles = efetch_xml.findall(".//PubmedArticle")
@@ -231,13 +234,13 @@ class PubMedConnector(DatabaseConnector):
                 month_el = pub_date_el.find("Month") if pub_date_el is not None else None
                 month_raw = month_el.text if month_el is not None else ""
                 try:
-                    month_numeric = datetime.strptime(month_raw, "%b").strftime("%m")
+                    month_numeric = datetime.strptime(month_raw, "%b").strftime("%m") if month_raw else ""
                 except:
                     try:
-                        month_numeric = datetime.strptime(month_raw, "%B").strftime("%m")
+                        month_numeric = datetime.strptime(month_raw, "%B").strftime("%m") if month_raw else ""
                     except:
                         try:
-                            month_numeric = str(int(month_raw)).zfill(2)
+                            month_numeric = str(int(month_raw)).zfill(2) if month_raw.isdigit() else month_raw
                         except:
                             month_numeric = month_raw
                 
@@ -282,7 +285,7 @@ class PubMedConnector(DatabaseConnector):
                 # Create publication record
                 publication = {
                     "Database": "PubMed",
-                    "Name": name or "Unknown",
+                    "Name": name,
                     "Title": title,
                     "Publication Year": year,
                     "Publication Month": month_numeric,

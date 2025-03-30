@@ -1,7 +1,5 @@
 """
-Utility Package
+Utilities Package
 
-This package contains utility functions and classes for the application.
+This package provides utility functions for the application.
 """
-
-__all__ = []

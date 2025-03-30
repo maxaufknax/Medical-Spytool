@@ -103,7 +103,7 @@ class DNBConnector(DatabaseConnector):
         Args:
             query (str): Search query.
             params (dict, optional): Additional search parameters.
-            log_widget (tkinter.Text, optional): Widget for logging messages.
+            log_widget (object, optional): Object for logging messages.
             
         Returns:
             list: Search results.
@@ -147,7 +147,7 @@ class DNBConnector(DatabaseConnector):
                 return []
             
             # Process the records
-            publications = self.parse_results(root, name, log_widget)
+            publications = self.parse_results(root, params={'name': name, 'log_widget': log_widget})
             
             # Handle pagination if needed
             start_record = max_results + 1
@@ -163,7 +163,7 @@ class DNBConnector(DatabaseConnector):
                 
                 # Parse the new results
                 root = ET.fromstring(response.content)
-                new_results = self.parse_results(root, name, log_widget)
+                new_results = self.parse_results(root, params={'name': name, 'log_widget': log_widget})
                 
                 if not new_results:
                     break
@@ -183,19 +183,22 @@ class DNBConnector(DatabaseConnector):
         
         return publications
     
-    def parse_results(self, root, name=None, log_widget=None):
+    def parse_results(self, root, params=None):
         """
         Parse DNB search results.
         
         Args:
             root (xml.etree.ElementTree.Element): XML response from DNB.
-            name (str, optional): Name associated with the search.
-            log_widget (tkinter.Text, optional): Widget for logging messages.
+            params (dict, optional): Additional parameters.
             
         Returns:
             list: Parsed publications.
         """
         from utils.logging_manager import log_message
+        
+        params = params or {}
+        name = params.get('name', 'Unknown')
+        log_widget = params.get('log_widget', None)
         
         publications = []
         records = root.findall('.//srw:record', DNB_NS)
@@ -221,7 +224,8 @@ class DNBConnector(DatabaseConnector):
                 # Extract creators/authors
                 creators = []
                 for creator in description.findall('./dc:creator', DNB_NS):
-                    creators.append(creator.text)
+                    if creator.text:
+                        creators.append(creator.text)
                 creators_str = ", ".join(creators) if creators else "No Authors"
                 
                 # Extract publication year
@@ -247,7 +251,8 @@ class DNBConnector(DatabaseConnector):
                 # Extract subjects/keywords
                 subjects = []
                 for subject in description.findall('./dc:subject', DNB_NS):
-                    subjects.append(subject.text)
+                    if subject.text:
+                        subjects.append(subject.text)
                 subjects_str = ", ".join(subjects) if subjects else "No Subjects"
                 
                 # Extract language
@@ -257,7 +262,7 @@ class DNBConnector(DatabaseConnector):
                 # Create publication record
                 publication = {
                     "Database": "DNB",
-                    "Name": name or "Unknown",
+                    "Name": name,
                     "Title": title,
                     "Publication Year": year,
                     "Publication Month": "",  # DNB typically doesn't provide month info
