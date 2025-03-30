@@ -338,19 +338,29 @@ def persons():
         
         if action == 'add':
             # Add a new person
-            name = request.form.get('name', '').strip()
+            firstname = request.form.get('firstname', '').strip()
+            lastname = request.form.get('lastname', '').strip()
             search_term = request.form.get('search_term', '').strip()
             additional_terms = request.form.get('additional_terms', '').strip()
             
-            if name and search_term:
+            # Vollständiger Name
+            full_name = f"{firstname} {lastname}".strip()
+            
+            if firstname and lastname:
+                # Wenn kein Suchbegriff angegeben wurde, Nachname als Suchbegriff verwenden
+                if not search_term:
+                    search_term = lastname
+                
                 person = {
-                    'Name': name,
-                    'Search Term': search_term,
-                    'Additional Terms': additional_terms
+                    'Name': full_name,
+                    'Firstname': firstname,
+                    'Lastname': lastname,
+                    'Search Term': search_term if search_term else None,
+                    'Additional Terms': additional_terms if additional_terms else None
                 }
                 
                 # Check for duplicates
-                if not any(p.get('Name') == name for p in person_list):
+                if not any(p.get('Name') == full_name for p in person_list):
                     person_list.append(person)
                     
                     # Save updated list

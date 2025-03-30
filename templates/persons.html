@@ -33,19 +33,25 @@
                     <form method="post" action="/persons">
                         <input type="hidden" name="action" value="add">
                         
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="firstname" class="form-label">Vorname</label>
+                                <input type="text" class="form-control" id="firstname" name="firstname" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="lastname" class="form-label">Nachname</label>
+                                <input type="text" class="form-control" id="lastname" name="lastname" required>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="search_term" class="form-label">Suchbegriff</label>
-                            <input type="text" class="form-control" id="search_term" name="search_term" required>
-                            <div class="form-text">Hauptsuchbegriff für diese Person, normalerweise der Name oder ein eindeutiger Identifikator.</div>
+                            <label for="search_term" class="form-label">Suchbegriff (optional)</label>
+                            <input type="text" class="form-control" id="search_term" name="search_term">
+                            <div class="form-text">Hauptsuchbegriff für diese Person, falls abweichend vom Namen.</div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="additional_terms" class="form-label">Zusätzliche Suchbegriffe</label>
+                            <label for="additional_terms" class="form-label">Zusätzliche Suchbegriffe (optional)</label>
                             <input type="text" class="form-control" id="additional_terms" name="additional_terms">
                             <div class="form-text">Zusätzliche Begriffe zur Eingrenzung, z.B. Fachgebiet oder Institution.</div>
                         </div>
@@ -138,6 +144,8 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th>Vorname</th>
+                                    <th>Nachname</th>
                                     <th>Suchbegriff</th>
                                     <th>Zusätzliche Begriffe</th>
                                     <th>Aktionen</th>
@@ -147,8 +155,10 @@
                                 {% for person in persons %}
                                 <tr>
                                     <td>{{ person.Name }}</td>
-                                    <td>{{ person.Search_Term }}</td>
-                                    <td>{{ person.Additional_Terms }}</td>
+                                    <td>{{ person.Firstname }}</td>
+                                    <td>{{ person.Lastname }}</td>
+                                    <td>{{ person.Search_Term or '-' }}</td>
+                                    <td>{{ person.Additional_Terms or '-' }}</td>
                                     <td>
                                         <div class="btn-group btn-group-sm">
                                             <a href="/search?db=Person" class="btn btn-outline-success" title="In Personensucbe verwenden">

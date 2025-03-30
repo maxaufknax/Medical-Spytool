@@ -103,15 +103,19 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="combined_person_name" class="form-label">Personenname (optional)</label>
+                                <label for="combined_person_name" class="form-label">Person aus Liste auswählen</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="combined_person_name" name="person_name" placeholder="Name der Person" autocomplete="off">
+                                    <input type="text" class="form-control" id="combined_person_name" name="person_name" 
+                                           placeholder="Person eingeben oder auswählen" autocomplete="off" list="combined_persons_list">
                                     <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
                                         <i class="fas fa-user-edit"></i>
                                     </a>
                                 </div>
+                                <datalist id="combined_persons_list">
+                                    <!-- Wird mit JavaScript befüllt -->
+                                </datalist>
                                 <small class="form-text text-muted mt-1">
-                                    <i class="fas fa-info-circle me-1"></i> Bei Auswahl einer Person werden die gespeicherten Suchbegriffe übernommen.
+                                    <i class="fas fa-info-circle me-1"></i> Beginnen Sie zu tippen, um Personen aus der Liste auszuwählen. Gespeicherte Suchbegriffe werden automatisch übernommen.
                                 </small>
                             </div>
                         </div>
@@ -181,15 +185,19 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="person_name" class="form-label">Personenname (optional)</label>
+                            <label for="person_name" class="form-label">Person aus Liste auswählen</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="person_name" name="person_name" placeholder="Name der Person" autocomplete="off">
+                                <input type="text" class="form-control" id="person_name" name="person_name" 
+                                       placeholder="Person eingeben oder auswählen" autocomplete="off" list="specific_persons_list">
                                 <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
                                     <i class="fas fa-user-edit"></i>
                                 </a>
                             </div>
+                            <datalist id="specific_persons_list">
+                                <!-- Wird mit JavaScript befüllt -->
+                            </datalist>
                             <small class="form-text text-muted mt-1">
-                                <i class="fas fa-info-circle me-1"></i> Bei Auswahl einer Person werden die zugehörigen Suchbegriffe automatisch übernommen.
+                                <i class="fas fa-info-circle me-1"></i> Beginnen Sie zu tippen, um Personen aus der Liste auszuwählen. Gespeicherte Suchbegriffe werden automatisch übernommen.
                             </small>
                         </div>
                         
@@ -584,44 +592,49 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                // Für das Eingabefeld im kombinierten Tab und im spezifischen Tab - Datalist hinzufügen
-                const inputFields = [
-                    document.getElementById('combined_person_name'),
-                    document.getElementById('person_name')
+                // Für das Eingabefeld im kombinierten Tab und im spezifischen Tab - bestehende Datalists befüllen
+                // Die Datalist-IDs wurden im HTML definiert als "combined_persons_list" und "specific_persons_list"
+                const datalists = [
+                    document.getElementById('combined_persons_list'),  // Datalist für kombinierte Suche
+                    document.getElementById('specific_persons_list')   // Datalist für spezifische Datenbanksuche
                 ].filter(element => element !== null);
 
-                inputFields.forEach(inputField => {
-                    // Datalist ID erstellen
-                    const datalistId = `${inputField.id}_list`;
-                    
-                    // Bestehende Datalist entfernen, falls vorhanden
-                    let datalist = document.getElementById(datalistId);
-                    if (datalist) {
-                        datalist.remove();
+                // Datalists mit Personen befüllen
+                datalists.forEach(datalist => {
+                    // Bestehende Optionen löschen
+                    while (datalist.firstChild) {
+                        datalist.removeChild(datalist.firstChild);
                     }
-                    
-                    // Neue Datalist erstellen
-                    datalist = document.createElement('datalist');
-                    datalist.id = datalistId;
                     
                     // Personen zur Datalist hinzufügen
                     persons.forEach(person => {
                         const option = document.createElement('option');
                         option.value = person.Name;
-                        option.dataset.searchTerm = person['Search Term'];
-                        option.dataset.additionalTerms = person['Additional Terms'] || '';
+                        option.dataset.searchTerm = person.Search_Term || ''; // Aktualisierte Schlüssel basierend auf der DB
+                        option.dataset.additionalTerms = person.Additional_Terms || '';
+                        option.dataset.firstname = person.Firstname || '';
+                        option.dataset.lastname = person.Lastname || '';
                         datalist.appendChild(option);
                     });
+                });
+                
+                // Jetzt Event-Listener für die Eingabefelder hinzufügen
+                const inputFields = [
+                    document.getElementById('combined_person_name'),
+                    document.getElementById('person_name')
+                ].filter(element => element !== null);
+                
+                // Event-Listener für Änderungen in den Eingabefeldern hinzufügen
+                inputFields.forEach(inputField => {
+                    if (!inputField) return;
                     
-                    // Datalist zum DOM hinzufügen
-                    document.body.appendChild(datalist);
+                    const datalistId = inputField.getAttribute('list');
+                    const datalist = document.getElementById(datalistId);
                     
-                    // Datalist mit dem Eingabefeld verknüpfen
-                    inputField.setAttribute('list', datalistId);
-                    
-                    // Event-Listener für Änderungen im Eingabefeld hinzufügen
                     inputField.addEventListener('input', function() {
                         const selectedPerson = this.value;
+                        if (!datalist) return;
+                        
                         const options = datalist.querySelectorAll('option');
                         
                         // Suche nach übereinstimmender Option
