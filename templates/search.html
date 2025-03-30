@@ -343,7 +343,7 @@
     </div>
     
     <!-- Loading Indicator (only shown during active searches) -->
-    <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" id="loadingIndicator" style="display: none; z-index: 9999;">
+    <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" id="loadingIndicator" style="display: none !important; z-index: 9999;">
         <div class="card p-4 text-center shadow-lg">
             <div class="spinner-border text-primary mx-auto mb-3" style="width: 3rem; height: 3rem;" role="status">
                 <span class="visually-hidden">Wird geladen...</span>
@@ -352,7 +352,7 @@
             <p class="mb-0 text-muted">Datenbanken werden durchsucht, bitte warten...</p>
             <hr class="my-3">
             <div class="d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('loadingIndicator').style.display='none'; document.querySelectorAll('button[type=\'submit\']').forEach(b => b.disabled = false);">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelSearchButton">
                     <i class="fas fa-times me-1"></i>Abbrechen (ESC)
                 </button>
             </div>
@@ -407,29 +407,14 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Funktionen zum Verwalten des Ladeindikators
-function hideLoadingIndicator() {
-    const indicator = document.getElementById('loadingIndicator');
-    if (indicator) {
-        indicator.style.display = 'none';
-    }
-    
-    // Submit-Buttons wieder aktivieren
-    const submitButtons = document.querySelectorAll('button[type="submit"]');
-    submitButtons.forEach(button => {
-        button.disabled = false;
-    });
-    
-    // Event-Listener entfernen
-    document.removeEventListener('keydown', escapeKeyHandler);
-}
+// Funktion zum Verwalten der Escape-Taste bei laufenden Suchvorgängen
 
 function escapeKeyHandler(evt) {
     if (evt.key === 'Escape') {
-        // Ladeindikator ausblenden
+        // Ladeindikator ausblenden mit höchster Priorität
         const indicator = document.getElementById('loadingIndicator');
         if (indicator) {
-            indicator.style.display = 'none';
+            indicator.style.setProperty('display', 'none', 'important');
         }
         
         // Submit-Buttons wieder aktivieren
@@ -444,10 +429,23 @@ function escapeKeyHandler(evt) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Loading-Indikator initial verstecken und nur bei tatsächlichen Suchen anzeigen
+    // Direkt beim Laden der Seite den Ladeindikator sicher verstecken
     const loadingIndicator = document.getElementById('loadingIndicator');
     if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
+        // "!important" über style Attribut und CSS setzen
+        loadingIndicator.style.setProperty('display', 'none', 'important');
+        
+        // Abbrechen-Button konfigurieren
+        const cancelButton = document.getElementById('cancelSearchButton');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', function() {
+                loadingIndicator.style.setProperty('display', 'none', 'important');
+                // Submit-Buttons aktivieren
+                document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = false);
+                // Event-Listener entfernen
+                document.removeEventListener('keydown', escapeKeyHandler);
+            });
+        }
     }
 
     // Datum-Filter anzeigen/ausblenden
@@ -810,7 +808,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Eventuelle Ladeindikatoren ausblenden
             const loadingIndicatorTab = document.getElementById('loadingIndicator');
             if (loadingIndicatorTab) {
-                loadingIndicatorTab.style.display = 'none';
+                loadingIndicatorTab.style.setProperty('display', 'none', 'important');
             }
         });
     });
@@ -855,15 +853,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Nur Ladeindikator anzeigen, wenn es ein normaler POST-Request ist (kein AJAX)
             if (!this.hasAttribute('data-ajax') && loadingIndicatorElem) {
-                loadingIndicatorElem.style.display = 'block';
+                // display: none !important zu entfernen, damit der Indikator sichtbar sein kann
+                loadingIndicatorElem.style.removeProperty('display');
+                loadingIndicatorElem.style.display = 'flex';
                 
                 // Escape-Taste kann den Ladevorgang abbrechen für bessere Benutzererfahrung
                 document.addEventListener('keydown', escapeKeyHandler);
                 
                 // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
                 setTimeout(() => {
-                    if (loadingIndicatorElem && loadingIndicatorElem.style.display === 'block') {
-                        loadingIndicatorElem.style.display = 'none';
+                    if (loadingIndicatorElem) {
+                        loadingIndicatorElem.style.setProperty('display', 'none', 'important');
                         if (submitButton) {
                             submitButton.disabled = false;
                         }
