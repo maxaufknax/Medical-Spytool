@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Suchprofile | MedicalSpyTool{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .profile-card {
+        transition: all 0.3s ease;
+    }
+    .profile-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    }
+    .profile-badge {
+        font-size: 0.8em;
+        margin-right: 5px;
+    }
+    .profile-date {
+        font-size: 0.8em;
+        color: #6c757d;
+    }
+    .action-button {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1><i class="fas fa-save me-2"></i>Suchprofile</h1>
+            <p class="lead text-muted">
+                Verwalten Sie hier Ihre gespeicherten Sucheinstellungen. Suchprofile ermöglichen es Ihnen, 
+                Suchparameter zu speichern und später wiederzuverwenden.
+            </p>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-folder me-2"></i>Gespeicherte Profile
+                    </h5>
+                    <a href="{{ url_for('search') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Neue Suche erstellen
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if profiles %}
+                        <div class="row">
+                            {% for profile in profiles %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card profile-card h-100 border-light">
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                {{ profile.name }}
+                                                {% if profile.database %}
+                                                    <span class="badge bg-info text-dark profile-badge">{{ profile.database }}</span>
+                                                {% endif %}
+                                            </h5>
+                                            <p class="card-text">
+                                                {% if profile.search_term %}
+                                                    <strong>Suchbegriff:</strong> {{ profile.search_term }}<br>
+                                                {% endif %}
+                                                {% if profile.person_name %}
+                                                    <strong>Person:</strong> {{ profile.person_name }}<br>
+                                                {% endif %}
+                                                <span class="profile-date">
+                                                    <i class="far fa-clock me-1"></i>Erstellt: {{ profile.created_at }}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div class="card-footer bg-white">
+                                            <form action="{{ url_for('search_profiles') }}" method="post">
+                                                <input type="hidden" name="profile_name" value="{{ profile.name }}">
+                                                <div class="d-grid gap-2">
+                                                    <button type="submit" name="action" value="load" class="btn btn-sm btn-outline-primary action-button">
+                                                        <i class="fas fa-search me-1"></i>Suche starten
+                                                    </button>
+                                                    <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger action-button" 
+                                                        onclick="return confirm('Möchten Sie das Profil {{ profile.name }} wirklich löschen?')">
+                                                        <i class="fas fa-trash-alt me-1"></i>Löschen
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Keine gespeicherten Suchprofile gefunden. 
+                            Erstellen Sie ein neues Profil über die Suchseite!
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-gradient">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Hilfe</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">Was sind Suchprofile?</h6>
+                    <p>
+                        Suchprofile speichern alle Ihre Sucheinstellungen, einschließlich:
+                    </p>
+                    <ul>
+                        <li>Ausgewählte Datenbank</li>
+                        <li>Suchbegriffe und Parameter</li>
+                        <li>Personenbezogene Suche</li>
+                        <li>Filter (Datum, Sprache, etc.)</li>
+                    </ul>
+                    
+                    <h6 class="fw-bold">Wie erstelle ich ein Suchprofil?</h6>
+                    <ol>
+                        <li>Gehen Sie auf die <a href="{{ url_for('search') }}">Suchseite</a></li>
+                        <li>Geben Sie Ihre Suchparameter ein</li>
+                        <li>Klicken Sie auf "Suche als Profil speichern"</li>
+                        <li>Geben Sie einen Namen für das Profil ein</li>
+                    </ol>
+                    
+                    <h6 class="fw-bold">Wie verwende ich ein Suchprofil?</h6>
+                    <p>
+                        Klicken Sie auf "Suche starten" bei einem gespeicherten Profil. 
+                        Dies lädt alle Einstellungen und führt Sie zur Suchseite.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient">
+                    <h5 class="mb-0"><i class="fas fa-link me-2"></i>Schnellzugriff</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-search me-2"></i>Zur Suchseite
+                        </a>
+                        <a href="{{ url_for('persons') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-users me-2"></i>Personenverwaltung
+                        </a>
+                        <a href="{{ url_for('results') }}" class="btn btn-outline-info">
+                            <i class="fas fa-list me-2"></i>Letzte Suchergebnisse
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Zukünftige JavaScript-Funktionalität für erweiterte Interaktionen mit Profilen
+});
+</script>
+{% endblock %}

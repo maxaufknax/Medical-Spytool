@@ -8,6 +8,17 @@
         <i class="fas fa-search me-2"></i>Publikationssuche
     </h1>
     
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <div class="row mb-4">
         <div class="col-md-8">
             <div class="alert alert-info">
@@ -25,9 +36,18 @@
         </div>
         <div class="col-md-4">
             <div class="d-grid gap-2">
-                <a href="/persons" class="btn btn-outline-primary btn-lg">
-                    <i class="fas fa-user-edit me-2"></i>Personenverzeichnis verwalten
-                </a>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <a href="/persons" class="btn btn-outline-primary btn-lg w-100">
+                            <i class="fas fa-user-edit me-2"></i>Personen
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="/search_profiles" class="btn btn-outline-success btn-lg w-100">
+                            <i class="fas fa-save me-2"></i>Suchprofile
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -114,12 +134,21 @@
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary" id="combinedSearchButton">
-                            <i class="fas fa-search me-2"></i>Alle Datenbanken durchsuchen
-                        </button>
-                        <button type="reset" class="btn btn-outline-secondary ms-2">
-                            <i class="fas fa-undo me-2"></i>Zurücksetzen
-                        </button>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <button type="submit" class="btn btn-primary me-2" id="combinedSearchButton">
+                                    <i class="fas fa-search me-2"></i>Alle Datenbanken durchsuchen
+                                </button>
+                                <button type="reset" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-undo me-2"></i>Zurücksetzen
+                                </button>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
+                                    <i class="fas fa-save me-2"></i>Suche als Profil speichern
+                                </button>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -224,12 +253,21 @@
                             <input type="number" class="form-control" id="max_results" name="max_results" min="1" max="1000" value="100">
                         </div>
                         
-                        <button type="submit" class="btn btn-primary" id="searchButton">
-                            <i class="fas fa-search me-2"></i>Suchen
-                        </button>
-                        <button type="reset" class="btn btn-secondary ms-2">
-                            <i class="fas fa-undo me-2"></i>Zurücksetzen
-                        </button>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <button type="submit" class="btn btn-primary me-2" id="searchButton">
+                                    <i class="fas fa-search me-2"></i>Suchen
+                                </button>
+                                <button type="reset" class="btn btn-secondary me-2">
+                                    <i class="fas fa-undo me-2"></i>Zurücksetzen
+                                </button>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
+                                    <i class="fas fa-save me-2"></i>Suche als Profil speichern
+                                </button>
+                            </div>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -312,12 +350,62 @@
             </div>
             <h5 class="mb-2">Suche läuft</h5>
             <p class="mb-0 text-muted">Datenbanken werden durchsucht, bitte warten...</p>
+            <hr class="my-3">
+            <div class="d-flex justify-content-center">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('loadingIndicator').style.display='none';">
+                    <i class="fas fa-times me-1"></i>Abbrechen (ESC)
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal für das Speichern eines Suchprofils -->
+    <div class="modal fade" id="saveProfileModal" tabindex="-1" aria-labelledby="saveProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveProfileModalLabel">Suchprofil speichern</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+                </div>
+                <form action="{{ url_for('search_profiles') }}" method="post">
+                    <input type="hidden" name="action" value="save">
+                    <div class="modal-body">
+                        <p>Speichern Sie Ihre aktuelle Suche als Profil, um sie später wiederverwenden zu können.</p>
+                        
+                        <div class="mb-3">
+                            <label for="profile_name" class="form-label">Name des Suchprofils</label>
+                            <input type="text" class="form-control" id="profile_name" name="profile_name" required>
+                            <div class="form-text">Geben Sie einen aussagekräftigen Namen für dieses Suchprofil ein.</div>
+                        </div>
+                        
+                        <!-- Hidden inputs to collect form data from the active tab -->
+                        <input type="hidden" id="profile_database" name="database">
+                        <input type="hidden" id="profile_search_term" name="search_term">
+                        <input type="hidden" id="profile_additional_terms" name="additional_terms">
+                        <input type="hidden" id="profile_person_name" name="person_name">
+                        <input type="hidden" id="profile_max_results" name="max_results">
+                        <input type="hidden" id="profile_search_field" name="search_field">
+                        <input type="hidden" id="profile_language" name="language">
+                        <input type="hidden" id="profile_pub_type" name="pub_type">
+                        <input type="hidden" id="profile_use_date_filter" name="use_date_filter">
+                        <input type="hidden" id="profile_start_date" name="start_date">
+                        <input type="hidden" id="profile_end_date" name="end_date">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Profil speichern
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikator verstecken, falls er durch einen abgebrochenen Ladevorgang 
@@ -568,6 +656,115 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Suchprofilverarbeitung
+    const saveProfileModal = document.getElementById('saveProfileModal');
+    if (saveProfileModal) {
+        saveProfileModal.addEventListener('show.bs.modal', function() {
+            // Finde das aktive Tab
+            const activeTab = document.querySelector('.tab-pane.active');
+            const activeForm = activeTab ? activeTab.querySelector('form') : null;
+            
+            if (activeForm) {
+                // Erfasse die Formularwerte für das Suchprofil
+                document.getElementById('profile_database').value = activeForm.querySelector('[name="database"]')?.value || 'Combined';
+                document.getElementById('profile_search_term').value = activeForm.querySelector('[name="search_term"]')?.value || '';
+                document.getElementById('profile_additional_terms').value = activeForm.querySelector('[name="additional_terms"]')?.value || '';
+                document.getElementById('profile_person_name').value = activeForm.querySelector('[name="person_name"]')?.value || '';
+                document.getElementById('profile_max_results').value = activeForm.querySelector('[name="max_results"]')?.value || '100';
+                
+                // Spezifische Parameter je nach Tab
+                if (activeTab.id === 'specific') {
+                    document.getElementById('profile_search_field').value = activeForm.querySelector('[name="search_field"]')?.value || 'Alle Felder';
+                    document.getElementById('profile_language').value = activeForm.querySelector('[name="language"]')?.value || '';
+                    document.getElementById('profile_pub_type').value = activeForm.querySelector('[name="pub_type"]')?.value || '';
+                    
+                    // Datumsfilter
+                    const useDateFilter = activeForm.querySelector('[name="use_date_filter"]')?.checked || false;
+                    document.getElementById('profile_use_date_filter').value = useDateFilter ? 'on' : '';
+                    
+                    if (useDateFilter) {
+                        document.getElementById('profile_start_date').value = activeForm.querySelector('[name="start_date"]')?.value || '';
+                        document.getElementById('profile_end_date').value = activeForm.querySelector('[name="end_date"]')?.value || '';
+                    }
+                }
+            }
+        });
+    }
+    
+    // Laden eines vorhandenen Profils
+    const loadProfileData = function(profileData) {
+        if (!profileData) return;
+        
+        console.log('Lade Profil:', profileData);
+        
+        // Je nach Datenbanktyp das passende Tab aktivieren
+        let tabToActivate;
+        if (profileData.database === 'Combined') {
+            tabToActivate = document.getElementById('combined-tab');
+            
+            // Kombinierte-Suche-Formular füllen
+            const combinedForm = document.getElementById('combinedSearchForm');
+            if (combinedForm) {
+                combinedForm.querySelector('[name="search_term"]').value = profileData.search_term || '';
+                combinedForm.querySelector('[name="additional_terms"]').value = profileData.additional_terms || '';
+                combinedForm.querySelector('[name="person_name"]').value = profileData.person_name || '';
+                combinedForm.querySelector('[name="language"]').value = profileData.language || '';
+                combinedForm.querySelector('[name="max_results"]').value = profileData.max_results || '100';
+            }
+        } else {
+            tabToActivate = document.getElementById('specific-tab');
+            
+            // Detaillierte-Suche-Formular füllen
+            const specificForm = document.getElementById('specificSearchForm');
+            if (specificForm) {
+                specificForm.querySelector('[name="database"]').value = profileData.database || 'PubMed';
+                specificForm.querySelector('[name="search_term"]').value = profileData.search_term || '';
+                specificForm.querySelector('[name="additional_terms"]').value = profileData.additional_terms || '';
+                specificForm.querySelector('[name="person_name"]').value = profileData.person_name || '';
+                specificForm.querySelector('[name="max_results"]').value = profileData.max_results || '100';
+                specificForm.querySelector('[name="search_field"]').value = profileData.search_field || 'Alle Felder';
+                specificForm.querySelector('[name="language"]').value = profileData.language || '';
+                specificForm.querySelector('[name="pub_type"]').value = profileData.pub_type || '';
+                
+                // Datumsfilter
+                const useDateFilter = profileData.use_date_filter === 'on';
+                const dateFilterCheckbox = specificForm.querySelector('[name="use_date_filter"]');
+                if (dateFilterCheckbox) {
+                    dateFilterCheckbox.checked = useDateFilter;
+                    
+                    // Event auslösen, um das Datumsfeld anzuzeigen/zu verstecken
+                    const event = new Event('change');
+                    dateFilterCheckbox.dispatchEvent(event);
+                    
+                    if (useDateFilter && profileData.date_range) {
+                        specificForm.querySelector('[name="start_date"]').value = profileData.date_range.start || '';
+                        specificForm.querySelector('[name="end_date"]').value = profileData.date_range.end || '';
+                    }
+                }
+                
+                // Suchfelder neu laden
+                const databaseSelect = specificForm.querySelector('[name="database"]');
+                if (databaseSelect) {
+                    const event = new Event('change');
+                    databaseSelect.dispatchEvent(event);
+                }
+            }
+        }
+        
+        // Tab aktivieren
+        if (tabToActivate) {
+            const tabInstance = new bootstrap.Tab(tabToActivate);
+            tabInstance.show();
+        }
+    };
+    
+    // Profil aus den Seitendaten laden, falls vorhanden
+    const profileData = {{ profile|tojson if profile else 'null' }};
+    if (profileData) {
+        // Kurze Verzögerung, um sicherzustellen, dass das DOM bereit ist
+        setTimeout(() => loadProfileData(profileData), 100);
+    }
+    
     // Tab-Wechsel Verhalten
     const searchTabLinks = document.querySelectorAll('#searchTabs button[data-bs-toggle="tab"]');
     searchTabLinks.forEach(tabLink => {
@@ -596,6 +793,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikatoren für alle Formulare
     const allForms = document.querySelectorAll('form');
     
+    // Stellen Sie sicher, dass der Ladeindikator nach dem Laden sofort ausgeblendet wird
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+    
     allForms.forEach(form => {
         form.addEventListener('submit', function(e) {
             // Überprüfen, ob mindestens ein Feld ausgefüllt ist
@@ -614,19 +816,36 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitButton) {
                 submitButton.disabled = true;
             }
-            if (loadingIndicator) {
-                loadingIndicator.style.display = 'block';
-            }
             
-            // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
-            setTimeout(() => {
-                if (loadingIndicator && loadingIndicator.style.display === 'block') {
-                    loadingIndicator.style.display = 'none';
-                    if (submitButton) {
-                        submitButton.disabled = false;
+            // Nur Ladeindikator anzeigen, wenn es ein normaler POST-Request ist (kein AJAX)
+            if (!this.hasAttribute('data-ajax') && loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+                
+                // Escape-Taste kann den Ladevorgang abbrechen für bessere Benutzererfahrung
+                const escapeKeyHandler = function(evt) {
+                    if (evt.key === 'Escape') {
+                        if (loadingIndicator) {
+                            loadingIndicator.style.display = 'none';
+                        }
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                        }
+                        document.removeEventListener('keydown', escapeKeyHandler);
                     }
-                }
-            }, 20000); // Nach 20 Sekunden den Ladeindikator entfernen
+                };
+                document.addEventListener('keydown', escapeKeyHandler);
+                
+                // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
+                setTimeout(() => {
+                    if (loadingIndicator && loadingIndicator.style.display === 'block') {
+                        loadingIndicator.style.display = 'none';
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                        }
+                        document.removeEventListener('keydown', escapeKeyHandler);
+                    }
+                }, 10000); // Nach 10 Sekunden den Ladeindikator entfernen
+            }
         });
     });
 });

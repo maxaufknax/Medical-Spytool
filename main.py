@@ -15,8 +15,12 @@ import os
 import logging
 import json
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, flash, session
 from flask_bootstrap import Bootstrap
+from utils.search_profiles import (
+    save_search_profile, load_search_profile, delete_search_profile, 
+    get_all_search_profiles
+)
 
 # Setup logging
 logging.basicConfig(
@@ -59,6 +63,15 @@ def search():
     """Handle search requests."""
     global search_results, GLOBAL_LOG
     from datetime import datetime
+    
+    # Geladenes Profil aus Session abrufen, falls vorhanden
+    loaded_profile = session.get('loaded_profile', None)
+    loaded_profile_name = session.get('loaded_profile_name', None)
+    
+    # Wenn wir in einem POST sind und ein Profil geladen hatten, dieses aus der Session entfernen
+    if request.method == 'POST' and loaded_profile:
+        session.pop('loaded_profile', None)
+        session.pop('loaded_profile_name', None)
     
     if request.method == 'POST':
         # Get form data
@@ -167,7 +180,20 @@ def search():
                                    now=datetime.now())
     
     # GET request, show search form
-    return render_template('search.html', config=app_config, now=datetime.now())
+    profile_data = None
+    profile_name = None
+    
+    # Verwende das aus der Session geladene Profil, falls vorhanden
+    if loaded_profile:
+        profile_data = loaded_profile
+        profile_name = loaded_profile_name
+        flash(f'Suchprofil "{profile_name}" geladen. Sie können jetzt die Suche starten.', 'success')
+    
+    return render_template('search.html', 
+                          config=app_config, 
+                          now=datetime.now(),
+                          profile=profile_data,
+                          profile_name=profile_name)
 
 @app.route('/results')
 def results():
@@ -393,6 +419,136 @@ def get_database_fields():
             fields = ["Alle Felder"]
     
     return jsonify(fields)
+
+@app.route('/search_profiles', methods=['GET', 'POST', 'DELETE'])
+def search_profiles():
+    """Handle search profile management."""
+    from datetime import datetime
+    
+    if request.method == 'GET':
+        # Alle Suchprofile abrufen
+        profiles = get_all_search_profiles()
+        return render_template('search_profiles.html', 
+                              profiles=profiles,
+                              config=app_config,
+                              now=datetime.now())
+    
+    elif request.method == 'POST':
+        # Entweder ein Profil speichern oder laden
+        action = request.form.get('action', '')
+        
+        if action == 'save':
+            # Aktuelles Suchformular als Profil speichern
+            profile_name = request.form.get('profile_name', '')
+            
+            if not profile_name.strip():
+                flash('Bitte geben Sie einen Namen für das Suchprofil ein.', 'danger')
+                return redirect(url_for('search_profiles'))
+            
+            # Suchparameter sammeln
+            search_params = {
+                'database': request.form.get('database', 'PubMed'),
+                'search_term': request.form.get('search_term', ''),
+                'additional_terms': request.form.get('additional_terms', ''),
+                'person_name': request.form.get('person_name', ''),
+                'max_results': request.form.get('max_results', '100'),
+                'search_field': request.form.get('search_field', 'Alle Felder'),
+                'language': request.form.get('language', ''),
+                'pub_type': request.form.get('pub_type', ''),
+                'use_date_filter': request.form.get('use_date_filter') == 'on'
+            }
+            
+            # Datum-Filter hinzufügen, wenn aktiviert
+            if search_params['use_date_filter']:
+                start_date = request.form.get('start_date', '')
+                end_date = request.form.get('end_date', '')
+                if start_date and end_date:
+                    search_params['date_range'] = {
+                        'start': start_date,
+                        'end': end_date
+                    }
+            
+            # Profil speichern
+            success = save_search_profile(profile_name, search_params)
+            
+            if success:
+                flash(f'Suchprofil "{profile_name}" erfolgreich gespeichert.', 'success')
+            else:
+                flash(f'Fehler beim Speichern des Suchprofils "{profile_name}".', 'danger')
+            
+            return redirect(url_for('search_profiles'))
+            
+        elif action == 'load':
+            # Ausgewähltes Profil laden
+            profile_name = request.form.get('profile_name', '')
+            
+            if not profile_name:
+                flash('Bitte wählen Sie ein Suchprofil aus.', 'danger')
+                return redirect(url_for('search_profiles'))
+            
+            # Profil laden
+            profile_data = load_search_profile(profile_name)
+            
+            if not profile_data:
+                flash(f'Suchprofil "{profile_name}" konnte nicht geladen werden.', 'danger')
+                return redirect(url_for('search_profiles'))
+            
+            # Profildaten in der Session speichern für die Suche-Seite
+            session['loaded_profile'] = profile_data
+            session['loaded_profile_name'] = profile_name
+            
+            flash(f'Suchprofil "{profile_name}" geladen. Sie können jetzt die Suche starten.', 'success')
+            return redirect(url_for('search'))
+            
+    elif request.method == 'DELETE' or (request.method == 'POST' and request.form.get('action') == 'delete'):
+        # Profil löschen
+        if request.method == 'DELETE':
+            # API-Aufruf
+            data = request.get_json()
+            profile_name = data.get('profile_name', '')
+        else:
+            # Formular-Aufruf
+            profile_name = request.form.get('profile_name', '')
+        
+        if not profile_name:
+            if request.method == 'DELETE':
+                return jsonify({'error': 'No profile name provided'}), 400
+            else:
+                flash('Bitte wählen Sie ein Suchprofil zum Löschen aus.', 'danger')
+                return redirect(url_for('search_profiles'))
+        
+        # Profil löschen
+        success = delete_search_profile(profile_name)
+        
+        if request.method == 'DELETE':
+            if success:
+                return jsonify({'success': True, 'message': f'Profil "{profile_name}" gelöscht'})
+            else:
+                return jsonify({'error': f'Fehler beim Löschen des Profils "{profile_name}"'}), 500
+        else:
+            if success:
+                flash(f'Suchprofil "{profile_name}" erfolgreich gelöscht.', 'success')
+            else:
+                flash(f'Fehler beim Löschen des Suchprofils "{profile_name}".', 'danger')
+            return redirect(url_for('search_profiles'))
+    
+    # Fallback
+    return redirect(url_for('search_profiles'))
+
+@app.route('/api/search_profiles', methods=['GET'])
+def api_search_profiles():
+    """API endpoint to get all search profiles."""
+    profiles = get_all_search_profiles()
+    return jsonify(profiles)
+
+@app.route('/api/search_profiles/<profile_name>', methods=['GET'])
+def api_search_profile(profile_name):
+    """API endpoint to get a specific search profile."""
+    profile = load_search_profile(profile_name)
+    if profile:
+        return jsonify(profile)
+    else:
+        return jsonify({'error': f'Profil "{profile_name}" nicht gefunden'}), 404
 
 @app.route('/api/get_visualization')
 def get_visualization():
