@@ -407,9 +407,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// Diese Funktion wird nicht mehr benötigt und wurde durch direkte Referenzen ersetzt
-
-// Event-Handler für Escape-Taste
 function hideLoadingIndicator() {
     const indicator = document.getElementById('loadingIndicator');
     if (indicator) {
@@ -431,6 +428,14 @@ function escapeKeyHandler(evt) {
         hideLoadingIndicator();
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initial loading indicator setup
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'none';
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikator initial verstecken und nur bei tatsächlichen Suchen anzeigen
