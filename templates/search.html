@@ -352,7 +352,7 @@
             <p class="mb-0 text-muted">Datenbanken werden durchsucht, bitte warten...</p>
             <hr class="my-3">
             <div class="d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('loadingIndicator').style.display='none';">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideLoadingIndicator()">
                     <i class="fas fa-times me-1"></i>Abbrechen (ESC)
                 </button>
             </div>
@@ -407,13 +407,34 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// Funktion zum Ausblenden des Ladeindikators
+function hideLoadingIndicator() {
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+    
+    // Submit-Buttons wieder aktivieren
+    const submitButtons = document.querySelectorAll('button[type="submit"]');
+    submitButtons.forEach(button => {
+        button.disabled = false;
+    });
+    
+    // Event-Listener für Escape-Taste entfernen
+    document.removeEventListener('keydown', escapeKeyHandler);
+}
+
+// Event-Handler für Escape-Taste
+function escapeKeyHandler(evt) {
+    if (evt.key === 'Escape') {
+        hideLoadingIndicator();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Loading-Indikator verstecken, falls er durch einen abgebrochenen Ladevorgang 
     // noch angezeigt wird
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.display = 'none';
-    }
+    hideLoadingIndicator();
 
     // Datum-Filter anzeigen/ausblenden
     const useFilterCheckbox = document.getElementById('use_date_filter');
@@ -822,17 +843,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingIndicator.style.display = 'block';
                 
                 // Escape-Taste kann den Ladevorgang abbrechen für bessere Benutzererfahrung
-                const escapeKeyHandler = function(evt) {
-                    if (evt.key === 'Escape') {
-                        if (loadingIndicator) {
-                            loadingIndicator.style.display = 'none';
-                        }
-                        if (submitButton) {
-                            submitButton.disabled = false;
-                        }
-                        document.removeEventListener('keydown', escapeKeyHandler);
-                    }
-                };
                 document.addEventListener('keydown', escapeKeyHandler);
                 
                 // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht

@@ -260,13 +260,26 @@ def settings():
     
     return render_template('settings.html', config=app_config, saved=request.args.get('saved'), now=datetime.now())
 
+@app.route('/export', methods=['GET'])
+def export_page():
+    """Show export page."""
+    global search_results, app_config
+    from datetime import datetime
+    
+    return render_template('export.html', 
+                          results=search_results,
+                          count=len(search_results) if search_results else 0,
+                          config=app_config,
+                          now=datetime.now())
+
 @app.route('/export/<format>')
 def export(format):
     """Export results to file."""
     global search_results, app_config
     
     if not search_results:
-        return jsonify({'error': 'No results to export'})
+        flash('Keine Ergebnisse zum Exportieren vorhanden. Bitte führen Sie zuerst eine Suche durch.', 'warning')
+        return redirect(url_for('export_page'))
     
     # Create output directory if it doesn't exist
     os.makedirs(app_config.get('output_path', './output'), exist_ok=True)
@@ -288,11 +301,13 @@ def export(format):
             return send_file(file_path, as_attachment=True)
             
         else:
-            return jsonify({'error': 'Invalid export format'})
+            flash('Ungültiges Exportformat. Bitte wählen Sie Excel oder CSV.', 'danger')
+            return redirect(url_for('export_page'))
             
     except Exception as e:
         logger.error(f"Export error: {e}", exc_info=True)
-        return jsonify({'error': str(e)})
+        flash(f'Fehler beim Export: {str(e)}', 'danger')
+        return redirect(url_for('export_page'))
 
 @app.route('/persons', methods=['GET', 'POST'])
 def persons():
