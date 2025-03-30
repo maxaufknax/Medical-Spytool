@@ -410,22 +410,25 @@
 // Diese Funktion wird nicht mehr benötigt und wurde durch direkte Referenzen ersetzt
 
 // Event-Handler für Escape-Taste
+function hideLoadingIndicator() {
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+    
+    // Submit-Buttons wieder aktivieren
+    const submitButtons = document.querySelectorAll('button[type="submit"]');
+    submitButtons.forEach(button => {
+        button.disabled = false;
+    });
+    
+    // Event-Listener entfernen
+    document.removeEventListener('keydown', escapeKeyHandler);
+}
+
 function escapeKeyHandler(evt) {
     if (evt.key === 'Escape') {
-        // Ladeindikator ausblenden, wenn ESC gedrückt wird
-        const indicator = document.getElementById('loadingIndicator');
-        if (indicator) {
-            indicator.style.display = 'none';
-        }
-        
-        // Submit-Buttons wieder aktivieren
-        const submitButtons = document.querySelectorAll('button[type="submit"]');
-        submitButtons.forEach(button => {
-            button.disabled = false;
-        });
-        
-        // Event-Listener entfernen
-        document.removeEventListener('keydown', escapeKeyHandler);
+        hideLoadingIndicator();
     }
 }
 
