@@ -1,0 +1,40 @@
+**Kontext:**
+Du arbeitest an einer Python-Anwendung namens "MedicalSpyTool". Es handelt sich um eine Anwendung (aktuell primär als Flask Web-App implementiert, siehe `main.py`, `templates/`, `static/`) zur Suche nach wissenschaftlichen Publikationen von Personen in verschiedenen Datenbanken (PubMed, Scopus, WoS, DNB, GEPRIS) über dedizierte `database_connectors`. Die Anwendung verfügt über Module für Konfigurationsmanagement (`utils/config_manager.py`), Logging (`utils/logging_manager.py`), Export (`utils/export_manager.py`), Personenlisten (`person_lists/persons.json`) und Suchprofile (`utils/search_profiles.py`). Die Benutzeroberfläche wird über Flask/HTML (`templates/`) bereitgestellt. Es existiert auch ein `gui/`-Verzeichnis, das aber vorerst ignoriert werden soll; Fokus liegt auf der Flask-Web-App. Das Ziel ist es, die Anwendung robuster, benutzerfreundlicher und voll funktionsfähig zu machen, alle Komponenten logisch zu verbinden und sie für die Verpackung als einzelne `.exe`-Datei mittels PyInstaller vorzubereiten.
+
+**Aufgaben:**
+
+1.  **Logische Verbindung & Funktionalität:**
+    * **Settings-Integration:** Stelle sicher, dass alle Einstellungen aus `medicalspytool_config.json` (geladen über `ConfigManager`) korrekt und durchgängig im gesamten Such- und Verarbeitungsprozess verwendet werden (z.B. API-Keys für Konnektoren, Standard-Suchparameter, Export-Optionen). Implementiere eine robuste Backend-Validierung für API-Keys beim Speichern in den Settings.
+    * **Suchprozess-Orchestrierung:** Überarbeite die Suchlogik (vermutlich in `main.py` oder ausgelagert):
+        * Implementiere die Suche als **asynchronen Prozess** (z.B. mit Celery, `threading` oder `asyncio` mit `aiohttp` für die Konnektoren), um die Weboberfläche nicht zu blockieren.
+        * Gib dem Benutzer klares **Feedback** über den Suchfortschritt (z.B. welche Datenbank gerade abgefragt wird, gefundene Treffer pro Quelle) – idealerweise über Websockets oder regelmäßiges Polling vom Frontend.
+        * Sammle Ergebnisse von allen ausgewählten Konnektoren.
+    * **Ergebnisverarbeitung & -speicherung:**
+        * **Normalisierung:** Führe ein einheitliches Datenformat für Ergebnisse aus allen Quellen ein.
+        * **Persistenz:** Speichere die abgerufenen Suchergebnisse persistent, sodass sie auch nach einem Neustart der Anwendung oder für spätere Analysen verfügbar sind. Schlage eine geeignete Methode vor (z.B. eine SQLite-Datenbank oder strukturierte JSON-/CSV-Dateien pro Suchlauf) und implementiere sie.
+        * **Deduplizierung:** Implementiere eine grundlegende Strategie zur Erkennung und Markierung (oder optionalen Zusammenführung) von Duplikaten in den Ergebnissen.
+        * **Anzeige:** Stelle sicher, dass die normalisierten und deduplizierten Ergebnisse korrekt an das `results.html`-Template übergeben und dort angezeigt werden.
+
+2.  **Verbesserungen der Benutzerfreundlichkeit (Usability):**
+    * Verbessere das Frontend-Feedback während der Suche (siehe oben).
+    * Stelle sicher, dass Fehlermeldungen (von Konnektoren, bei der Konfiguration etc.) klar und verständlich an den Benutzer weitergegeben werden.
+    * Optimiere die Verwaltung von Personenlisten und Suchprofilen für eine intuitivere Bedienung.
+
+3.  **Robustheit & Code-Qualität:**
+    * **Connector-Verbesserung:** Überprüfe alle `database_connectors` auf robuste Fehlerbehandlung (Timeouts, API-Limits, HTTP-Fehler, keine Ergebnisse, Parsing-Fehler) und implementiere sie konsequent. Nutze das Logging-Modul (`LoggingManager`) effektiv.
+    * **Refactoring (optional):** Wenn `main.py` zu unübersichtlich wird, schlage eine Refaktorierung mit Flask Blueprints vor, um die Routen nach Funktionalität zu trennen (z.B. Suche, Settings, Ergebnisse, Personen).
+    * **Abhängigkeiten:** Erstelle eine `requirements.txt`-Datei mit allen notwendigen Python-Paketen.
+
+4.  **Vorbereitung für `.exe`-Paketierung:**
+    * Stelle sicher, dass alle benötigten Daten- und Konfigurationsdateien (`*.json`, `templates/*`, `static/*`, `assets/*`) relativ zum Skriptpfad geladen werden, damit sie von PyInstaller gefunden werden können.
+    * Konfiguriere die Flask-App so, dass sie mit einem produktionsreifen WSGI-Server wie `waitress` läuft, der leicht mit PyInstaller gebündelt werden kann.
+    * Erstelle eine grundlegende `.spec`-Datei für PyInstaller, die die notwendigen Abhängigkeiten, Datenfiles (`datas`) und versteckten Importe (`hiddenimports`) berücksichtigt.
+
+**Erwartetes Ergebnis:**
+* Modifizierte Python-Dateien (`main.py`, `utils/*`, `database_connectors/*`, ggf. neue Module).
+* Angepasste Template-Dateien (`templates/*.html`) und statische Dateien (`static/*`), falls für Feedback oder neue Funktionen nötig.
+* Eine `requirements.txt`-Datei.
+* Ein Entwurf für eine `medicalspytool.spec`-Datei für PyInstaller.
+* Eine kurze Beschreibung der vorgenommenen Änderungen und der implementierten Logik (insbesondere zur Ergebnis-Persistenz und Asynchronität).
+
+Bitte gehe systematisch vor und stelle sicher, dass die Änderungen die bestehende modulare Struktur beibehalten oder verbessern.

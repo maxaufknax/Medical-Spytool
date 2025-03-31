@@ -87,14 +87,24 @@ def search():
         additional_terms = request.form.get('additional_terms', '')
         
         # Unterstützung für mehrere Personen
+        # Personennamen verarbeiten (entweder aus JSON-Array oder aus älteren Formularversionen)
         person_names = request.form.get('person_names', '')
-        if person_names:
-            # Split die Namen bei Semikolon - kommt von der Multi-Select Liste
-            person_names = person_names.split(';')
-        else:
-            # Fallback für alte Formulare die noch person_name benutzen
+        try:
+            # Versuche, als JSON zu parsen (kommt von der neuen Personenauswahl)
+            if person_names.startswith('['):
+                person_names = json.loads(person_names)
+            elif person_names:
+                # Split die Namen bei Semikolon - kommt von der Multi-Select Liste (alte Version)
+                person_names = person_names.split(';')
+            else:
+                # Fallback für alte Formulare die noch person_name benutzen
+                person_name = request.form.get('person_name', '')
+                person_names = [person_name] if person_name else []
+        except:
+            # Fallback, falls JSON-Parsing fehlschlägt
             person_name = request.form.get('person_name', '')
             person_names = [person_name] if person_name else []
+            logger.warning(f"Failed to parse person_names: {person_names}")
             
         # Für Abwärtskompatibilität und für Anzeige in den Ergebnissen
         person_name = person_names[0] if person_names else 'General Search'
@@ -598,6 +608,41 @@ def persons():
     
     return render_template('persons.html', persons=person_list, config=app_config, now=datetime.now())
 
+@app.route('/api/persons')
+def api_persons_list():
+    """API-Endpunkt für die Personenauswahl mit Autocomplete.
+    
+    Wenn ein 'query' Parameter angegeben ist, werden nur Personen zurückgegeben,
+    deren Name den Suchbegriff enthält (Filterung für Autocomplete).
+    """
+    query = request.args.get('query', '').lower()
+    
+    try:
+        # Personenliste aus der JSON-Datei laden
+        persons_path = os.path.join(app_config.get('person_list_path', 'person_lists'), 'persons.json')
+        
+        if not os.path.exists(persons_path):
+            # Wenn die Datei nicht existiert, leere Liste zurückgeben
+            return jsonify([])
+        
+        with open(persons_path, 'r', encoding='utf-8') as f:
+            persons = json.load(f)
+        
+        # Wenn ein Suchbegriff angegeben ist, filtern wir die Personen
+        if query:
+            persons = [p for p in persons if query in p.get('name', '').lower()]
+            
+            # Sortiere Ergebnisse: Exakte Treffer zuerst, dann nach Alphabet
+            persons.sort(key=lambda p: (0 if p.get('name', '').lower().startswith(query) else 1, p.get('name', '')))
+            
+            # Begrenze die Anzahl der Ergebnisse
+            persons = persons[:10]
+        
+        return jsonify(persons)
+    except Exception as e:
+        logger.error(f"Error loading persons: {e}", exc_info=True)
+        return jsonify([]), 500
+        
 @app.route('/persons/list')
 def persons_list():
     """Return the list of persons as JSON for API usage."""
@@ -649,6 +694,61 @@ def clear_logs():
     
     return redirect(url_for('logs'))
     
+@app.route('/select_folder', methods=['POST'])
+def select_folder():
+    """
+    Öffnet einen Ordner-Auswahl-Dialog.
+    Dieser Endpunkt wird vom Pfad-Auswahl-Widget im Frontend aufgerufen.
+    """
+    import tkinter as tk
+    from tkinter import filedialog
+    import os
+    import json
+    
+    if not request.is_json:
+        return jsonify({'success': False, 'error': 'Erfordert JSON-Anfrage'}), 400
+    
+    data = request.get_json()
+    field_id = data.get('field_id', '')
+    current_path = data.get('current_path', '')
+    
+    if not field_id:
+        return jsonify({'success': False, 'error': 'Feld-ID fehlt'}), 400
+    
+    # Initialisieren von Tkinter ohne das Hauptfenster zu zeigen
+    root = tk.Tk()
+    root.withdraw()
+    
+    # Wenn der aktuelle Pfad existiert, dort starten
+    initial_dir = current_path if os.path.exists(current_path) else os.getcwd()
+    
+    # Dialog öffnen
+    selected_path = filedialog.askdirectory(
+        initialdir=initial_dir,
+        title="Ordner auswählen"
+    )
+    
+    # Aufräumen
+    root.destroy()
+    
+    if selected_path:
+        # Normalisiere den Pfad für die Konsistenz
+        selected_path = os.path.normpath(selected_path)
+        # Wenn der Benutzer ein Windows-System verwendet, führen wir eine zusätzliche Normalisierung durch
+        if os.name == 'nt':
+            selected_path = selected_path.replace('\\', '/')
+        
+        return jsonify({
+            'success': True,
+            'selected_path': selected_path,
+            'field_id': field_id
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'Keine Auswahl getroffen'
+        })
+
 @app.route('/validate_api_key/<database>', methods=['POST'])
 def validate_api_key(database):
     """

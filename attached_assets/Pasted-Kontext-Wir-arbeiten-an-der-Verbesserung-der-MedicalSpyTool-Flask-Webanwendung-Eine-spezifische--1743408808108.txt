@@ -1,0 +1,32 @@
+Kontext:
+Wir arbeiten an der Verbesserung der "MedicalSpyTool"-Flask-Webanwendung. Eine spezifische Funktion, die implementiert/korrigiert werden muss, ist die Auswahl von Personen für die Suche innerhalb der verschiedenen Such-Tabs (wie "Kombinierte Suche", "Spezifische Datenbanksuche" in templates/search.html oder ähnlichen Templates). Die Namen der verfügbaren Personen stammen aus der Datei person_lists/persons.json.
+
+Aufgabe: Implementierung/Korrektur der Personenauswahl für die Suche
+
+Bitte implementiere die folgende Funktionalität für die Personenauswahl in den Suchformularen der Anwendung:
+
+Personen-Eingabefeld mit Autocomplete:
+
+Füge in den relevanten Suchformularen (z.B. in search.html) ein Texteingabefeld hinzu, das speziell für die Suche und Auswahl von Personen aus der persons.json-Liste vorgesehen ist.
+Implementiere eine Autocomplete/Vorschlagsfunktion: Sobald der Benutzer beginnt, einen Namen in dieses Feld einzutippen, sollen dynamisch passende Personennamen aus persons.json als Vorschläge unterhalb des Feldes angezeigt werden.
+Dies erfordert wahrscheinlich:
+Frontend (JavaScript): Code, der die Eingabe überwacht, eine Anfrage an das Backend sendet und die empfangenen Vorschläge anzeigt.
+Backend (Flask Route in main.py): Einen neuen Endpunkt, der die eingegebenen Zeichen empfängt, persons.json filtert und die passenden Namen als JSON zurückgibt.
+Auswahl und Anzeige der gesuchten Personen:
+
+Wenn der Benutzer einen Vorschlag auswählt (z.B. durch Klicken), soll diese Person zur Liste der aktuell für die Suche ausgewählten Personen hinzugefügt werden.
+Zeige die Namen der ausgewählten Personen deutlich unterhalb des Eingabefeldes an (z.B. als kleine "Tags" oder Listenelemente).
+Jede angezeigte, ausgewählte Person soll einen kleinen Button (z.B. ein 'x' oder "Entfernen"-Symbol) daneben haben, mit dem der Benutzer diese Person wieder aus der Auswahl für die aktuelle Suche entfernen kann.
+Frontend (JavaScript): Muss die Logik zum Hinzufügen zur Anzeigeliste, zum Speichern der Auswahl (z.B. in einem versteckten Input-Feld oder einer JS-Variable) und zum Entfernen aus der Liste und der Auswahl implementieren.
+Integration in den Suchprozess:
+
+Stelle sicher, dass die IDs oder Namen der ausgewählten Personen korrekt zusammen mit den anderen Suchparametern (Suchbegriffe, Zeiträume etc.) an den Backend-Endpunkt übermittelt werden, wenn der Benutzer die Suche startet.
+Passe die Backend-Suchlogik (main.py und die Art, wie die database_connectors aufgerufen werden) an:
+Die Suche muss erfolgreich gestartet werden können, wenn mindestens eine Person ausgewählt ODER mindestens ein Suchbegriff eingegeben wurde (oder beides).
+Es darf keine Pflicht sein, einen Suchbegriff einzugeben, wenn bereits eine oder mehrere Personen für die Suche ausgewählt wurden. Die Suche nur nach Personen muss möglich sein.
+Erwartetes Ergebnis:
+
+Modifizierte HTML-Template(s) (wahrscheinlich templates/search.html) mit den neuen Eingabe- und Anzeigeelementen.
+Neue JavaScript-Funktionen (in einer vorhandenen oder neuen .js-Datei in static/js/) für die Autocomplete-, Auswahl- und Entfernungslogik.
+Eine neue Flask-Route in main.py für die Autocomplete-Vorschläge.
+Angepasste(r) Flask-Route(n) in main.py für die Hauptsuche, um die ausgewählten Personen zu empfangen und die flexible Suchlogik (Person und/oder Begriff) umzusetzen.

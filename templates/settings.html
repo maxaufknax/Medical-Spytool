@@ -6,6 +6,10 @@
 <script src="{{ url_for('static', filename='js/api_key_validator.js') }}"></script>
 {% endblock %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/file_path_selector.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <h1 class="section-title">Einstellungen</h1>
