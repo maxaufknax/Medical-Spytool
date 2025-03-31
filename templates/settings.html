@@ -2,6 +2,10 @@
 
 {% block title %}Medical Spytool - Einstellungen{% endblock %}
 
+{% block extra_head %}
+<script src="{{ url_for('static', filename='js/api_key_validator.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
     <h1 class="section-title">Einstellungen</h1>
@@ -18,34 +22,140 @@
             <form method="post" action="/settings">
                 <h2 class="h4 mb-3">API-Schlüssel</h2>
                 
-                <div class="mb-3">
-                    <label for="pubmed_api_key" class="form-label">PubMed API-Schlüssel</label>
-                    <input type="text" class="form-control" id="pubmed_api_key" name="pubmed_api_key" value="{{ config.pubmed_api_key }}">
-                    <div class="form-text">Für erweiterte Funktionen und höhere Abfragelimits. <a href="https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/" target="_blank">Mehr erfahren</a></div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3 h-100 border-left-info">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-flask me-2 text-primary"></i>PubMed API-Schlüssel
+                                    <span class="badge bg-info ms-2">Optional</span>
+                                </h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="pubmed_api_key" name="pubmed_api_key" value="{{ config.pubmed_api_key }}">
+                                    <span class="input-group-text api-key-status"></span>
+                                </div>
+                                <div class="error-message text-danger mt-1"></div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Ein API-Schlüssel ist für PubMed <strong>optional</strong>, erhöht aber die Limits von 3 auf 10 Anfragen pro Sekunde.
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="https://ncbiinsights.ncbi.nlm.nih.gov/2017/11/02/new-api-keys-for-the-e-utilities/" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> API-Schlüssel beantragen
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-3 h-100 border-left-success">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-book me-2 text-success"></i>DNB API-Schlüssel
+                                    <span class="badge bg-success ms-2">Frei verfügbar</span>
+                                </h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="dnb_api_key" name="dnb_api_key" value="{{ config.dnb_api_key }}">
+                                    <span class="input-group-text api-key-status"></span>
+                                </div>
+                                <div class="error-message text-danger mt-1"></div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Die SRU-Schnittstelle der Deutschen Nationalbibliothek ist frei zugänglich. Bei größeren Abfragen kann ein API-Key helfen.
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="https://www.dnb.de/DE/Service/DigitaleDienste/SRU/sru.html" target="_blank" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-external-link-alt me-1"></i> DNB SRU-Dokumentation
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="mb-3">
-                    <label for="dnb_api_key" class="form-label">DNB API-Schlüssel</label>
-                    <input type="text" class="form-control" id="dnb_api_key" name="dnb_api_key" value="{{ config.dnb_api_key }}">
-                    <div class="form-text">Für den Zugriff auf die Deutsche Nationalbibliothek.</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3 h-100 border-left-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-search me-2 text-warning"></i>Scopus API-Schlüssel
+                                    <span class="badge bg-warning text-dark ms-2">Erforderlich</span>
+                                </h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="scopus_api_key" name="scopus_api_key" value="{{ config.scopus_api_key }}">
+                                    <span class="input-group-text api-key-status"></span>
+                                </div>
+                                <div class="error-message text-danger mt-1"></div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Für Scopus-Abfragen ist ein gültiger API-Schlüssel <strong>erforderlich</strong>. Dieser ist für akademische Einrichtungen verfügbar.
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="https://dev.elsevier.com/" target="_blank" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-external-link-alt me-1"></i> API-Schlüssel beantragen
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-3 h-100 border-left-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-globe me-2 text-warning"></i>Web of Science API-Schlüssel
+                                    <span class="badge bg-warning text-dark ms-2">Erforderlich</span>
+                                </h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="wos_api_key" name="wos_api_key" value="{{ config.wos_api_key }}">
+                                    <span class="input-group-text api-key-status"></span>
+                                </div>
+                                <div class="error-message text-danger mt-1"></div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Für Web of Science-Abfragen ist ein gültiger API-Schlüssel <strong>erforderlich</strong>. Benötigt eine institutionelle Lizenz.
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="https://developer.clarivate.com/apis/wos" target="_blank" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-external-link-alt me-1"></i> API-Schlüssel beantragen
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div class="mb-3">
-                    <label for="scopus_api_key" class="form-label">Scopus API-Schlüssel</label>
-                    <input type="text" class="form-control" id="scopus_api_key" name="scopus_api_key" value="{{ config.scopus_api_key }}">
-                    <div class="form-text">Für den Zugriff auf die Scopus-Datenbank. <a href="https://dev.elsevier.com/" target="_blank">Mehr erfahren</a></div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="wos_api_key" class="form-label">Web of Science API-Schlüssel</label>
-                    <input type="text" class="form-control" id="wos_api_key" name="wos_api_key" value="{{ config.wos_api_key }}">
-                    <div class="form-text">Für den Zugriff auf die Web of Science-Datenbank. <a href="https://developer.clarivate.com/apis/wos" target="_blank">Mehr erfahren</a></div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="gepris_api_key" class="form-label">GEPRIS API-Schlüssel</label>
-                    <input type="text" class="form-control" id="gepris_api_key" name="gepris_api_key" value="{{ config.gepris_api_key }}">
-                    <div class="form-text">Für den Zugriff auf die GEPRIS-Datenbank der DFG.</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3 h-100 border-left-info">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-university me-2 text-info"></i>GEPRIS API-Schlüssel
+                                    <span class="badge bg-info ms-2">Optional</span>
+                                </h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="gepris_api_key" name="gepris_api_key" value="{{ config.gepris_api_key }}">
+                                    <span class="input-group-text api-key-status"></span>
+                                </div>
+                                <div class="error-message text-danger mt-1"></div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Für GEPRIS-Abfragen können einige Funktionen einen API-Schlüssel erfordern.
+                                    </small>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="https://gepris.dfg.de/" target="_blank" class="btn btn-sm btn-outline-info">
+                                        <i class="fas fa-external-link-alt me-1"></i> GEPRIS-Website
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <hr class="my-4">

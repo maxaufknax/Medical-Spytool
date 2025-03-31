@@ -33,6 +33,55 @@ class PubMedConnector(DatabaseConnector):
         self.max_results_per_page = 10000  # Erhöhen auf maximal 10.000 Ergebnisse
         self.search_fields = ["Alle Felder", "Autor", "Titel", "Journal", "MESH-Terme"]
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+        self.requires_api_key = False  # Optional aber empfohlen für höhere Limits
+        
+    def validate_api_key(self):
+        """
+        Überprüft, ob der angegebene API-Key für PubMed gültig ist.
+        
+        Bei PubMed ist der API-Key optional, erhöht aber die Limits von 3 auf 10 Anfragen pro Sekunde.
+        Diese Methode testet den API-Key mit einer einfachen Suche.
+        
+        Returns:
+            bool: True, wenn der API-Key gültig ist oder kein Key angegeben wurde.
+                 False, wenn ein ungültiger Key angegeben wurde.
+        """
+        # Wenn kein API-Key angegeben wurde, ist das für PubMed in Ordnung
+        if not self.api_key:
+            return True
+            
+        try:
+            # Führe eine einfache Suchanfrage mit dem API-Key durch
+            import requests
+            
+            url = f"{self.base_url}esearch.fcgi"
+            params = {
+                'db': 'pubmed',
+                'term': 'test',
+                'retmax': 1,
+                'api_key': self.api_key,
+                'retmode': 'json'
+            }
+            
+            response = requests.get(url, params=params, timeout=5)
+            if response.status_code == 200:
+                # Versuche die JSON-Antwort zu parsen
+                response_json = response.json()
+                # Wenn wir einen Fehler oder eine leere 'esearchresult' bekommen, ist der Key ungültig
+                if 'esearchresult' in response_json:
+                    return True
+                else:
+                    logger.warning(f"PubMed API-Key ungültig oder API antwortet nicht korrekt. Antwort: {response.text}")
+                    return False
+            else:
+                logger.warning(f"PubMed API-Key ungültig. Status-Code: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Fehler bei der Validierung des PubMed API-Keys: {str(e)}")
+            # Bei Netzwerkfehlern gehen wir davon aus, dass der Key valide ist
+            # um die Anwendung nicht zu blockieren
+            return True
     
     @lru_cache(maxsize=128)
     def get_citation_count(self, pmid):

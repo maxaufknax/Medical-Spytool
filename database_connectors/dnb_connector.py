@@ -41,6 +41,60 @@ class DNBConnector(DatabaseConnector):
         self.max_results_per_page = 1000  # Erhöhen auf 1.000 Ergebnisse pro Anfrage für DNB
         self.search_fields = ["Alle Felder", "Titel", "Autor", "Jahr", "Verlag", "Schlagwort"]
         self.base_url = "https://services.dnb.de/sru/dnb"
+        self.requires_api_key = False  # DNB benötigt keinen API-Key für die meisten Anfragen
+        
+    def validate_api_key(self):
+        """
+        Überprüft die Verbindung zur DNB-API.
+        
+        DNB benötigt keinen API-Key für die meisten Abfragen, daher testen wir
+        nur, ob der Service erreichbar ist.
+        
+        Returns:
+            bool: True, wenn die Verbindung zur DNB-API hergestellt werden kann.
+        """
+        try:
+            import requests
+            import xml.etree.ElementTree as ET
+            
+            # Eine einfache Testabfrage
+            params = {
+                'operation': 'searchRetrieve',
+                'version': '1.1',
+                'recordSchema': 'RDFxml',
+                'query': 'tit = test',
+                'maximumRecords': '1'
+            }
+            
+            # API-Key hinzufügen, falls vorhanden
+            if self.api_key:
+                params['accessToken'] = self.api_key
+            
+            # Führe Testabfrage durch
+            response = requests.get(self.base_url, params=params, timeout=5)
+            if response.status_code == 200:
+                # Versuche die XML-Antwort zu parsen
+                try:
+                    root = ET.fromstring(response.content)
+                    # Überprüfe, ob wir eine gültige SRW-Antwort erhalten haben
+                    diagnostics = root.findall(".//srw:diagnostics", namespaces=DNB_NS)
+                    if diagnostics and len(diagnostics) > 0:
+                        # Error in der Antwort
+                        logger.warning(f"DNB API-Verbindungstest fehlgeschlagen: {response.text}")
+                        return False
+                    return True
+                except ET.ParseError as e:
+                    logger.error(f"Fehler beim Parsen der DNB-API-Antwort: {e}")
+                    return False
+            else:
+                logger.warning(f"DNB API-Verbindungstest fehlgeschlagen. Status-Code: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Fehler bei der Verbindung zur DNB-API: {str(e)}")
+            # Bei Netzwerkfehlern gehen wir davon aus, dass der Key valide ist
+            # um die Anwendung nicht zu blockieren
+            return True
     
     def construct_query(self, base_query, additional_terms="", date_range=None, 
                       language=None, pub_type=None, field=None):

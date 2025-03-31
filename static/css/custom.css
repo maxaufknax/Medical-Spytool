@@ -160,6 +160,98 @@
     margin-bottom: 0;
 }
 
+/* Stilanpassungen für die API-Key-Karten */
+.border-left-info {
+    border-left: 4px solid var(--bs-info) !important;
+}
+
+.border-left-success {
+    border-left: 4px solid var(--bs-success) !important;
+}
+
+.border-left-warning {
+    border-left: 4px solid var(--bs-warning) !important;
+}
+
+.border-left-danger {
+    border-left: 4px solid var(--bs-danger) !important;
+}
+
+/* Verbesserte Validierungsmarkierung für API-Keys */
+.api-key-valid {
+    border-color: var(--bs-success);
+    background-color: rgba(var(--bs-success-rgb), 0.05);
+}
+
+.api-key-invalid {
+    border-color: var(--bs-danger);
+    background-color: rgba(var(--bs-danger-rgb), 0.05);
+}
+
+.api-key-status {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    font-size: 1.25rem;
+}
+
+.api-key-status.valid {
+    color: var(--bs-success);
+}
+
+.api-key-status.invalid {
+    color: var(--bs-danger);
+}
+
+/* API-Key Validierungsanimation */
+.api-key-validating {
+    position: relative;
+}
+
+.api-key-validating::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(var(--bs-primary-rgb), 0.5);
+    border-top-color: var(--bs-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Verbesserte Anzeige des API-Key-Status */
+.api-key-help {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.api-key-help:hover {
+    opacity: 1;
+}
+
+/* Verbesserte Fehlermeldungen */
+.error-message {
+    display: none;
+    margin-top: 0.5rem;
+    color: var(--bs-danger);
+    font-size: 0.875rem;
+}
+
+.error-message.visible {
+    display: block;
+}
+
 /* Anpassungen für mobile Geräte */
 @media (max-width: 767.98px) {
     .database-checkbox-container {

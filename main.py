@@ -52,6 +52,9 @@ ensure_directories(app_config)
 search_results = []
 GLOBAL_LOG = []
 
+# Timeout für API-Validierungsanfragen (in Sekunden)
+API_VALIDATION_TIMEOUT = 5
+
 @app.route('/')
 def index():
     """Render the main page."""
@@ -140,41 +143,141 @@ def search():
         try:
             if database == 'Combined':
                 # Search in all databases
+                successful_databases = []
+                failed_databases = []
+                
                 for db_name, connector_class in DATABASE_CONNECTORS.items():
                     db_api_key = app_config.get(f"{db_name.lower()}_api_key", "")
-                    connector = connector_class(api_key=db_api_key, settings=app_config)
                     
-                    # Construct query
-                    query = connector.construct_query(
-                        search_term, 
-                        additional_terms=additional_terms,
-                        date_range=date_range,
-                        language=language,
-                        pub_type=pub_type,
-                        field=search_field
-                    )
-                    
-                    db_results = connector.search(query, params=search_params)
-                    results.extend(db_results)
-                    log_message(None, f"Found {len(db_results)} results in {db_name}")
+                    try:
+                        # Initialisieren des Connectors
+                        connector = connector_class(api_key=db_api_key, settings=app_config)
+                        
+                        # API-Key Validierung (falls implementiert)
+                        if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
+                            valid_key = connector.validate_api_key()
+                            if not valid_key and db_api_key:  # Nur warnen, wenn ein Key angegeben aber ungültig ist
+                                log_message(None, f"Warnung: Ungültiger API-Key für {db_name}")
+                                logger.warning(f"Invalid API key for {db_name}")
+                                
+                        # Construct query
+                        query = connector.construct_query(
+                            search_term, 
+                            additional_terms=additional_terms,
+                            date_range=date_range,
+                            language=language,
+                            pub_type=pub_type,
+                            field=search_field
+                        )
+                        
+                        # Führe Suche mit Timeout aus
+                        search_timeout = app_config.get("search_timeout", 30)  # Standard-Timeout: 30 Sekunden
+                        
+                        import concurrent.futures
+                        import time
+                        
+                        def search_with_timeout():
+                            return connector.search(query, params=search_params)
+                        
+                        # Zeitmessung starten
+                        start_time = time.time()
+                        
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(search_with_timeout)
+                            try:
+                                db_results = future.result(timeout=search_timeout)
+                                
+                                # Erfolg markieren und Ergebnisse hinzufügen
+                                successful_databases.append(db_name)
+                                # Datenbank-Name zu jedem Ergebnis hinzufügen
+                                for result in db_results:
+                                    result['Database'] = db_name
+                                    
+                                results.extend(db_results)
+                                
+                                # Zeitmessung beenden und loggen
+                                elapsed_time = time.time() - start_time
+                                log_message(None, f"Gefunden: {len(db_results)} Ergebnisse in {db_name} ({elapsed_time:.2f}s)")
+                                logger.info(f"Found {len(db_results)} results in {db_name} in {elapsed_time:.2f}s")
+                                
+                            except concurrent.futures.TimeoutError:
+                                failed_databases.append(f"{db_name} (Timeout)")
+                                log_message(None, f"Fehler: Zeitüberschreitung bei der Suche in {db_name} nach {search_timeout} Sekunden")
+                                logger.error(f"Search timeout in {db_name} after {search_timeout} seconds")
+                            except Exception as e:
+                                failed_databases.append(f"{db_name} ({str(e)})")
+                                log_message(None, f"Fehler bei der Suche in {db_name}: {str(e)}")
+                                logger.error(f"Search error in {db_name}: {str(e)}", exc_info=True)
+                                
+                    except Exception as e:
+                        failed_databases.append(f"{db_name} ({str(e)})")
+                        log_message(None, f"Fehler beim Initialisieren des Connectors für {db_name}: {str(e)}")
+                        logger.error(f"Error initializing connector for {db_name}: {str(e)}", exc_info=True)
+                
+                # Zusammenfassung nach der Suche
+                if successful_databases:
+                    log_message(None, f"Erfolgreiche Suche in {len(successful_databases)} Datenbanken: {', '.join(successful_databases)}")
+                
+                if failed_databases:
+                    log_message(None, f"Fehler bei der Suche in {len(failed_databases)} Datenbanken: {', '.join(failed_databases)}")
             else:
                 # Search in specific database
                 connector_class = DATABASE_CONNECTORS.get(database)
                 if connector_class:
-                    connector = connector_class(api_key=api_key, settings=app_config)
+                    try:
+                        # Initialisieren des Connectors
+                        connector = connector_class(api_key=api_key, settings=app_config)
+                        
+                        # API-Key Validierung (falls implementiert)
+                        if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
+                            valid_key = connector.validate_api_key()
+                            if not valid_key and api_key:  # Nur warnen, wenn ein Key angegeben aber ungültig ist
+                                log_message(None, f"Warnung: Ungültiger API-Key für {database}")
+                                logger.warning(f"Invalid API key for {database}")
+                        
+                        # Construct query
+                        query = connector.construct_query(
+                            search_term, 
+                            additional_terms=additional_terms,
+                            date_range=date_range,
+                            language=language,
+                            pub_type=pub_type,
+                            field=search_field
+                        )
+                        
+                        # Zeitmessung und Timeout
+                        search_timeout = app_config.get("search_timeout", 30)  # Standard-Timeout: 30 Sekunden
+                        import concurrent.futures
+                        import time
+                        
+                        def search_with_timeout():
+                            return connector.search(query, params=search_params)
+                        
+                        # Zeitmessung starten
+                        start_time = time.time()
+                        
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(search_with_timeout)
+                            try:
+                                results = future.result(timeout=search_timeout)
+                                
+                                # Datenbank-Name zu jedem Ergebnis hinzufügen
+                                for result in results:
+                                    result['Database'] = database
+                                
+                                # Zeitmessung beenden und loggen
+                                elapsed_time = time.time() - start_time
+                                log_message(None, f"Gefunden: {len(results)} Ergebnisse in {database} ({elapsed_time:.2f}s)")
+                                logger.info(f"Found {len(results)} results in {database} in {elapsed_time:.2f}s")
+                                
+                            except concurrent.futures.TimeoutError:
+                                raise Exception(f"Zeitüberschreitung bei der Suche in {database} nach {search_timeout} Sekunden")
                     
-                    # Construct query
-                    query = connector.construct_query(
-                        search_term, 
-                        additional_terms=additional_terms,
-                        date_range=date_range,
-                        language=language,
-                        pub_type=pub_type,
-                        field=search_field
-                    )
-                    
-                    results = connector.search(query, params=search_params)
-                    log_message(None, f"Found {len(results)} results in {database}")
+                    except Exception as e:
+                        error_msg = f"Fehler bei der Suche in {database}: {str(e)}"
+                        log_message(None, error_msg)
+                        logger.error(error_msg, exc_info=True)
+                        raise Exception(error_msg)
             
             # Update global results
             search_results = results
@@ -545,6 +648,78 @@ def clear_logs():
         flash(f"Fehler beim Leeren der Log-Datei: {str(e)}", "danger")
     
     return redirect(url_for('logs'))
+    
+@app.route('/validate_api_key/<database>', methods=['POST'])
+def validate_api_key(database):
+    """
+    Validiert einen API-Key für die angegebene Datenbank.
+    Dieser Endpunkt wird vom API-Key-Validator im Frontend aufgerufen.
+    
+    Args:
+        database (str): Name der Datenbank (pubmed, dnb, etc.)
+    """
+    import concurrent.futures
+    import time
+    
+    if not request.is_json:
+        return jsonify({'valid': False, 'message': 'Erfordert JSON-Anfrage'}), 400
+    
+    data = request.get_json()
+    api_key = data.get('api_key', '')
+    
+    if not api_key:
+        return jsonify({'valid': True, 'message': 'Kein API-Key angegeben'})
+    
+    # Database-Name mit ersten Buchstaben Großgeschrieben
+    database_name = database.lower()
+    if database_name in ['pubmed', 'dnb', 'scopus', 'wos', 'gepris']:
+        normalized_db_name = None
+        
+        # Normalisiere den Datenbankname für den Connector
+        if database_name == 'pubmed':
+            normalized_db_name = 'PubMed'
+        elif database_name == 'dnb':
+            normalized_db_name = 'DNB'
+        elif database_name == 'scopus':
+            normalized_db_name = 'Scopus'
+        elif database_name == 'wos':
+            normalized_db_name = 'WoS'
+        elif database_name == 'gepris':
+            normalized_db_name = 'GEPRIS'
+            
+        connector_class = DATABASE_CONNECTORS.get(normalized_db_name)
+        if connector_class:
+            try:
+                connector = connector_class(api_key=api_key, settings=app_config)
+                
+                # Prüfe, ob die validate_api_key-Methode implementiert ist
+                if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
+                    try:
+                        # Führe Validierung mit Timeout aus
+                        def validation_task():
+                            return connector.validate_api_key()
+                            
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(validation_task)
+                            try:
+                                valid = future.result(timeout=API_VALIDATION_TIMEOUT)
+                                if valid:
+                                    return jsonify({'valid': True, 'message': 'API-Key ist gültig'})
+                                else:
+                                    return jsonify({'valid': False, 'message': 'API-Key ist ungültig'})
+                            except concurrent.futures.TimeoutError:
+                                return jsonify({'valid': False, 'message': f'Zeitüberschreitung bei der Validierung nach {API_VALIDATION_TIMEOUT} Sekunden'})
+                    except Exception as e:
+                        logger.error(f"Error validating API key for {database_name}: {e}", exc_info=True)
+                        return jsonify({'valid': False, 'message': f'Fehler bei der Validierung: {str(e)}'})
+                else:
+                    # Wenn keine Validierungsmethode implementiert ist, gehen wir davon aus, dass der Key gültig ist
+                    return jsonify({'valid': True, 'message': 'API-Key angenommen (keine Validierung verfügbar)'})
+            except Exception as e:
+                logger.error(f"Error initializing connector for {database_name}: {e}", exc_info=True)
+                return jsonify({'valid': False, 'message': f'Fehler beim Initialisieren des Connectors: {str(e)}'})
+    
+    return jsonify({'valid': False, 'message': f'Unbekannte Datenbank: {database}'}), 400
 
 @app.route('/api/get_database_fields')
 def get_database_fields():

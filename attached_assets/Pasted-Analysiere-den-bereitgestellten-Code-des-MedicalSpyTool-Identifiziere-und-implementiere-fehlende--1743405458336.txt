@@ -1,0 +1,56 @@
+Analysiere den bereitgestellten Code des "MedicalSpyTool". Identifiziere und implementiere fehlende logische Prozesse, verbessere die Robustheit und füge notwendige Funktionen hinzu, damit die Anwendung durchgängig logisch funktioniert und vollständig einsatzbereit ist. Nach deinen Anpassungen sollte der einzige verbleibende Schritt für den Betrieb die Eingabe der spezifischen API-Keys in die Konfiguration sein.
+
+Aufgaben und Verbesserungsvorschläge:
+
+    Gesamtlogik & Workflow-Überprüfung:
+        Stelle sicher, dass der Workflow von der Personenauswahl über die Suche in den ausgewählten Datenbanken, die Aggregation und Anzeige der Ergebnisse bis hin zur Analyse und dem Export logisch und nahtlos funktioniert.
+        Überprüfe die Interaktion zwischen den verschiedenen Modulen (gui/*_tab.py, database_connectors, utils, main.py). Gibt es fehlende Verbindungen oder Übergaben?
+        Wie werden Suchanfragen ausgelöst und verarbeitet? Sind die Aufrufe an die Datenbank-Konnektoren korrekt implementiert?
+
+    Fehlerbehandlung & Robustheit:
+        Implementiere umfassende Fehlerbehandlung für API-Aufrufe (z.B. Timeouts, Ratenlimits, ungültige Antworten, Netzwerkfehler). Gib dem Benutzer klares Feedback über aufgetretene Fehler.
+        Was passiert, wenn eine Datenbank nicht verfügbar ist? Soll die Suche fortgesetzt werden? Wie wird dies protokolliert und dem Benutzer angezeigt?
+        Stelle sicher, dass Konfigurationsfehler (z.B. fehlende oder ungültige Einträge in medicalspytool_config.json) abgefangen werden und die Anwendung nicht abstürzt (ggf. auf default_config.json zurückfallen oder eine Fehlermeldung ausgeben).
+        Validiere Benutzereingaben (z.B. in Suchfeldern, Einstellungen), um Fehler und potenzielle Sicherheitsprobleme zu vermeiden.
+
+    Asynchrone Verarbeitung:
+        Da API-Suchen zeitaufwendig sein können: Überprüfe, ob die Suchvorgänge die Web-Oberfläche blockieren. Implementiere bei Bedarf asynchrone Aufgaben (z.B. mit threading, asyncio oder Task Queues wie Celery/RQ), um die Reaktionsfähigkeit der UI zu gewährleisten und dem Benutzer Fortschrittsanzeigen zu ermöglichen.
+
+    Konfigurations- und API-Key-Management:
+        Stelle sicher, dass API-Keys und andere sensible Daten sicher über die medicalspytool_config.json geladen und verwendet werden. Füge Platzhalter oder klare Anweisungen hinzu, wo die Keys eingetragen werden müssen.
+        Implementiere eine Funktion zum Validieren der Konfigurationsdatei beim Start.
+
+    Datenaggregation und -bereinigung:
+        Wie werden Ergebnisse aus verschiedenen Datenbanken zusammengeführt? Gibt es eine Logik zur Deduplizierung von Publikationen, die in mehreren Quellen gefunden wurden? Implementiere bei Bedarf eine solche Funktion.
+        Werden die Daten (z.B. Autorennamen, Titel, Journale) vor der Anzeige oder Analyse normalisiert?
+
+    Backup-Funktionen:
+        Implementiere eine einfache Backup-Funktion für kritische Daten:
+            medicalspytool_config.json (aktuelle Einstellungen)
+            person_lists/persons.json (Personenlisten)
+            Gespeicherte Suchprofile (falls vorhanden und nicht Teil der Hauptkonfiguration)
+            Optional: Aggregierte Suchergebnisse (falls diese persistent gespeichert werden sollen).
+        Dies könnte eine manuelle Funktion in den Einstellungen sein ("Backup erstellen") oder eine automatische Sicherung beim Beenden/nach Änderungen. Die Backups sollten an einem konfigurierbaren Ort oder einem Unterordner gespeichert werden.
+
+    Analyse-Funktionen:
+        Überprüfe die Logik im analysis_tab.py und analysis.html. Sind die Analysefunktionen vollständig implementiert? Basierend auf den Ergebnissen, welche Analysen sind sinnvoll (z.B. Publikationsanzahl pro Jahr, häufigste Co-Autoren, Journalverteilung)? Ergänze ggf. Platzhalter oder Grundgerüste für geplante, aber noch nicht implementierte Analysen.
+
+    Export-Funktionen:
+        Stelle sicher, dass die Export-Funktion (export_manager.py, export.html) die gesammelten und/oder analysierten Daten korrekt in gängige Formate (z.B. CSV, Excel, JSON) exportieren kann.
+
+    Logging:
+        Überprüfe die Logging-Konfiguration (logging_manager.py). Werden alle relevanten Aktionen, Fehler und API-Aufrufe angemessen protokolliert (medicalspytool.log)?
+
+    Code-Qualität und Abhängigkeiten:
+        Refaktorisiere Code bei Bedarf, um die Lesbarkeit und Wartbarkeit zu verbessern.
+        Füge Docstrings und Kommentare hinzu, wo sie fehlen und zum Verständnis beitragen.
+        Erstelle eine requirements.txt-Datei, die alle notwendigen Python-Abhängigkeiten auflistet.
+
+Bitte:
+
+    Gehe die Punkte systematisch durch.
+    Schlage konkrete Code-Änderungen oder Ergänzungen vor.
+    Erkläre kurz die Logik hinter deinen Vorschlägen.
+    Stelle Rückfragen, falls Aspekte des Codes oder der Anforderungen unklar sind.
+
+Ziel ist es, den Code so zu überarbeiten, dass er logisch vollständig, robust und bereit für die finale Konfiguration (API-Keys) ist.

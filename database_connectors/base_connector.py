@@ -26,6 +26,30 @@ class DatabaseConnector:
         self.name = "Base"
         self.max_results_per_page = 100
         self.search_fields = ["Alle Felder"]
+        self.requires_api_key = False  # Default: kein API-Key erforderlich
+        
+    def validate_api_key(self):
+        """
+        Überprüft die Gültigkeit des API-Keys.
+        
+        Dies ist eine Basisimplementierung, die immer True zurückgibt.
+        Überschreiben Sie diese Methode in Unterklassen, um datenbankspezifische
+        API-Key-Validierung zu implementieren.
+        
+        Returns:
+            bool: True wenn der API-Key gültig ist oder kein Key benötigt wird,
+                  False wenn der Key ungültig ist.
+        """
+        # Wenn kein API-Key benötigt wird, ist jeder (oder kein) Key gültig
+        if not self.requires_api_key:
+            return True
+            
+        # Wenn ein Key benötigt wird, aber keiner vorhanden ist
+        if self.requires_api_key and not self.api_key:
+            return False
+            
+        # Standard: Annahme, dass der Key gültig ist
+        return True
     
     def get_available_fields(self):
         """

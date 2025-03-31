@@ -1,0 +1,57 @@
+/**
+ * Styles für API-Key-Validierung im Medical Spytool
+ */
+
+/* Status-Indikatoren */
+.api-key-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    transition: all 0.3s ease;
+}
+
+.api-key-status.valid {
+    color: #198754;  /* Bootstrap success color */
+    background-color: rgba(25, 135, 84, 0.15);
+    border-color: rgba(25, 135, 84, 0.5);
+}
+
+.api-key-status.invalid {
+    color: #dc3545;  /* Bootstrap danger color */
+    background-color: rgba(220, 53, 69, 0.15);
+    border-color: rgba(220, 53, 69, 0.5);
+}
+
+/* Input-Feld-Stile */
+.api-key-valid {
+    border-color: rgba(25, 135, 84, 0.5);
+}
+
+.api-key-invalid {
+    border-color: rgba(220, 53, 69, 0.5);
+}
+
+.api-key-validating {
+    background-image: url('data:image/svg+xml;charset=utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid"%3E%3Cpath stroke="none" d="M10 50A40 40 0 0 0 90 50A40 42 0 0 1 10 50" fill="%23007bff" transform="rotate(35.6161 50 51)"%3E%3CanimateTransform attributeName="transform" type="rotate" calcMode="linear" values="0 50 51;360 50 51" keyTimes="0;1" dur="1s" begin="0s" repeatCount="indefinite"%3E%3C/animateTransform%3E%3C/path%3E%3C/svg%3E');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 40px;
+}
+
+/* Fehlermeldung */
+.error-message {
+    font-size: 0.85rem;
+    color: #dc3545;
+    margin-top: 0.25rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+
+.error-message.visible {
+    max-height: 100px;
+    opacity: 1;
+}
