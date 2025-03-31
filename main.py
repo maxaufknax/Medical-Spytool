@@ -82,7 +82,20 @@ def search():
         database = request.form.get('database', 'PubMed')
         search_term = request.form.get('search_term', '')
         additional_terms = request.form.get('additional_terms', '')
-        person_name = request.form.get('person_name', 'General Search')
+        
+        # Unterstützung für mehrere Personen
+        person_names = request.form.get('person_names', '')
+        if person_names:
+            # Split die Namen bei Semikolon - kommt von der Multi-Select Liste
+            person_names = person_names.split(';')
+        else:
+            # Fallback für alte Formulare die noch person_name benutzen
+            person_name = request.form.get('person_name', '')
+            person_names = [person_name] if person_name else []
+            
+        # Für Abwärtskompatibilität und für Anzeige in den Ergebnissen
+        person_name = person_names[0] if person_names else 'General Search'
+            
         max_results = int(request.form.get('max_results', 100))
         
         # Optional parameters
@@ -103,7 +116,7 @@ def search():
         
         # Prepare search parameters
         search_params = {
-            'name': person_name,
+            'names': person_names,
             'max_results': max_results,
             'field': search_field if search_field != 'Alle Felder' else None
         }
@@ -234,6 +247,9 @@ def settings():
         app_config['unique_filenames'] = request.form.get('unique_filenames') == 'on'
         app_config['pubmed_api_key'] = request.form.get('pubmed_api_key', '')
         app_config['dnb_api_key'] = request.form.get('dnb_api_key', '')
+        app_config['scopus_api_key'] = request.form.get('scopus_api_key', '')
+        app_config['wos_api_key'] = request.form.get('wos_api_key', '')
+        app_config['gepris_api_key'] = request.form.get('gepris_api_key', '')
         app_config['default_database'] = request.form.get('default_database', 'PubMed')
         
         # Get selected columns

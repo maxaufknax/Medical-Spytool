@@ -30,6 +30,24 @@
                     <div class="form-text">Für den Zugriff auf die Deutsche Nationalbibliothek.</div>
                 </div>
                 
+                <div class="mb-3">
+                    <label for="scopus_api_key" class="form-label">Scopus API-Schlüssel</label>
+                    <input type="text" class="form-control" id="scopus_api_key" name="scopus_api_key" value="{{ config.scopus_api_key }}">
+                    <div class="form-text">Für den Zugriff auf die Scopus-Datenbank. <a href="https://dev.elsevier.com/" target="_blank">Mehr erfahren</a></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="wos_api_key" class="form-label">Web of Science API-Schlüssel</label>
+                    <input type="text" class="form-control" id="wos_api_key" name="wos_api_key" value="{{ config.wos_api_key }}">
+                    <div class="form-text">Für den Zugriff auf die Web of Science-Datenbank. <a href="https://developer.clarivate.com/apis/wos" target="_blank">Mehr erfahren</a></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="gepris_api_key" class="form-label">GEPRIS API-Schlüssel</label>
+                    <input type="text" class="form-control" id="gepris_api_key" name="gepris_api_key" value="{{ config.gepris_api_key }}">
+                    <div class="form-text">Für den Zugriff auf die GEPRIS-Datenbank der DFG.</div>
+                </div>
+                
                 <hr class="my-4">
                 
                 <h2 class="h4 mb-3">Anwendungseinstellungen</h2>
@@ -57,6 +75,9 @@
                     <select class="form-select" id="default_database" name="default_database">
                         <option value="PubMed" {% if config.default_database == 'PubMed' %}selected{% endif %}>PubMed</option>
                         <option value="DNB" {% if config.default_database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek</option>
+                        <option value="Scopus" {% if config.default_database == 'Scopus' %}selected{% endif %}>Scopus</option>
+                        <option value="WoS" {% if config.default_database == 'WoS' %}selected{% endif %}>Web of Science</option>
+                        <option value="GEPRIS" {% if config.default_database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
                         <option value="Combined" {% if config.default_database == 'Combined' %}selected{% endif %}>Kombinierte Suche</option>
                     </select>
                 </div>

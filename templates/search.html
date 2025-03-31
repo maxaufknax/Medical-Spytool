@@ -103,18 +103,21 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="combined_person_name" class="form-label">Person aus Liste auswählen</label>
-                                <div class="input-group person-autocomplete-wrapper">
-                                    <input type="text" class="form-control person-autocomplete" id="combined_person_name" name="person_name" 
-                                           placeholder="Person eingeben oder auswählen" autocomplete="off">
-                                    <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
-                                        <i class="fas fa-user-edit"></i>
-                                    </a>
-                                    <div class="person-autocomplete-items" style="display: none;"></div>
+                                <label for="combined_persons_select" class="form-label">Personen aus Liste auswählen (mehrere möglich)</label>
+                                <div>
+                                    <select class="form-select" id="combined_persons_select" multiple style="height: 120px;">
+                                        <!-- Wird per JavaScript gefüllt -->
+                                    </select>
                                 </div>
-                                <small class="form-text text-muted mt-1">
-                                    <i class="fas fa-info-circle me-1"></i> Beginnen Sie zu tippen, um Personen aus der Liste auszuwählen. Gespeicherte Suchbegriffe werden automatisch übernommen.
-                                </small>
+                                <input type="hidden" id="combined_persons_names" name="person_names" value="">
+                                <div class="d-flex justify-content-between mt-1">
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle me-1"></i> Mehrere Auswahl mit Strg/Cmd + Klick
+                                    </small>
+                                    <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
+                                        <i class="fas fa-user-edit me-1"></i>Personen verwalten
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         
@@ -204,7 +207,10 @@
                                 <label for="database" class="form-label">Datenbank</label>
                                 <select class="form-select" id="database" name="database" required>
                                     <option value="PubMed" {% if database == 'PubMed' %}selected{% endif %}>PubMed</option>
-                                    <option value="DNB" {% if database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek</option>
+                                    <option value="DNB" {% if database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek (DNB)</option>
+                                    <option value="Scopus" {% if database == 'Scopus' %}selected{% endif %}>Scopus</option>
+                                    <option value="WoS" {% if database == 'WoS' %}selected{% endif %}>Web of Science (WoS)</option>
+                                    <option value="GEPRIS" {% if database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
                                 </select>
                             </div>
                             
@@ -218,18 +224,21 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="person_name" class="form-label">Person aus Liste auswählen</label>
-                            <div class="input-group person-autocomplete-wrapper">
-                                <input type="text" class="form-control person-autocomplete" id="person_name" name="person_name" 
-                                       placeholder="Person eingeben oder auswählen" autocomplete="off">
-                                <a href="/persons" class="btn btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
-                                    <i class="fas fa-user-edit"></i>
-                                </a>
-                                <div class="person-autocomplete-items" style="display: none;"></div>
+                            <label for="specific_persons_select" class="form-label">Personen aus Liste auswählen (mehrere möglich)</label>
+                            <div>
+                                <select class="form-select" id="specific_persons_select" multiple style="height: 120px;">
+                                    <!-- Wird per JavaScript gefüllt -->
+                                </select>
                             </div>
-                            <small class="form-text text-muted mt-1">
-                                <i class="fas fa-info-circle me-1"></i> Beginnen Sie zu tippen, um Personen aus der Liste auszuwählen. Gespeicherte Suchbegriffe werden automatisch übernommen.
-                            </small>
+                            <input type="hidden" id="specific_persons_names" name="person_names" value="">
+                            <div class="d-flex justify-content-between mt-1">
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> Mehrere Auswahl mit Strg/Cmd + Klick
+                                </small>
+                                <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
+                                    <i class="fas fa-user-edit me-1"></i>Personen verwalten
+                                </a>
+                            </div>
                         </div>
                         
                         <div class="mb-3">
@@ -364,6 +373,9 @@
                                     <option value="Combined" selected>Alle Datenbanken</option>
                                     <option value="PubMed">Nur PubMed</option>
                                     <option value="DNB">Nur Deutsche Nationalbibliothek</option>
+                                    <option value="Scopus">Nur Scopus</option>
+                                    <option value="WoS">Nur Web of Science</option>
+                                    <option value="GEPRIS">Nur GEPRIS</option>
                                 </select>
                             </div>
                             
@@ -522,11 +534,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const combinedSearchForm = document.getElementById('combinedSearchForm');
     if (combinedSearchForm) {
         combinedSearchForm.addEventListener('submit', function(event) {
-            const personName = document.getElementById('combined_person_name').value.trim();
+            const personSelectEl = document.getElementById('combined_persons_select');
+            const personsSelected = personSelectEl && personSelectEl.selectedOptions.length > 0;
             const searchTerm = document.getElementById('combined_search_term').value.trim();
             
+            // Bei Submit die ausgewählten Personen in ein Hidden-Feld schreiben
+            if (personsSelected) {
+                const selectedPersons = Array.from(personSelectEl.selectedOptions).map(option => option.value);
+                document.getElementById('combined_persons_names').value = selectedPersons.join(';');
+            }
+            
             // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
-            if (!personName && !searchTerm) {
+            if (!personsSelected && !searchTerm) {
                 event.preventDefault();
                 alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
                 return false;
@@ -551,11 +570,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const specificSearchForm = document.getElementById('specificSearchForm');
     if (specificSearchForm) {
         specificSearchForm.addEventListener('submit', function(event) {
-            const personName = document.getElementById('person_name').value.trim();
+            const personSelectEl = document.getElementById('specific_persons_select');
+            const personsSelected = personSelectEl && personSelectEl.selectedOptions.length > 0;
             const searchTerm = document.getElementById('search_term').value.trim();
             
+            // Bei Submit die ausgewählten Personen in ein Hidden-Feld schreiben
+            if (personsSelected) {
+                const selectedPersons = Array.from(personSelectEl.selectedOptions).map(option => option.value);
+                document.getElementById('specific_persons_names').value = selectedPersons.join(';');
+            }
+            
             // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
-            if (!personName && !searchTerm) {
+            if (!personsSelected && !searchTerm) {
                 event.preventDefault();
                 alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
                 return false;
@@ -592,6 +618,7 @@ function fetchPersons() {
 
 // Function to setup the person selector in the person tab
 function setupPersonSelectors() {
+    // Handle the single-select person selector in the Person-Tab
     const personSelector = document.getElementById('person_selector');
     if (personSelector) {
         // Clear any existing options (except the first placeholder)
@@ -626,6 +653,40 @@ function setupPersonSelectors() {
             
             // Enable search button
             document.getElementById('personSearchButton').disabled = false;
+        });
+    }
+    
+    // Handle the multi-select combined persons select
+    const combinedPersonsSelect = document.getElementById('combined_persons_select');
+    if (combinedPersonsSelect) {
+        // Clear existing options
+        combinedPersonsSelect.innerHTML = '';
+        
+        // Add options for each person
+        personsData.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.Name;
+            option.textContent = person.Name;
+            option.dataset.searchTerm = person['Search Term'];
+            option.dataset.additionalTerms = person['Additional Terms'] || '';
+            combinedPersonsSelect.appendChild(option);
+        });
+    }
+    
+    // Handle the multi-select specific persons select
+    const specificPersonsSelect = document.getElementById('specific_persons_select');
+    if (specificPersonsSelect) {
+        // Clear existing options
+        specificPersonsSelect.innerHTML = '';
+        
+        // Add options for each person
+        personsData.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.Name;
+            option.textContent = person.Name;
+            option.dataset.searchTerm = person['Search Term'];
+            option.dataset.additionalTerms = person['Additional Terms'] || '';
+            specificPersonsSelect.appendChild(option);
         });
     }
 }
@@ -707,19 +768,8 @@ function setupPersonAutocomplete() {
                 personDiv.addEventListener('click', function() {
                     input.value = this.dataset.name;
                     
-                    // If we're in the specific search form, also populate the search term field
-                    const form = input.closest('form');
-                    if (form) {
-                        const searchTermInput = form.querySelector('input[name="search_term"]');
-                        if (searchTermInput && this.dataset.searchTerm) {
-                            searchTermInput.value = this.dataset.searchTerm;
-                        }
-                        
-                        const additionalTermsInput = form.querySelector('input[name="additional_terms"]');
-                        if (additionalTermsInput && this.dataset.additionalTerms) {
-                            additionalTermsInput.value = this.dataset.additionalTerms;
-                        }
-                    }
+                    // Nicht mehr automatisch Suchbegriffe einfügen - nur den Namen auswählen
+                    // Der Rest wird per Multi-Select gemacht
                     
                     closeAllLists();
                 });
@@ -1027,6 +1077,125 @@ document.addEventListener('DOMContentLoaded', function() {
     if (databaseSelect && searchFieldSelect) {
         function updateSearchFields() {
             const database = databaseSelect.value;
+            
+            // Datenbankspezifische Anpassungen
+            const pubTypeSelect = document.getElementById('pub_type');
+            const languageSelect = document.getElementById('language');
+            
+            // Standardoptionen für Publikationstypen und Sprachen
+            const defaultPubTypes = [
+                {value: '', text: 'Alle Typen'},
+                {value: 'Journal Article', text: 'Journalartikel'},
+                {value: 'Review', text: 'Review'},
+                {value: 'Clinical Trial', text: 'Klinische Studie'},
+                {value: 'Book', text: 'Buch'}
+            ];
+            
+            const defaultLanguages = [
+                {value: '', text: 'Alle Sprachen'},
+                {value: 'German', text: 'Deutsch'},
+                {value: 'English', text: 'Englisch'},
+                {value: 'French', text: 'Französisch'},
+                {value: 'Spanish', text: 'Spanisch'}
+            ];
+            
+            // Datenbankspezifische Optionen
+            let pubTypes = defaultPubTypes;
+            let languages = defaultLanguages;
+            
+            // Datenbankspezifische Anpassungen
+            switch(database) {
+                case 'PubMed':
+                    pubTypes = [
+                        {value: '', text: 'Alle Typen'},
+                        {value: 'Journal Article', text: 'Journalartikel'},
+                        {value: 'Review', text: 'Review'},
+                        {value: 'Clinical Trial', text: 'Klinische Studie'},
+                        {value: 'Randomized Controlled Trial', text: 'Randomisierte kontrollierte Studie'},
+                        {value: 'Meta-Analysis', text: 'Meta-Analyse'},
+                        {value: 'Practice Guideline', text: 'Praxisleitlinie'}
+                    ];
+                    break;
+                    
+                case 'DNB':
+                    pubTypes = [
+                        {value: '', text: 'Alle Typen'},
+                        {value: 'Book', text: 'Buch'},
+                        {value: 'Article', text: 'Artikel'},
+                        {value: 'Thesis', text: 'Dissertation'},
+                        {value: 'Conference', text: 'Konferenzband'}
+                    ];
+                    
+                    languages = [
+                        {value: '', text: 'Alle Sprachen'},
+                        {value: 'German', text: 'Deutsch'},
+                        {value: 'English', text: 'Englisch'},
+                        {value: 'French', text: 'Französisch'},
+                        {value: 'Italian', text: 'Italienisch'},
+                        {value: 'Spanish', text: 'Spanisch'},
+                        {value: 'Latin', text: 'Latein'}
+                    ];
+                    break;
+                    
+                case 'Scopus':
+                    pubTypes = [
+                        {value: '', text: 'Alle Typen'},
+                        {value: 'Article', text: 'Artikel'},
+                        {value: 'Review', text: 'Review'},
+                        {value: 'Conference Paper', text: 'Konferenzbeitrag'},
+                        {value: 'Book Chapter', text: 'Buchkapitel'},
+                        {value: 'Letter', text: 'Brief'}
+                    ];
+                    break;
+                    
+                case 'WoS':
+                    pubTypes = [
+                        {value: '', text: 'Alle Typen'},
+                        {value: 'Article', text: 'Artikel'},
+                        {value: 'Review', text: 'Review'},
+                        {value: 'Proceedings Paper', text: 'Konferenzbeitrag'},
+                        {value: 'Book Chapter', text: 'Buchkapitel'},
+                        {value: 'Editorial', text: 'Editorial'}
+                    ];
+                    break;
+                    
+                case 'GEPRIS':
+                    pubTypes = [
+                        {value: '', text: 'Alle Typen'},
+                        {value: 'Project', text: 'Projekt'},
+                        {value: 'Institution', text: 'Institution'},
+                        {value: 'Person', text: 'Person'}
+                    ];
+                    break;
+            }
+            
+            // Aktualisiere Publikationstypen
+            if (pubTypeSelect) {
+                // Dropdown-Liste leeren
+                pubTypeSelect.innerHTML = '';
+                
+                // Optionen einfügen
+                pubTypes.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type.value;
+                    option.textContent = type.text;
+                    pubTypeSelect.appendChild(option);
+                });
+            }
+            
+            // Aktualisiere Sprachen
+            if (languageSelect) {
+                // Dropdown-Liste leeren
+                languageSelect.innerHTML = '';
+                
+                // Optionen einfügen
+                languages.forEach(lang => {
+                    const option = document.createElement('option');
+                    option.value = lang.value;
+                    option.textContent = lang.text;
+                    languageSelect.appendChild(option);
+                });
+            }
             
             // API-Aufruf, um verfügbare Felder für die gewählte Datenbank zu holen
             fetch(`/api/get_database_fields?database=${database}`)
