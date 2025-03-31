@@ -119,6 +119,41 @@
                         </div>
                         
                         <div class="row mb-4">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Datenbanken für die Suche</label>
+                                <div class="card">
+                                    <div class="card-body bg-dark bg-opacity-50">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="checkbox" id="use_all_databases" name="use_all_databases" checked>
+                                            <label class="form-check-label" for="use_all_databases">
+                                                <strong>Alle Datenbanken durchsuchen</strong>
+                                            </label>
+                                        </div>
+                                        <hr>
+                                        <div id="database_selection" class="row g-3 mt-1" style="opacity: 0.5;">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input database-checkbox" type="checkbox" id="use_pubmed" name="databases" value="PubMed" checked disabled>
+                                                    <label class="form-check-label" for="use_pubmed">
+                                                        PubMed
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input database-checkbox" type="checkbox" id="use_dnb" name="databases" value="DNB" checked disabled>
+                                                    <label class="form-check-label" for="use_dnb">
+                                                        Deutsche Nationalbibliothek (DNB)
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
                             <div class="col-md-6">
                                 <label for="combined_language" class="form-label">Sprache (optional)</label>
                                 <select class="form-select" id="combined_language" name="language">
@@ -139,7 +174,7 @@
                         <div class="row">
                             <div class="col-md-8">
                                 <button type="submit" class="btn btn-primary me-2" id="combinedSearchButton">
-                                    <i class="fas fa-search me-2"></i>Alle Datenbanken durchsuchen
+                                    <i class="fas fa-search me-2"></i>Suche starten
                                 </button>
                                 <button type="reset" class="btn btn-outline-secondary me-2">
                                     <i class="fas fa-undo me-2"></i>Zurücksetzen
@@ -199,7 +234,7 @@
                         
                         <div class="mb-3">
                             <label for="search_term" class="form-label">Suchbegriff</label>
-                            <input type="text" class="form-control" id="search_term" name="search_term" placeholder="z.B. Diabetes Mellitus" required>
+                            <input type="text" class="form-control" id="search_term" name="search_term" placeholder="z.B. Diabetes Mellitus">
                         </div>
                         
                         <div class="mb-3">
@@ -346,17 +381,62 @@
         </div>
     </div>
     
-    <!-- Loading Indicator (only shown during active searches) -->
+    <!-- Verbesserter Loading Indicator mit Details und Fortschrittsanzeige -->
     <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" id="loadingIndicator" style="display: none !important; z-index: 9999;">
-        <div class="card p-4 text-center shadow-lg">
-            <div class="spinner-border text-primary mx-auto mb-3" style="width: 3rem; height: 3rem;" role="status">
-                <span class="visually-hidden">Wird geladen...</span>
+        <div class="card p-4 text-center shadow-lg" style="max-width: 500px; width: 100%;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="m-0">Suche läuft</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleSearchDetails">
+                    <i class="fas fa-chevron-down" id="toggleSearchDetailsIcon"></i>
+                </button>
             </div>
-            <h5 class="mb-2">Suche läuft</h5>
-            <p class="mb-0 text-muted">Datenbanken werden durchsucht, bitte warten...</p>
+            
+            <div class="d-flex justify-content-center align-items-center mb-3">
+                <div class="spinner-border text-primary me-3" role="status">
+                    <span class="visually-hidden">Wird geladen...</span>
+                </div>
+                <div class="text-start">
+                    <div id="searchStatusSimple">Datenbanken werden durchsucht...</div>
+                    <div class="progress mt-2" style="height: 10px;">
+                        <div id="searchProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detaillierte Fortschrittsanzeige (anfangs versteckt) -->
+            <div id="searchDetailsPanel" class="mt-3 text-start" style="display: none;">
+                <div class="card bg-dark bg-opacity-25 mb-3">
+                    <div class="card-body p-3">
+                        <h6 class="mb-2 border-bottom pb-2">Status der Datenbanksuche</h6>
+                        <div id="databaseSearchStatus">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span><i class="fas fa-circle-notch fa-spin me-2"></i> PubMed</span>
+                                <span id="pubmed-status">Initialisiere...</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span><i class="fas fa-circle-notch fa-spin me-2"></i> DNB</span>
+                                <span id="dnb-status">Warte...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card bg-dark bg-opacity-25">
+                    <div class="card-body p-3">
+                        <h6 class="mb-2 border-bottom pb-2">Suchprotokoll</h6>
+                        <div id="searchLogContainer" style="max-height: 150px; overflow-y: auto;">
+                            <div id="searchLog" class="small">
+                                <!-- Wird dynamisch gefüllt -->
+                                <div class="log-entry"><span class="text-muted">[00:00:00]</span> Suche gestartet...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
             <hr class="my-3">
             <div class="d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="cancelSearchButton">
+                <button type="button" class="btn btn-sm btn-outline-danger me-2" id="cancelSearchButton">
                     <i class="fas fa-times me-1"></i>Abbrechen (ESC)
                 </button>
             </div>
@@ -411,6 +491,78 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// Database Selection Management
+document.addEventListener('DOMContentLoaded', function() {
+    const useAllDatabasesCheckbox = document.getElementById('use_all_databases');
+    const databaseSelection = document.getElementById('database_selection');
+    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
+    
+    if (useAllDatabasesCheckbox && databaseSelection) {
+        useAllDatabasesCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                // Wenn "Alle Datenbanken" ausgewählt ist, deaktiviere einzelne Datenbankauswahl
+                databaseSelection.style.opacity = '0.5';
+                databaseCheckboxes.forEach(cb => {
+                    cb.disabled = true;
+                    cb.checked = true; // Alle Checkboxen aktivieren
+                });
+            } else {
+                // Wenn "Alle Datenbanken" nicht ausgewählt ist, aktiviere einzelne Datenbankauswahl
+                databaseSelection.style.opacity = '1';
+                databaseCheckboxes.forEach(cb => {
+                    cb.disabled = false;
+                });
+            }
+        });
+    }
+    
+    // Formular-Validierung für kombinierte Suche
+    const combinedSearchForm = document.getElementById('combinedSearchForm');
+    if (combinedSearchForm) {
+        combinedSearchForm.addEventListener('submit', function(event) {
+            const personName = document.getElementById('combined_person_name').value.trim();
+            const searchTerm = document.getElementById('combined_search_term').value.trim();
+            
+            // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
+            if (!personName && !searchTerm) {
+                event.preventDefault();
+                alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
+                return false;
+            }
+            
+            // Prüfen, ob bei deaktivierter "Alle Datenbanken"-Option mindestens eine Datenbank ausgewählt ist
+            const useAllDatabases = document.getElementById('use_all_databases').checked;
+            if (!useAllDatabases) {
+                const selectedDatabases = document.querySelectorAll('.database-checkbox:checked');
+                if (selectedDatabases.length === 0) {
+                    event.preventDefault();
+                    alert('Bitte wählen Sie mindestens eine Datenbank aus.');
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+    
+    // Formular-Validierung für spezifische Datenbanksuche
+    const specificSearchForm = document.getElementById('specificSearchForm');
+    if (specificSearchForm) {
+        specificSearchForm.addEventListener('submit', function(event) {
+            const personName = document.getElementById('person_name').value.trim();
+            const searchTerm = document.getElementById('search_term').value.trim();
+            
+            // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
+            if (!personName && !searchTerm) {
+                event.preventDefault();
+                alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
+                return false;
+            }
+            return true;
+        });
+    }
+});
+
 // Person Autocomplete Functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Fetch all persons from the API
@@ -647,6 +799,131 @@ function closeAllLists(elmnt) {
 
 // Funktion zum Verwalten der Escape-Taste bei laufenden Suchvorgängen
 
+// Verbessertes Fortschritts-Tracking während der Suche
+let searchStartTime = null;
+let searchInterval = null;
+let searchLogEntries = [];
+
+function updateSearchElapsedTime() {
+    if (!searchStartTime) return;
+    
+    const now = new Date();
+    const elapsedMs = now - searchStartTime;
+    const elapsedSec = Math.floor(elapsedMs / 1000);
+    
+    const hours = Math.floor(elapsedSec / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((elapsedSec % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (elapsedSec % 60).toString().padStart(2, '0');
+    
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+function addSearchLogEntry(message, type = 'info') {
+    const timeString = updateSearchElapsedTime() || '00:00:00';
+    const logEntry = {
+        time: timeString,
+        message: message,
+        type: type
+    };
+    
+    searchLogEntries.push(logEntry);
+    
+    // Aktualisiere die Anzeige
+    updateSearchLogDisplay();
+}
+
+function updateSearchLogDisplay() {
+    const searchLog = document.getElementById('searchLog');
+    if (!searchLog) return;
+    
+    searchLog.innerHTML = '';
+    
+    searchLogEntries.forEach(entry => {
+        const logEntryDiv = document.createElement('div');
+        logEntryDiv.className = 'log-entry';
+        
+        if (entry.type === 'error') {
+            logEntryDiv.classList.add('text-danger');
+        } else if (entry.type === 'success') {
+            logEntryDiv.classList.add('text-success');
+        } else if (entry.type === 'warning') {
+            logEntryDiv.classList.add('text-warning');
+        }
+        
+        logEntryDiv.innerHTML = `<span class="text-muted">[${entry.time}]</span> ${entry.message}`;
+        searchLog.appendChild(logEntryDiv);
+    });
+    
+    // Scrolle automatisch nach unten
+    const searchLogContainer = document.getElementById('searchLogContainer');
+    if (searchLogContainer) {
+        searchLogContainer.scrollTop = searchLogContainer.scrollHeight;
+    }
+}
+
+function updateSearchProgress(database, status, progress = null) {
+    // Status für die spezifische Datenbank aktualisieren
+    const databaseStatusElement = document.getElementById(`${database.toLowerCase()}-status`);
+    if (databaseStatusElement) {
+        databaseStatusElement.textContent = status;
+    }
+    
+    // Gesamtfortschritt aktualisieren
+    if (progress !== null) {
+        const progressBar = document.getElementById('searchProgressBar');
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+    }
+    
+    // Log-Eintrag hinzufügen
+    addSearchLogEntry(`${database}: ${status}`);
+    
+    // Einfachen Status aktualisieren
+    const searchStatusSimple = document.getElementById('searchStatusSimple');
+    if (searchStatusSimple) {
+        searchStatusSimple.textContent = status;
+    }
+}
+
+function startSearchProgress() {
+    // Suchzeit starten
+    searchStartTime = new Date();
+    searchLogEntries = [];
+    
+    // Initialen Log-Eintrag hinzufügen
+    addSearchLogEntry('Suche gestartet...', 'info');
+    
+    // Progress Bar auf 0 setzen
+    const progressBar = document.getElementById('searchProgressBar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+    }
+    
+    // Zeitaktualisierungsintervall starten
+    searchInterval = setInterval(() => {
+        // Aktuelle Zeit im Log-Header aktualisieren
+        const timeString = updateSearchElapsedTime();
+        document.querySelector('.log-entry:first-child .text-muted').textContent = `[${timeString}]`;
+    }, 1000);
+}
+
+function stopSearchProgress() {
+    clearInterval(searchInterval);
+    searchInterval = null;
+    
+    // Abschlusslog hinzufügen
+    const elapsedTime = updateSearchElapsedTime();
+    addSearchLogEntry(`Suche abgeschlossen nach ${elapsedTime}`, 'success');
+    
+    // Progress Bar auf 100% setzen
+    const progressBar = document.getElementById('searchProgressBar');
+    if (progressBar) {
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('progress-bar-animated');
+    }
+}
+
 function escapeKeyHandler(evt) {
     if (evt.key === 'Escape') {
         // Ladeindikator ausblenden mit höchster Priorität
@@ -661,8 +938,14 @@ function escapeKeyHandler(evt) {
             button.disabled = false;
         });
         
+        // Suchfortschritt stoppen
+        stopSearchProgress();
+        
         // Event-Listener entfernen
         document.removeEventListener('keydown', escapeKeyHandler);
+        
+        // Log-Eintrag für Abbruch
+        addSearchLogEntry('Suche wurde vom Benutzer abgebrochen', 'warning');
     }
 }
 
@@ -682,6 +965,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = false);
                 // Event-Listener entfernen
                 document.removeEventListener('keydown', escapeKeyHandler);
+                // Suchfortschritt stoppen
+                stopSearchProgress();
+            });
+        }
+        
+        // Toggle für die detaillierte Ansicht
+        const toggleButton = document.getElementById('toggleSearchDetails');
+        const detailsPanel = document.getElementById('searchDetailsPanel');
+        const toggleIcon = document.getElementById('toggleSearchDetailsIcon');
+        
+        if (toggleButton && detailsPanel && toggleIcon) {
+            toggleButton.addEventListener('click', function() {
+                if (detailsPanel.style.display === 'none') {
+                    detailsPanel.style.display = 'block';
+                    toggleIcon.classList.remove('fa-chevron-down');
+                    toggleIcon.classList.add('fa-chevron-up');
+                } else {
+                    detailsPanel.style.display = 'none';
+                    toggleIcon.classList.remove('fa-chevron-up');
+                    toggleIcon.classList.add('fa-chevron-down');
+                }
             });
         }
     }
