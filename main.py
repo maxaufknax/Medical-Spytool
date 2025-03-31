@@ -690,6 +690,22 @@ if __name__ == '__main__':
         # Check if needed directories exist, create if they don't
         ensure_directories(app_config)
         # Run the application
-        app.run(host="0.0.0.0", port=5000, debug=True)
+        # Prüfen, ob der Port bereits verwendet wird
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.bind(("0.0.0.0", 5000))
+            port_available = True
+        except socket.error:
+            port_available = False
+        finally:
+            s.close()
+        
+        # Alternative Port verwenden, wenn 5000 bereits belegt ist
+        if port_available:
+            app.run(host="0.0.0.0", port=5000, debug=True)
+        else:
+            logger.info("Port 5000 bereits belegt, verwende Port 5001")
+            app.run(host="0.0.0.0", port=5001, debug=True)
     except Exception as e:
         logger.error(f"Application error: {e}", exc_info=True)

@@ -30,7 +30,7 @@ class PubMedConnector(DatabaseConnector):
         """
         super().__init__(api_key, settings)
         self.name = "PubMed"
-        self.max_results_per_page = 1000
+        self.max_results_per_page = 10000  # Erhöhen auf maximal 10.000 Ergebnisse
         self.search_fields = ["Alle Felder", "Autor", "Titel", "Journal", "MESH-Terme"]
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
     

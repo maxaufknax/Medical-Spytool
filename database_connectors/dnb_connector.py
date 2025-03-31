@@ -38,7 +38,7 @@ class DNBConnector(DatabaseConnector):
         """
         super().__init__(api_key, settings)
         self.name = "DNB"
-        self.max_results_per_page = 100
+        self.max_results_per_page = 1000  # Erhöhen auf 1.000 Ergebnisse pro Anfrage für DNB
         self.search_fields = ["Alle Felder", "Titel", "Autor", "Jahr", "Verlag", "Schlagwort"]
         self.base_url = "https://services.dnb.de/sru/dnb"
     
