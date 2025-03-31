@@ -118,6 +118,9 @@
                                         <i class="fas fa-user-edit me-1"></i>Personen verwalten
                                     </a>
                                 </div>
+                                <div id="combined_selected_persons" class="mt-2 selected-persons-container">
+                                    <!-- Hier werden die ausgewählten Personen angezeigt -->
+                                </div>
                             </div>
                         </div>
                         
@@ -238,6 +241,9 @@
                                 <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
                                     <i class="fas fa-user-edit me-1"></i>Personen verwalten
                                 </a>
+                            </div>
+                            <div id="specific_selected_persons" class="mt-2 selected-persons-container">
+                                <!-- Hier werden die ausgewählten Personen angezeigt -->
                             </div>
                         </div>
                         
@@ -598,6 +604,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup the autocomplete for all person inputs
     setupPersonAutocomplete();
+    
+    // Initialisiere die Anzeige der ausgewählten Personen
+    updateSelectedPersons('combined');
+    updateSelectedPersons('specific');
 });
 
 let personsData = [];
@@ -642,6 +652,54 @@ function setupPersonSelectors() {
             const personName = selectedOption.value;
             const searchTerm = selectedOption.dataset.searchTerm;
             const additionalTerms = selectedOption.dataset.additionalTerms;
+    
+    // Setup multi-select person selector in the Combined Tab
+    const combinedPersonsSelect = document.getElementById('combined_persons_select');
+    if (combinedPersonsSelect) {
+        // Clear any existing options
+        while (combinedPersonsSelect.options.length > 0) {
+            combinedPersonsSelect.remove(0);
+        }
+        
+        // Add options for each person
+        personsData.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.Name;
+            option.textContent = person.Name;
+            option.dataset.searchTerm = person['Search Term'];
+            option.dataset.additionalTerms = person['Additional Terms'] || '';
+            combinedPersonsSelect.appendChild(option);
+        });
+        
+        // Handle selection changes for multi-select
+        combinedPersonsSelect.addEventListener('change', function() {
+            updateSelectedPersons('combined');
+        });
+    }
+    
+    // Setup multi-select person selector in the Specific Tab
+    const specificPersonsSelect = document.getElementById('specific_persons_select');
+    if (specificPersonsSelect) {
+        // Clear any existing options
+        while (specificPersonsSelect.options.length > 0) {
+            specificPersonsSelect.remove(0);
+        }
+        
+        // Add options for each person
+        personsData.forEach(person => {
+            const option = document.createElement('option');
+            option.value = person.Name;
+            option.textContent = person.Name;
+            option.dataset.searchTerm = person['Search Term'];
+            option.dataset.additionalTerms = person['Additional Terms'] || '';
+            specificPersonsSelect.appendChild(option);
+        });
+        
+        // Handle selection changes for multi-select
+        specificPersonsSelect.addEventListener('change', function() {
+            updateSelectedPersons('specific');
+        });
+    }
             
             // Populate hidden fields
             document.getElementById('person_detail_name').value = personName;
@@ -689,6 +747,62 @@ function setupPersonSelectors() {
             specificPersonsSelect.appendChild(option);
         });
     }
+}
+
+// Funktion zur Aktualisierung der ausgewählten Personen
+function updateSelectedPersons(prefix) {
+    // Get the select element and the hidden input
+    const selectElement = document.getElementById(`${prefix}_persons_select`);
+    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
+    const selectedContainer = document.getElementById(`${prefix}_selected_persons`);
+    
+    if (!selectElement || !hiddenInput || !selectedContainer) return;
+    
+    // Clear the container
+    selectedContainer.innerHTML = '';
+    
+    // Get all selected options
+    const selectedOptions = Array.from(selectElement.selectedOptions);
+    
+    if (selectedOptions.length === 0) {
+        // If no selections, display a message
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'text-muted small fst-italic';
+        emptyMessage.textContent = 'Keine Personen ausgewählt';
+        selectedContainer.appendChild(emptyMessage);
+    } else {
+        // Create badges for each selected person
+        selectedOptions.forEach(option => {
+            const badge = document.createElement('span');
+            badge.className = 'selected-person-badge';
+            badge.innerHTML = `
+                ${option.textContent}
+                <span class="remove-person" data-person="${option.value}">
+                    <i class="fas fa-times-circle"></i>
+                </span>
+            `;
+            selectedContainer.appendChild(badge);
+            
+            // Add click handler for the remove button
+            const removeBtn = badge.querySelector('.remove-person');
+            removeBtn.addEventListener('click', function(e) {
+                const personName = this.dataset.person;
+                // Deselect this option
+                for (let i = 0; i < selectElement.options.length; i++) {
+                    if (selectElement.options[i].value === personName) {
+                        selectElement.options[i].selected = false;
+                        break;
+                    }
+                }
+                // Update the display
+                updateSelectedPersons(prefix);
+                e.stopPropagation();
+            });
+        });
+    }
+    
+    // Update the hidden input value
+    hiddenInput.value = selectedOptions.map(option => option.value).join(',');
 }
 
 // Function to setup person autocomplete functionality

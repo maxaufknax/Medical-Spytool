@@ -101,6 +101,45 @@
             color: var(--bs-gray-500);
             margin-top: 3px;
         }
+        
+        /* Selected Persons Display */
+        .selected-persons-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 36px;
+            padding: 8px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border: 1px solid var(--bs-gray-700);
+            margin-top: 10px;
+        }
+        
+        .selected-person-badge {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(13, 110, 253, 0.15);
+            border: 1px solid rgba(13, 110, 253, 0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            margin-bottom: 5px;
+            transition: all 0.2s;
+        }
+        
+        .selected-person-badge:hover {
+            background-color: rgba(13, 110, 253, 0.25);
+        }
+        
+        .selected-person-badge .remove-person {
+            cursor: pointer;
+            margin-left: 8px;
+            color: var(--bs-gray-400);
+            font-size: 12px;
+        }
+        
+        .selected-person-badge .remove-person:hover {
+            color: var(--bs-danger);
+        }
     </style>
     
     {% block extra_css %}{% endblock %}
