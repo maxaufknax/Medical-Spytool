@@ -103,23 +103,24 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <label for="combined_persons_select" class="form-label">Personen aus Liste auswählen (mehrere möglich)</label>
-                                <div>
-                                    <select class="form-select" id="combined_persons_select" multiple style="height: 120px;">
-                                        <!-- Wird per JavaScript gefüllt -->
-                                    </select>
+                                <label for="combined_person_search" class="form-label">Nach Personen suchen</label>
+                                <div class="person-autocomplete-wrapper mb-2">
+                                    <input type="text" class="form-control person-autocomplete" id="combined_person_search" placeholder="Name eingeben...">
+                                    <div class="person-autocomplete-items" style="display: none;"></div>
                                 </div>
                                 <input type="hidden" id="combined_persons_names" name="person_names" value="">
-                                <div class="d-flex justify-content-between mt-1">
+                                <div class="d-flex justify-content-between mt-1 mb-2">
                                     <small class="form-text text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> Mehrere Auswahl mit Strg/Cmd + Klick
+                                        <i class="fas fa-info-circle me-1"></i> Personen durch Eingabe suchen
                                     </small>
                                     <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
                                         <i class="fas fa-user-edit me-1"></i>Personen verwalten
                                     </a>
                                 </div>
-                                <div id="combined_selected_persons" class="mt-2 selected-persons-container">
+                                <label class="form-label mt-2">Ausgewählte Personen</label>
+                                <div id="combined_selected_persons" class="selected-persons-container">
                                     <!-- Hier werden die ausgewählten Personen angezeigt -->
+                                    <div class="text-muted small fst-italic">Keine Personen ausgewählt</div>
                                 </div>
                             </div>
                         </div>
@@ -205,19 +206,28 @@
                 </div>
                 <div class="card-body">
                     <form id="specificSearchForm" method="post" action="/search">
-                        <div class="row mb-3">
-                            <div class="col-md-6 mb-3">
-                                <label for="database" class="form-label">Datenbank</label>
-                                <select class="form-select" id="database" name="database" required>
-                                    <option value="PubMed" {% if database == 'PubMed' %}selected{% endif %}>PubMed</option>
-                                    <option value="DNB" {% if database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek (DNB)</option>
-                                    <option value="Scopus" {% if database == 'Scopus' %}selected{% endif %}>Scopus</option>
-                                    <option value="WoS" {% if database == 'WoS' %}selected{% endif %}>Web of Science (WoS)</option>
-                                    <option value="GEPRIS" {% if database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
-                                </select>
+                        <div class="card mb-4 bg-dark bg-opacity-10 border-primary">
+                            <div class="card-header bg-primary bg-opacity-25">
+                                <h5 class="mb-0"><i class="fas fa-database me-2"></i>Datenbank auswählen</h5>
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label for="database" class="form-label fs-5">Welche Datenbank möchten Sie durchsuchen?</label>
+                                        <select class="form-select form-select-lg" id="database" name="database" required>
+                                            <option value="PubMed" {% if database == 'PubMed' %}selected{% endif %}>PubMed</option>
+                                            <option value="DNB" {% if database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek (DNB)</option>
+                                            <option value="Scopus" {% if database == 'Scopus' %}selected{% endif %}>Scopus</option>
+                                            <option value="WoS" {% if database == 'WoS' %}selected{% endif %}>Web of Science (WoS)</option>
+                                            <option value="GEPRIS" {% if database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-12 mb-3">
                                 <label for="search_field" class="form-label">Suchfeld</label>
                                 <select class="form-select" id="search_field" name="search_field">
                                     <option value="Alle Felder">Alle Felder</option>
@@ -227,23 +237,24 @@
                         </div>
                         
                         <div class="mb-3">
-                            <label for="specific_persons_select" class="form-label">Personen aus Liste auswählen (mehrere möglich)</label>
-                            <div>
-                                <select class="form-select" id="specific_persons_select" multiple style="height: 120px;">
-                                    <!-- Wird per JavaScript gefüllt -->
-                                </select>
+                            <label for="specific_person_search" class="form-label">Nach Personen suchen</label>
+                            <div class="person-autocomplete-wrapper mb-2">
+                                <input type="text" class="form-control person-autocomplete" id="specific_person_search" placeholder="Name eingeben...">
+                                <div class="person-autocomplete-items" style="display: none;"></div>
                             </div>
                             <input type="hidden" id="specific_persons_names" name="person_names" value="">
-                            <div class="d-flex justify-content-between mt-1">
+                            <div class="d-flex justify-content-between mt-1 mb-2">
                                 <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle me-1"></i> Mehrere Auswahl mit Strg/Cmd + Klick
+                                    <i class="fas fa-info-circle me-1"></i> Personen durch Eingabe suchen
                                 </small>
                                 <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
                                     <i class="fas fa-user-edit me-1"></i>Personen verwalten
                                 </a>
                             </div>
-                            <div id="specific_selected_persons" class="mt-2 selected-persons-container">
+                            <label class="form-label mt-2">Ausgewählte Personen</label>
+                            <div id="specific_selected_persons" class="selected-persons-container">
                                 <!-- Hier werden die ausgewählten Personen angezeigt -->
+                                <div class="text-muted small fst-italic">Keine Personen ausgewählt</div>
                             </div>
                         </div>
                         
@@ -749,22 +760,102 @@ function setupPersonSelectors() {
     }
 }
 
-// Funktion zur Aktualisierung der ausgewählten Personen
+// Funktion zum Hinzufügen einer Person zur Auswahliste
+function addPersonToSelection(personName, prefix) {
+    // Person zur Auswahlliste hinzufügen
+    const selectedPersons = document.getElementById(`${prefix}_selected_persons`);
+    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
+    
+    if (!selectedPersons || !hiddenInput) return;
+    
+    // Aktuell ausgewählte Personen abrufen
+    let currentSelection = hiddenInput.value ? hiddenInput.value.split(',') : [];
+    
+    // Prüfen, ob die Person bereits ausgewählt ist
+    if (currentSelection.includes(personName)) {
+        return; // Person ist bereits ausgewählt, nichts tun
+    }
+    
+    // Person zur Auswahl hinzufügen
+    currentSelection.push(personName);
+    
+    // Hidden Input aktualisieren
+    hiddenInput.value = currentSelection.join(',');
+    
+    // Leere Nachricht entfernen, wenn vorhanden
+    const emptyMessage = selectedPersons.querySelector('.text-muted.small.fst-italic');
+    if (emptyMessage) {
+        selectedPersons.removeChild(emptyMessage);
+    }
+    
+    // Badge für die neue Person erstellen
+    const badge = document.createElement('span');
+    badge.className = 'selected-person-badge';
+    badge.innerHTML = `
+        ${personName}
+        <span class="remove-person" data-person="${personName}">
+            <i class="fas fa-times-circle"></i>
+        </span>
+    `;
+    selectedPersons.appendChild(badge);
+    
+    // Click-Handler für das Entfernen hinzufügen
+    const removeBtn = badge.querySelector('.remove-person');
+    removeBtn.addEventListener('click', function(e) {
+        removePersonFromSelection(this.dataset.person, prefix);
+        e.stopPropagation();
+    });
+}
+
+// Funktion zum Entfernen einer Person aus der Auswahliste
+function removePersonFromSelection(personName, prefix) {
+    const selectedPersons = document.getElementById(`${prefix}_selected_persons`);
+    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
+    
+    if (!selectedPersons || !hiddenInput) return;
+    
+    // Aktuell ausgewählte Personen abrufen
+    let currentSelection = hiddenInput.value ? hiddenInput.value.split(',') : [];
+    
+    // Person aus der Auswahl entfernen
+    currentSelection = currentSelection.filter(name => name !== personName);
+    
+    // Hidden Input aktualisieren
+    hiddenInput.value = currentSelection.join(',');
+    
+    // Badge für diese Person entfernen
+    const badges = selectedPersons.querySelectorAll('.selected-person-badge');
+    badges.forEach(badge => {
+        const removeBtnDataset = badge.querySelector('.remove-person').dataset;
+        if (removeBtnDataset.person === personName) {
+            selectedPersons.removeChild(badge);
+        }
+    });
+    
+    // Wenn keine Personen mehr ausgewählt sind, Nachricht anzeigen
+    if (currentSelection.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'text-muted small fst-italic';
+        emptyMessage.textContent = 'Keine Personen ausgewählt';
+        selectedPersons.appendChild(emptyMessage);
+    }
+}
+
+// Funktion zur Aktualisierung der ausgewählten Personen (alte Methode, wird nicht mehr verwendet)
 function updateSelectedPersons(prefix) {
-    // Get the select element and the hidden input
-    const selectElement = document.getElementById(`${prefix}_persons_select`);
+    // Get the hidden input and the container
     const hiddenInput = document.getElementById(`${prefix}_persons_names`);
     const selectedContainer = document.getElementById(`${prefix}_selected_persons`);
     
-    if (!selectElement || !hiddenInput || !selectedContainer) return;
+    if (!hiddenInput || !selectedContainer) return;
     
     // Clear the container
     selectedContainer.innerHTML = '';
     
-    // Get all selected options
-    const selectedOptions = Array.from(selectElement.selectedOptions);
+    // Get all selected persons
+    const selectedPersons = hiddenInput.value ? hiddenInput.value.split(',') : [];
     
-    if (selectedOptions.length === 0) {
+    if (selectedPersons.length === 0) {
         // If no selections, display a message
         const emptyMessage = document.createElement('div');
         emptyMessage.className = 'text-muted small fst-italic';
@@ -772,12 +863,12 @@ function updateSelectedPersons(prefix) {
         selectedContainer.appendChild(emptyMessage);
     } else {
         // Create badges for each selected person
-        selectedOptions.forEach(option => {
+        selectedPersons.forEach(personName => {
             const badge = document.createElement('span');
             badge.className = 'selected-person-badge';
             badge.innerHTML = `
-                ${option.textContent}
-                <span class="remove-person" data-person="${option.value}">
+                ${personName}
+                <span class="remove-person" data-person="${personName}">
                     <i class="fas fa-times-circle"></i>
                 </span>
             `;
@@ -786,23 +877,11 @@ function updateSelectedPersons(prefix) {
             // Add click handler for the remove button
             const removeBtn = badge.querySelector('.remove-person');
             removeBtn.addEventListener('click', function(e) {
-                const personName = this.dataset.person;
-                // Deselect this option
-                for (let i = 0; i < selectElement.options.length; i++) {
-                    if (selectElement.options[i].value === personName) {
-                        selectElement.options[i].selected = false;
-                        break;
-                    }
-                }
-                // Update the display
-                updateSelectedPersons(prefix);
+                removePersonFromSelection(this.dataset.person, prefix);
                 e.stopPropagation();
             });
         });
     }
-    
-    // Update the hidden input value
-    hiddenInput.value = selectedOptions.map(option => option.value).join(',');
 }
 
 // Function to setup person autocomplete functionality
@@ -878,12 +957,22 @@ function setupPersonAutocomplete() {
                 personDiv.dataset.searchTerm = person['Search Term'] || '';
                 personDiv.dataset.additionalTerms = person['Additional Terms'] || '';
                 
-                // When someone clicks on an item, populate the field and related fields
+                // Determine the correct container ID based on the input field ID
+                let prefix;
+                if (input.id === 'combined_person_search') {
+                    prefix = 'combined';
+                } else if (input.id === 'specific_person_search') {
+                    prefix = 'specific';
+                }
+                
+                // When someone clicks on an item, add the person to selected list
                 personDiv.addEventListener('click', function() {
-                    input.value = this.dataset.name;
+                    input.value = ''; // Clear the input field
                     
-                    // Nicht mehr automatisch Suchbegriffe einfügen - nur den Namen auswählen
-                    // Der Rest wird per Multi-Select gemacht
+                    if (prefix) {
+                        // Add the person to the selection list
+                        addPersonToSelection(this.dataset.name, prefix);
+                    }
                     
                     closeAllLists();
                 });

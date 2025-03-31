@@ -286,11 +286,64 @@ def export_page():
     global search_results, app_config
     from datetime import datetime
     
+    # Liste aller verfügbaren Spalten für den Export
+    available_columns = [
+        "Titel", "Autor(en)", "Jahr", "Quelle", "Publikationstyp", "DOI", "URL", 
+        "PMID", "Abstract", "Keywords", "Sprache", "Datenbank"
+    ]
+    
     return render_template('export.html', 
                           results=search_results,
                           count=len(search_results) if search_results else 0,
+                          available_columns=available_columns,
                           config=app_config,
                           now=datetime.now())
+                          
+@app.route('/export/update_settings', methods=['POST'])
+def update_export_settings():
+    """Update export settings."""
+    global app_config
+    
+    if request.method == 'POST':
+        # Spalten für den Export
+        output_columns = request.form.getlist('output_columns')
+        
+        # Dateioptionen
+        output_path = request.form.get('output_path', './output')
+        unique_filenames = 'unique_filenames' in request.form
+        filename_prefix = request.form.get('filename_prefix', 'medical_spytool_export')
+        
+        # Excel-Optionen
+        excel_formatting = 'excel_formatting' in request.form
+        excel_autofilter = 'excel_autofilter' in request.form
+        excel_freeze_header = 'excel_freeze_header' in request.form
+        
+        # CSV-Optionen
+        csv_delimiter = request.form.get('csv_delimiter', ',')
+        csv_encoding = request.form.get('csv_encoding', 'utf-8')
+        
+        # Aktualisiere die Konfiguration
+        app_config.update({
+            'output_columns': output_columns,
+            'output_path': output_path,
+            'unique_filenames': unique_filenames,
+            'filename_prefix': filename_prefix,
+            'excel_formatting': excel_formatting,
+            'excel_autofilter': excel_autofilter,
+            'excel_freeze_header': excel_freeze_header,
+            'csv_delimiter': csv_delimiter,
+            'csv_encoding': csv_encoding
+        })
+        
+        # Speichern der aktualisierten Konfiguration
+        save_settings(app_config)
+        
+        # Stelle sicher, dass der Ausgabeordner existiert
+        os.makedirs(output_path, exist_ok=True)
+        
+        flash('Export-Einstellungen wurden erfolgreich gespeichert.', 'success')
+        
+    return redirect(url_for('export_page'))
 
 @app.route('/export/<format>')
 def export(format):
@@ -302,23 +355,54 @@ def export(format):
         return redirect(url_for('export_page'))
     
     # Create output directory if it doesn't exist
-    os.makedirs(app_config.get('output_path', './output'), exist_ok=True)
+    output_path = app_config.get('output_path', './output')
+    os.makedirs(output_path, exist_ok=True)
     
     # Get file path
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    base_name = f"search_results_{timestamp}"
-    file_path = os.path.join(app_config.get('output_path', './output'), base_name)
+    filename_prefix = app_config.get('filename_prefix', 'medical_spytool_export')
+    
+    # Add timestamp if unique filenames are enabled
+    if app_config.get('unique_filenames', True):
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_name = f"{filename_prefix}_{timestamp}"
+    else:
+        base_name = filename_prefix
+    
+    file_path = os.path.join(output_path, base_name)
     
     try:
         if format == 'excel':
             file_path = f"{file_path}.xlsx"
-            export_to_excel(search_results, file_path)
-            return send_file(file_path, as_attachment=True)
+            
+            # Excel-spezifische Optionen
+            excel_options = {
+                'formatting': app_config.get('excel_formatting', True),
+                'autofilter': app_config.get('excel_autofilter', True),
+                'freeze_header': app_config.get('excel_freeze_header', True),
+                'output_columns': app_config.get('output_columns', [])
+            }
+            
+            # Export durchführen mit Optionen
+            export_to_excel(search_results, file_path, options=excel_options)
+            
+            # Datei zum Download anbieten
+            return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
             
         elif format == 'csv':
             file_path = f"{file_path}.csv"
-            export_to_csv(search_results, file_path)
-            return send_file(file_path, as_attachment=True)
+            
+            # CSV-spezifische Optionen
+            csv_options = {
+                'delimiter': app_config.get('csv_delimiter', ','),
+                'encoding': app_config.get('csv_encoding', 'utf-8'),
+                'output_columns': app_config.get('output_columns', [])
+            }
+            
+            # Export durchführen mit Optionen
+            export_to_csv(search_results, file_path, options=csv_options)
+            
+            # Datei zum Download anbieten
+            return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
             
         else:
             flash('Ungültiges Exportformat. Bitte wählen Sie Excel oder CSV.', 'danger')
@@ -445,6 +529,22 @@ def logs():
         log_content = "Error loading log file."
     
     return render_template('logs.html', log_content=log_content, config=app_config, now=datetime.now())
+
+@app.route('/logs/clear', methods=['POST'])
+def clear_logs():
+    """Clear the application log file."""
+    try:
+        # Öffne die Logdatei im Schreibmodus, um sie zu leeren
+        with open('medicalspytool.log', 'w', encoding='utf-8') as f:
+            f.write(f"Log cleared at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        
+        logger.info("Log file cleared successfully.")
+        flash("Log-Datei wurde erfolgreich geleert.", "success")
+    except Exception as e:
+        logger.error(f"Error clearing log file: {e}", exc_info=True)
+        flash(f"Fehler beim Leeren der Log-Datei: {str(e)}", "danger")
+    
+    return redirect(url_for('logs'))
 
 @app.route('/api/get_database_fields')
 def get_database_fields():

@@ -48,10 +48,125 @@
                     </div>
                     
                     <h2 class="h4 mb-3">Export-Einstellungen</h2>
-                    <p>
-                        Sie können die für den Export verwendeten Spalten und andere Einstellungen auf der
-                        <a href="/settings" class="text-decoration-underline">Einstellungsseite</a> konfigurieren.
-                    </p>
+                    <form action="/export/update_settings" method="post" class="mb-4">
+                        <div class="card bg-dark bg-opacity-10 mb-3">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">Spalten für den Export auswählen</h3>
+                                <div class="mb-2">
+                                    <button id="select_all_columns" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-check-square me-1"></i>Alle auswählen
+                                    </button>
+                                    <button id="clear_all_columns" class="btn btn-sm btn-outline-secondary ms-2">
+                                        <i class="fas fa-square me-1"></i>Keine auswählen
+                                    </button>
+                                </div>
+                                <div class="row g-2 mt-2">
+                                    {% for column in available_columns %}
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="output_columns" 
+                                                   id="col_{{ column|lower|replace(' ', '_') }}" value="{{ column }}"
+                                                   {% if not config.get('output_columns') or column in config.get('output_columns', []) %}checked{% endif %}>
+                                            <label class="form-check-label" for="col_{{ column|lower|replace(' ', '_') }}">
+                                                {{ column }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-dark bg-opacity-10 mb-3">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">Dateioptionen</h3>
+                                <div class="mb-3">
+                                    <label for="output_path" class="form-label">Exportpfad</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="output_path" name="output_path" 
+                                               value="{{ config.get('output_path', './output') }}">
+                                        <button class="btn btn-outline-secondary" type="button" id="choose_output_path">
+                                            <i class="fas fa-folder-open"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text">Der Ordner, in dem exportierte Dateien gespeichert werden.</small>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="unique_filenames" id="unique_filenames"
+                                           {% if config.get('unique_filenames', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="unique_filenames">
+                                        Eindeutige Dateinamen generieren (Datum/Zeitstempel)
+                                    </label>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="filename_prefix" class="form-label">Dateiname-Präfix</label>
+                                    <input type="text" class="form-control" id="filename_prefix" name="filename_prefix"
+                                           value="{{ config.get('filename_prefix', 'medical_spytool_export') }}">
+                                    <small class="form-text">Wird für alle exportierten Dateien verwendet.</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-dark bg-opacity-10 mb-3">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">Excel-Optionen</h3>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="excel_formatting" id="excel_formatting"
+                                           {% if config.get('excel_formatting', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="excel_formatting">
+                                        Formatierte Excel-Tabelle erstellen (Farben, Schriftarten)
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="excel_autofilter" id="excel_autofilter"
+                                           {% if config.get('excel_autofilter', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="excel_autofilter">
+                                        Auto-Filter für Tabellenkopf aktivieren
+                                    </label>
+                                </div>
+                                
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="excel_freeze_header" id="excel_freeze_header"
+                                           {% if config.get('excel_freeze_header', True) %}checked{% endif %}>
+                                    <label class="form-check-label" for="excel_freeze_header">
+                                        Tabellenkopf fixieren (Freeze Panes)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card bg-dark bg-opacity-10 mb-3">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">CSV-Optionen</h3>
+                                <div class="mb-3">
+                                    <label for="csv_delimiter" class="form-label">Trennzeichen</label>
+                                    <select class="form-select" id="csv_delimiter" name="csv_delimiter">
+                                        <option value="," {% if config.get('csv_delimiter') == ',' %}selected{% endif %}>Komma (,)</option>
+                                        <option value=";" {% if config.get('csv_delimiter') == ';' %}selected{% endif %}>Semikolon (;)</option>
+                                        <option value="\t" {% if config.get('csv_delimiter') == '\t' %}selected{% endif %}>Tabulator</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="csv_encoding" class="form-label">Zeichenkodierung</label>
+                                    <select class="form-select" id="csv_encoding" name="csv_encoding">
+                                        <option value="utf-8" {% if config.get('csv_encoding') == 'utf-8' %}selected{% endif %}>UTF-8</option>
+                                        <option value="iso-8859-1" {% if config.get('csv_encoding') == 'iso-8859-1' %}selected{% endif %}>ISO-8859-1 (Latin-1)</option>
+                                        <option value="utf-8-sig" {% if config.get('csv_encoding') == 'utf-8-sig' %}selected{% endif %}>UTF-8 mit BOM</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Export-Einstellungen speichern
+                            </button>
+                        </div>
+                    </form>
                     
                     {% else %}
                     <div class="alert alert-warning">
@@ -93,4 +208,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Bootstrap JavaScript Bundle mit Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Eigene JavaScript-Dateien -->
+<script src="{{ url_for('static', filename='js/export_page.js') }}"></script>
 {% endblock %}

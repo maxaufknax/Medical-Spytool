@@ -105,6 +105,45 @@
     border-left: 4px solid var(--bs-primary);
 }
 
+/* Ausgewählte Personen Container */
+.selected-persons-container {
+    margin-top: 8px;
+    min-height: 40px;
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Badge-Stil für ausgewählte Personen */
+.selected-person-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 3px;
+    border-radius: 20px;
+    background-color: rgba(0, 123, 255, 0.15);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+.selected-person-badge:hover {
+    background-color: rgba(0, 123, 255, 0.25);
+}
+
+.selected-person-badge .remove-person {
+    margin-left: 6px;
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 0.85em;
+    vertical-align: middle;
+    color: var(--bs-danger);
+}
+
+.selected-person-badge .remove-person:hover {
+    opacity: 1;
+}
+
 /* Erweiterte Fortschrittsanzeige */
 #searchDetailsPanel {
     transition: all 0.3s ease-in-out;
