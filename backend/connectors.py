@@ -830,12 +830,13 @@ class PubMedConnector(DatabaseConnector):
         return results
         
     @lru_cache(maxsize=128)
-    def get_citation_count(self, pmid):
+    def get_citation_count(self, pmid, timeout=5):
         """
         Get the citation count for a PubMed article.
         
         Args:
             pmid (str): The PubMed ID
+            timeout (int): Request timeout in seconds
             
         Returns:
             int or str: The citation count or an error message
@@ -855,16 +856,19 @@ class PubMedConnector(DatabaseConnector):
         if self.api_key:
             params["api_key"] = self.api_key
             
-        max_retries = 3
-        delay = 0.5
+        max_retries = 2
+        delay = 1.0
         
         for attempt in range(max_retries):
             try:
-                response = requests.get(elink_url, params=params)
+                response = requests.get(elink_url, params=params, timeout=timeout)
                 response.raise_for_status()
                 xml = ET.fromstring(response.content)
                 count = len(xml.findall(".//LinkSetDb/Link/Id"))
                 return count
+            except requests.exceptions.Timeout:
+                logger.warning(f"Timeout retrieving citation count for PMID {pmid}")
+                return "Timeout"
             except requests.exceptions.HTTPError as e:
                 if response.status_code == 429:
                     logger.warning(f"429 Error for PMID {pmid}. Waiting {delay} seconds...")
