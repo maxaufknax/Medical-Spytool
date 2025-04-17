@@ -369,7 +369,7 @@ class DNBConnector(DatabaseConnector):
         """
         results = []
         try:
-            root = ET.fromstring(xml_text)
+            root = ET.fromstring(response)
         except ET.ParseError as e:
             logger.error(f"DNB: XML parsing error: {e}")
             return results
@@ -728,12 +728,12 @@ class PubMedConnector(DatabaseConnector):
                 
         return all_results
         
-    def parse_results(self, xml_content):
+    def parse_results(self, response):
         """
         Parse the XML response from PubMed.
         
         Args:
-            xml_content (bytes): The XML content to parse
+            response (bytes): The XML content to parse
             
         Returns:
             list: List of parsed results
@@ -741,7 +741,7 @@ class PubMedConnector(DatabaseConnector):
         results = []
         
         try:
-            root = ET.fromstring(xml_content)
+            root = ET.fromstring(response)
         except ET.ParseError as e:
             logger.error(f"Error parsing PubMed response: {e}")
             return results
