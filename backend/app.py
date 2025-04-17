@@ -438,7 +438,7 @@ def search():
     
     # Get persons list from database for dropdowns and person search
     try:
-        persons_list = Person.query.all()
+        persons_list = db.session.query(Person).all()
         persons = [person.to_dict() for person in persons_list]
         session['persons'] = persons  # Update session with latest from database
     except Exception as e:
@@ -758,7 +758,7 @@ def api_delete_query(query_id):
     """API endpoint to delete a saved query"""
     try:
         # Find query in database
-        query = SearchQuery.query.get(query_id)
+        query = db.session.query(SearchQuery).get(query_id)
         if query:
             query_name = query.name
             
@@ -839,7 +839,7 @@ def api_manage_persons():
         
         try:
             # Update person in database
-            person = Person.query.get(person_id)
+            person = db.session.query(Person).get(person_id)
             if not person:
                 return jsonify({"success": False, "message": "Person not found in database"}), 404
                 
@@ -880,7 +880,7 @@ def api_manage_persons():
         
         try:
             # Delete from database
-            person = Person.query.get(person_id)
+            person = db.session.query(Person).get(person_id)
             if not person:
                 return jsonify({"success": False, "message": "Person not found in database"}), 404
                 
