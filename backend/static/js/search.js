@@ -3,8 +3,21 @@
  * This file contains functions for search functionality.
  */
 
-// Global variable to store all persons
-let allPersons = [];
+// Global variable to store all persons - will use window.allPersons set by the server
+// Define this as a fallback only if window.allPersons is not available
+if (typeof window.allPersons === 'undefined') {
+    window.allPersons = [];
+}
+
+// For backward compatibility and easier code readability, create a reference to window.allPersons
+let allPersons = window.allPersons;
+
+// Debugging function to check the persons
+function debugPersons() {
+    console.log("Loaded persons (via window.allPersons):", window.allPersons);
+    console.log("Loaded persons (via local allPersons):", allPersons);
+    return allPersons && allPersons.length > 0;
+}
 
 // Show loading state during search
 function setLoadingState(isLoading, buttonId = 'simpleSearchButton') {
@@ -384,18 +397,32 @@ function addPerson() {
 
 // Handle person search input
 function handlePersonSearch() {
+    debugPersons(); // Debug logging
+
     const input = document.getElementById('personSearchInput');
     const results = document.getElementById('personSearchResults');
     
-    if (!input || !results) return;
+    if (!input || !results) {
+        console.error("Could not find person search elements");
+        return;
+    }
     
     const searchTerm = input.value.trim().toLowerCase();
+    console.log("Person search term:", searchTerm);
     
     // Clear previous results
     results.innerHTML = '';
     
     if (searchTerm.length < 2) {
         results.style.display = 'none';
+        return;
+    }
+    
+    // Make sure allPersons is available
+    if (!allPersons || allPersons.length === 0) {
+        console.warn("No persons available for search. Showing a message to the user.");
+        results.innerHTML = '<div class="dropdown-item text-muted">Keine Personen verfügbar. Bitte fügen Sie Personen hinzu.</div>';
+        results.style.display = 'block';
         return;
     }
     
@@ -406,8 +433,15 @@ function handlePersonSearch() {
                person.last_name.toLowerCase().includes(searchTerm);
     });
     
+    console.log("Person search matches:", matches);
+    
+    // Always show results container
+    results.style.display = 'block';
+    
     // Generate results HTML
-    if (matches.length > 0) {
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="dropdown-item text-muted">Keine Ergebnisse gefunden</div>';
+    } else {
         matches.forEach(person => {
             const item = document.createElement('a');
             item.className = 'dropdown-item';
@@ -632,8 +666,11 @@ function updateDatabaseSpecificFilters() {
 
 // Initialize the search page
 document.addEventListener('DOMContentLoaded', function() {
-    // Load all persons
-    loadAllPersons();
+    // Debug persons data from server
+    debugPersons();
+    
+    // Note: We no longer call loadAllPersons() here because the persons are 
+    // already loaded from the server in the window.allPersons variable
     
     // Initialize event listeners for search form
     const searchForm = document.getElementById('searchForm');
@@ -747,12 +784,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Handle advanced person search input
 function handleAdvancedPersonSearch() {
+    debugPersons(); // Debug logging
+
     const input = document.getElementById('advancedPersonSearchInput');
     const results = document.getElementById('advancedPersonSearchResults');
     
-    if (!input || !results) return;
+    if (!input || !results) {
+        console.error("Could not find advanced person search elements");
+        return;
+    }
     
     const searchTerm = input.value.trim().toLowerCase();
+    console.log("Advanced search term:", searchTerm);
     
     // Clear previous results
     results.innerHTML = '';
@@ -762,12 +805,25 @@ function handleAdvancedPersonSearch() {
         return;
     }
     
+    // Make sure allPersons is available
+    if (!allPersons || allPersons.length === 0) {
+        console.warn("No persons available for search. Showing a message to the user.");
+        results.innerHTML = '<div class="dropdown-item text-muted">Keine Personen verfügbar. Bitte fügen Sie Personen hinzu.</div>';
+        results.style.display = 'block';
+        return;
+    }
+    
     // Filter persons
     const matches = allPersons.filter(person => {
         return person.name.toLowerCase().includes(searchTerm) ||
             person.first_name.toLowerCase().includes(searchTerm) ||
             person.last_name.toLowerCase().includes(searchTerm);
     });
+    
+    console.log("Advanced search matches:", matches);
+    
+    // Always show results container
+    results.style.display = 'block';
     
     if (matches.length === 0) {
         results.innerHTML = '<div class="dropdown-item text-muted">Keine Ergebnisse gefunden</div>';

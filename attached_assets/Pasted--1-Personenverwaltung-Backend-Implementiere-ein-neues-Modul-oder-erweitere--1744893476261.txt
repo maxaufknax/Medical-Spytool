@@ -1,0 +1,65 @@
+
+
+1. **Personenverwaltung**
+
+   - **Backend:**
+     - Implementiere ein neues Modul oder erweitere `backend/utils.py` / `backend/config.py`, um eine persistente Personenliste zu verwalten (z. B. JSON‑Datei `persons.json`).
+     - Füge in `backend/app.py` REST‑Endpoints hinzu:
+       - `GET  /persons` → Liste aller Personen
+       - `POST /persons` → Neue Person anlegen
+       - `DELETE /persons/<id>` → Person löschen
+   - **Frontend:**
+     - Erstelle unter `backend/templates/` eine Seite `persons.html` mit:
+       - Formular zum Hinzufügen einer neuen Person (Name, ggf. Metadaten)
+       - Tabelle oder Listview aller vorhandenen Personen mit Lösch‑Buttons
+     - Verlinke die Personenverwaltung im Navbar (z. B. Tab „Personen“).
+
+2. **Erweiterte Suchseite**
+
+   - **Such-Modi (Tabs oder Dropdown):**
+     - **Personensuche**: Suche startet allein auf Basis ausgewählter Personen (kein Freitext nötig).
+     - **Datenbank-Suche**: Klassische Suche mit Freitext‑Query über PubMed/DNB.
+     - **Einfache Suche**: Nur Freitext, keine komplexen Filter.
+   - **UI/Navigation:**
+     - Ergänze in `base.html` oder `search.html` eine Tab‑Leiste oder Dropdown für die Modi.
+     - Markiere den aktiven Modus optisch.
+   - **Autocomplete & Mehrfachauswahl:**
+     - In der Personen‑Suchmaske (`Personensuche`):
+       - Baue ein Input‑Feld mit JavaScript‑Typeahead (z. B. jQuery UI Autocomplete) auf Basis von `/persons`.
+       - Erlaube Mehrfachauswahl (Tags‑Input oder Checkbox‑Liste).
+     - Beim Absenden: Liste der Personennamen an Backend als Liste übermitteln.
+
+3. **Suche & API‑Connectoren**
+
+   - **Fehlerbehebung API‑Aufrufe:**
+     - Öffne `backend/connectors.py` und `backend/search.py`.
+     - **PubMed**:
+       - Verwende `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=<TERM>&retmax=50&retmode=json&api_key=<KEY>`
+       - Baue Timeout (z. B. `requests.get(..., timeout=10)`) und Retry (max. 3 Versuche) ein.
+     - **DNB**:
+       - Prüfe Endpoint‑URL, Parameter‑Encoding (`q=<TERM>`), JSON‑Parsing; setze ebenfalls Timeout & Retry.
+     - **Error‑Handling:**
+       - Wenn API fehlschlägt oder leer zurückgibt, nutze `flash()` um Fehlermeldung anzuzeigen, und rendere die Suchseite neu.
+   - **Integration der Personenliste:**
+     - Im `Personensuche`‑Tab, wenn keine Freitext‑Query, aber Personen‑Liste übermittelt wurde:
+       - Iteriere über jede Person und führe für jede Person einen API‑Call aus.
+       - Sammle und kombiniere die Ergebnisse in `session['search_results']`.
+
+4. **Backup & Logging**
+
+   - Vor jedem neuen Suchvorgang:
+     - Dump von `session['search_results']` in `backups/YYYYMMDD_HHMMSS_results.json`.
+     - Erweitere `settings.html` um eine Liste bisheriger Backups mit Download‑Links.
+   - **Logging:**
+     - Logge in `medicalspy.log` jedes API‑Request‑Ergebnis (Erfolg/Menge) und Errors.
+
+5. **Schrittweises Feedback**
+
+   - Arbeite in Teilschritten und sende nach jedem abgeschlossenen Punkt eine kurze Rückmeldung:
+     - „Personenverwaltung implementiert“
+     - „Such-Modi & Tabs angelegt“
+     - „Autocomplete & Mehrfachauswahl integriert“
+     - „API‑Connectoren gefixt & Error‑Handling“
+     - „Backup & Download‑Links hinzugefügt“
+
+**Ziel:** Eine vollständig funktionierende, nutzerfreundliche Suchfunktion mit Personen‑Autocomplete, mehreren Suchmodi, verlässlichen API‑Aufrufen und automatisiertem Backup, lauffähig auf Replit und bereit zur späteren Migration.
