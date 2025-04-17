@@ -94,6 +94,11 @@ def search():
     """Render the search page or perform a search"""
     databases = ["PubMed", "Deutsche Nationalbibliothek"]
     
+    # Fetch persons for autocomplete
+    with app.app_context():
+        persons_list = db.session.query(Person).all()
+        persons = [person.to_dict() for person in persons_list]
+    
     if request.method == 'POST':
         # Get the search mode
         search_mode = request.form.get('search_mode', 'simple')
