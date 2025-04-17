@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Personenverwaltung{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Personenverwaltung</h1>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Person hinzufügen</h5>
+                </div>
+                <div class="card-body">
+                    <form id="add-person-form">
+                        <div class="mb-3">
+                            <label for="person-name" class="form-label">Name (Anzeigename)</label>
+                            <input type="text" class="form-control" id="person-name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person-first-name" class="form-label">Vorname</label>
+                            <input type="text" class="form-control" id="person-first-name" name="first_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="person-last-name" class="form-label">Nachname</label>
+                            <input type="text" class="form-control" id="person-last-name" name="last_name" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Hinzufügen</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Personenliste</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="persons-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Vorname</th>
+                                    <th>Nachname</th>
+                                    <th>Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for person in persons %}
+                                <tr data-id="{{ person.id }}">
+                                    <td>{{ person.id }}</td>
+                                    <td>{{ person.name }}</td>
+                                    <td>{{ person.first_name }}</td>
+                                    <td>{{ person.last_name }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-danger delete-person">Löschen</button>
+                                        <button class="btn btn-sm btn-secondary edit-person">Bearbeiten</button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center">Keine Personen gefunden</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Person Modal -->
+<div class="modal fade" id="edit-person-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Person bearbeiten</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-person-form">
+                    <input type="hidden" id="edit-person-id" name="id">
+                    <div class="mb-3">
+                        <label for="edit-person-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="edit-person-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-person-first-name" class="form-label">Vorname</label>
+                        <input type="text" class="form-control" id="edit-person-first-name" name="first_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit-person-last-name" class="form-label">Nachname</label>
+                        <input type="text" class="form-control" id="edit-person-last-name" name="last_name" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="save-person-edit">Speichern</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add person form submission
+        const addPersonForm = document.getElementById('add-person-form');
+        addPersonForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('action', 'add');
+            formData.append('name', document.getElementById('person-name').value);
+            formData.append('first_name', document.getElementById('person-first-name').value);
+            formData.append('last_name', document.getElementById('person-last-name').value);
+            
+            fetch('/api/manage_persons', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add the new person to the table
+                    const tbody = document.querySelector('#persons-table tbody');
+                    const noPersonsRow = tbody.querySelector('tr td[colspan="5"]');
+                    
+                    if (noPersonsRow) {
+                        tbody.innerHTML = '';
+                    }
+                    
+                    const newRow = document.createElement('tr');
+                    newRow.dataset.id = data.person.id;
+                    newRow.innerHTML = `
+                        <td>${data.person.id}</td>
+                        <td>${data.person.name}</td>
+                        <td>${data.person.first_name}</td>
+                        <td>${data.person.last_name}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger delete-person">Löschen</button>
+                            <button class="btn btn-sm btn-secondary edit-person">Bearbeiten</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(newRow);
+                    
+                    // Reset the form
+                    addPersonForm.reset();
+                    
+                    // Show success message
+                    alert('Person erfolgreich hinzugefügt!');
+                } else {
+                    alert('Fehler: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+            });
+        });
+        
+        // Delete person
+        document.querySelector('#persons-table').addEventListener('click', function(e) {
+            if (e.target.classList.contains('delete-person')) {
+                if (confirm('Sind Sie sicher, dass Sie diese Person löschen möchten?')) {
+                    const row = e.target.closest('tr');
+                    const personId = row.dataset.id;
+                    
+                    const formData = new FormData();
+                    formData.append('action', 'delete');
+                    formData.append('id', personId);
+                    
+                    fetch('/api/manage_persons', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Remove the row from the table
+                            row.remove();
+                            
+                            // If no persons left, show the no persons message
+                            const tbody = document.querySelector('#persons-table tbody');
+                            if (tbody.children.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="5" class="text-center">Keine Personen gefunden</td></tr>';
+                            }
+                            
+                            // Show success message
+                            alert('Person erfolgreich gelöscht!');
+                        } else {
+                            alert('Fehler: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+                    });
+                }
+            }
+            
+            // Edit person - open modal
+            if (e.target.classList.contains('edit-person')) {
+                const row = e.target.closest('tr');
+                const personId = row.dataset.id;
+                const personName = row.cells[1].textContent;
+                const personFirstName = row.cells[2].textContent;
+                const personLastName = row.cells[3].textContent;
+                
+                // Fill the form
+                document.getElementById('edit-person-id').value = personId;
+                document.getElementById('edit-person-name').value = personName;
+                document.getElementById('edit-person-first-name').value = personFirstName;
+                document.getElementById('edit-person-last-name').value = personLastName;
+                
+                // Show the modal
+                const modal = new bootstrap.Modal(document.getElementById('edit-person-modal'));
+                modal.show();
+            }
+        });
+        
+        // Save edited person
+        document.getElementById('save-person-edit').addEventListener('click', function() {
+            const personId = document.getElementById('edit-person-id').value;
+            const personName = document.getElementById('edit-person-name').value;
+            const personFirstName = document.getElementById('edit-person-first-name').value;
+            const personLastName = document.getElementById('edit-person-last-name').value;
+            
+            const formData = new FormData();
+            formData.append('action', 'update');
+            formData.append('id', personId);
+            formData.append('name', personName);
+            formData.append('first_name', personFirstName);
+            formData.append('last_name', personLastName);
+            
+            fetch('/api/manage_persons', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the row in the table
+                    const row = document.querySelector(`#persons-table tr[data-id="${personId}"]`);
+                    row.cells[1].textContent = personName;
+                    row.cells[2].textContent = personFirstName;
+                    row.cells[3].textContent = personLastName;
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('edit-person-modal'));
+                    modal.hide();
+                    
+                    // Show success message
+                    alert('Person erfolgreich aktualisiert!');
+                } else {
+                    alert('Fehler: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+            });
+        });
+    });
+</script>
+{% endblock %}

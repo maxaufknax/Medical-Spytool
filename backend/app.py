@@ -81,71 +81,161 @@ def index():
     """Render the main page"""
     return render_template('index.html')
 
+@app.route('/persons')
+def persons():
+    """Render the persons management page"""
+    with app.app_context():
+        persons_list = Person.query.all()
+        persons = [person.to_dict() for person in persons_list]
+    return render_template('persons.html', persons=persons)
+
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     """Render the search page or perform a search"""
     databases = ["PubMed", "Deutsche Nationalbibliothek"]
     
     if request.method == 'POST':
-        # Handle search form submission
-        search_query = request.form.get('search_query', '')
-        selected_database = request.form.get('database', 'PubMed')
-        additional_terms = request.form.get('additional_terms', '')
+        # Get the search mode
+        search_mode = request.form.get('search_mode', 'simple')
         
-        # Get date range (if provided)
+        # Common parameters
+        selected_database = request.form.get('database', 'PubMed')
         start_date = request.form.get('start_date', '')
         end_date = request.form.get('end_date', '')
         date_range = parse_date_range(start_date, end_date)
+        additional_terms = request.form.get('additional_terms', '')
         
-        # Get selected person (if any)
-        person_name = request.form.get('person_name', '')
-        
-        # Perform the search
-        try:
-            log_message(f"Starting search for '{search_query}' in {selected_database}")
+        # Handle different search modes
+        if search_mode == 'simple':
+            # Simple search mode
+            search_query = request.form.get('search_query', '')
+            person_name = ''
             
-            # Get appropriate connector
-            connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+            log_message(f"Starting simple search for '{search_query}' in {selected_database}")
             
-            # Execute search
-            results = search_database(
-                connector, 
-                search_query, 
-                person_name=person_name,
-                additional_terms=additional_terms,
-                date_range=date_range
-            )
+            # Validate search query
+            if not search_query:
+                flash("Please enter a search query.", "warning")
+                log_message("Simple search attempted with empty query")
+                return redirect(url_for('search'))
+                
+            # Perform the search
+            return perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date)
             
-            # Store results in session and database
-            if results:
-                # Save to session
-                session['search_results'] = results
+        elif search_mode == 'database':
+            # Database search mode
+            search_query = request.form.get('search_query', '')
+            person_name = request.form.get('person_name', '')
+            
+            log_message(f"Starting database search for '{search_query}' in {selected_database} with person: {person_name}")
+            
+            # Validate search query
+            if not search_query:
+                flash("Please enter a search query.", "warning")
+                log_message("Database search attempted with empty query")
+                return redirect(url_for('search'))
+                
+            # Perform the search
+            return perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date)
+            
+        elif search_mode == 'person':
+            # Person search mode
+            selected_person_ids = request.form.get('selected_person_ids', '')
+            
+            log_message(f"Starting person search for persons with IDs: {selected_person_ids} in {selected_database}")
+            
+            # Validate person selection
+            if not selected_person_ids:
+                flash("Please select at least one person for the search.", "warning")
+                log_message("Person search attempted with no persons selected")
+                return redirect(url_for('search'))
+                
+            # Get the persons from the database
+            person_ids = selected_person_ids.split(',')
+            persons_list = []
+            
+            try:
+                for person_id in person_ids:
+                    person = Person.query.get(int(person_id))
+                    if person:
+                        persons_list.append(person)
+            except Exception as e:
+                flash(f"Error retrieving persons: {str(e)}", "danger")
+                log_message(f"Error retrieving persons: {str(e)}", level="ERROR")
+                return redirect(url_for('search'))
+                
+            if not persons_list:
+                flash("No valid persons found with the provided IDs.", "warning")
+                log_message("Person search attempted with invalid person IDs")
+                return redirect(url_for('search'))
+                
+            # Perform search for each person and combine results
+            all_results = []
+            for person in persons_list:
+                person_query = f"{person.first_name} {person.last_name}"
+                log_message(f"Searching for person: {person.name} ({person_query})")
+                
+                try:
+                    # Get connector for the selected database
+                    connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+                    
+                    # Execute search
+                    results = search_database(
+                        connector, 
+                        person_query, 
+                        person_name=person.name,
+                        additional_terms=additional_terms,
+                        date_range=date_range
+                    )
+                    
+                    if results:
+                        log_message(f"Found {len(results)} results for {person.name}")
+                        all_results.extend(results)
+                    else:
+                        log_message(f"No results found for {person.name}")
+                    
+                except Exception as e:
+                    log_message(f"Error searching for {person.name}: {str(e)}", level="ERROR")
+                    # Continue with other persons
+                    
+            # Save combined results
+            if all_results:
+                # Remove duplicate results (if any)
+                # using a simple approach - checking by title equality
+                unique_results = []
+                titles_seen = set()
+                
+                for result in all_results:
+                    title = result.get('Titel', '')
+                    if title and title not in titles_seen:
+                        titles_seen.add(title)
+                        unique_results.append(result)
+                
+                # Save unique results to session
+                session['search_results'] = unique_results
                 session.modified = True
                 
                 # Save to database
                 try:
-                    # First save the search query if not already saved
-                    search_query_obj = SearchQuery.query.filter_by(
-                        query=search_query,
+                    # Create a search query for the person search
+                    person_names = [p.name for p in persons_list]
+                    person_names_str = ", ".join(person_names)
+                    
+                    search_query_obj = SearchQuery(
+                        name=f"Person search in {selected_database}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}",
+                        query="",  # No direct query for person search
                         database=selected_database,
-                        additional_terms=additional_terms
-                    ).first()
+                        additional_terms=additional_terms,
+                        start_date=start_date,
+                        end_date=end_date,
+                        person_name=person_names_str,
+                        search_mode='person'
+                    )
+                    db.session.add(search_query_obj)
+                    db.session.flush()  # Get ID without committing
                     
-                    if not search_query_obj:
-                        search_query_obj = SearchQuery(
-                            name=f"Search in {selected_database}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
-                            query=search_query,
-                            database=selected_database,
-                            additional_terms=additional_terms,
-                            start_date=start_date,
-                            end_date=end_date,
-                            person_name=person_name
-                        )
-                        db.session.add(search_query_obj)
-                        db.session.flush()  # Get ID without committing
-                    
-                    # Now save each result
-                    for result in results:
+                    # Save each result
+                    for result in unique_results:
                         result_obj = SearchResult(
                             query_id=search_query_obj.id,
                             database=selected_database,
@@ -154,28 +244,40 @@ def search():
                         db.session.add(result_obj)
                     
                     db.session.commit()
-                    log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
+                    log_message(f"Person search results saved to database. Query ID: {search_query_obj.id}")
                     
                 except Exception as e:
                     db.session.rollback()
-                    log_message(f"Failed to save search results to database: {str(e)}", level="ERROR")
-                    # Continue since we at least have the results in the session
+                    log_message(f"Failed to save person search results to database: {str(e)}", level="ERROR")
                 
-                log_message(f"Search complete. Found {len(results)} results.")
+                log_message(f"Person search complete. Found {len(unique_results)} unique results across {len(persons_list)} persons.")
+                flash(f"Found {len(unique_results)} results for {len(persons_list)} persons.", "success")
                 return redirect(url_for('results'))
             else:
-                flash("No results found for your search query.", "warning")
-                log_message("Search returned no results")
-                
-        except Exception as e:
-            flash(f"Error during search: {str(e)}", "danger")
-            log_message(f"Search error: {str(e)}", level="ERROR")
+                flash("No results found for any of the selected persons.", "warning")
+                log_message("Person search returned no results")
+        else:
+            # Invalid search mode
+            flash("Invalid search mode selected.", "danger")
+            log_message(f"Invalid search mode: {search_mode}", level="ERROR")
     
-    # Get persons list for the dropdown
-    persons = session.get('persons', [])
+    # Get persons list from database for dropdowns and person search
+    try:
+        persons_list = Person.query.all()
+        persons = [person.to_dict() for person in persons_list]
+        session['persons'] = persons  # Update session with latest from database
+    except Exception as e:
+        log_message(f"Error retrieving persons from database: {str(e)}", level="ERROR")
+        persons = session.get('persons', [])
     
-    # Get saved queries
-    saved_queries = session.get('saved_queries', [])
+    # Get saved queries from database
+    try:
+        saved_queries_list = SearchQuery.query.order_by(SearchQuery.created_at.desc()).limit(20).all()
+        saved_queries = [query.to_dict() for query in saved_queries_list]
+        session['saved_queries'] = saved_queries  # Update session with latest from database
+    except Exception as e:
+        log_message(f"Error retrieving saved queries from database: {str(e)}", level="ERROR")
+        saved_queries = session.get('saved_queries', [])
     
     return render_template(
         'search.html', 
@@ -183,6 +285,79 @@ def search():
         persons=persons,
         saved_queries=saved_queries
     )
+
+def perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date):
+    """Helper function to perform a single search"""
+    try:
+        # Get appropriate connector
+        connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+        
+        # Execute search
+        results = search_database(
+            connector, 
+            search_query, 
+            person_name=person_name,
+            additional_terms=additional_terms,
+            date_range=date_range
+        )
+        
+        # Store results in session and database
+        if results:
+            # Save to session
+            session['search_results'] = results
+            session.modified = True
+            
+            # Save to database
+            try:
+                # First save the search query if not already saved
+                search_query_obj = SearchQuery.query.filter_by(
+                    query=search_query,
+                    database=selected_database,
+                    additional_terms=additional_terms
+                ).first()
+                
+                if not search_query_obj:
+                    search_query_obj = SearchQuery(
+                        name=f"Search in {selected_database}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
+                        query=search_query,
+                        database=selected_database,
+                        additional_terms=additional_terms,
+                        start_date=start_date,
+                        end_date=end_date,
+                        person_name=person_name
+                    )
+                    db.session.add(search_query_obj)
+                    db.session.flush()  # Get ID without committing
+                
+                # Now save each result
+                for result in results:
+                    result_obj = SearchResult(
+                        query_id=search_query_obj.id,
+                        database=selected_database,
+                        result_data=result
+                    )
+                    db.session.add(result_obj)
+                
+                db.session.commit()
+                log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
+                
+            except Exception as e:
+                db.session.rollback()
+                log_message(f"Failed to save search results to database: {str(e)}", level="ERROR")
+                # Continue since we at least have the results in the session
+            
+            log_message(f"Search complete. Found {len(results)} results.")
+            flash(f"Found {len(results)} results.", "success")
+            return redirect(url_for('results'))
+        else:
+            flash("No results found for your search query.", "warning")
+            log_message("Search returned no results")
+            return redirect(url_for('search'))
+            
+    except Exception as e:
+        flash(f"Error during search: {str(e)}", "danger")
+        log_message(f"Search error: {str(e)}", level="ERROR")
+        return redirect(url_for('search'))
 
 @app.route('/results')
 def results():

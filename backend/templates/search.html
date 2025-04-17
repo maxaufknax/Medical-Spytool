@@ -14,68 +14,175 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">Search Form</h5>
+                
+                <!-- Search Mode Tabs -->
+                <ul class="nav nav-tabs card-header-tabs mt-2" id="searchModeTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="simple-search-tab" data-bs-toggle="tab" href="#simple-search" role="tab">
+                            <i class="fas fa-search me-1"></i> Einfache Suche
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="database-search-tab" data-bs-toggle="tab" href="#database-search" role="tab">
+                            <i class="fas fa-database me-1"></i> Datenbank-Suche
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
+                            <i class="fas fa-users me-1"></i> Personensuche
+                        </a>
+                    </li>
+                </ul>
             </div>
             <div class="card-body">
                 <form id="searchForm" action="{{ url_for('search') }}" method="post">
-                    <div class="mb-3">
-                        <label for="searchQuery" class="form-label">Search Query</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="searchQuery" name="search_query" placeholder="Enter keywords, author names, or specific terms" required>
-                            <button type="submit" class="btn btn-primary" id="searchButton" disabled>
-                                <span id="searchSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
-                                Search
-                            </button>
-                        </div>
-                    </div>
+                    <!-- Hidden field to track the search mode -->
+                    <input type="hidden" id="searchMode" name="search_mode" value="simple">
                     
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="database" class="form-label">Database</label>
-                            <select class="form-select" id="database" name="database">
-                                {% for db in databases %}
-                                <option value="{{ db }}">{{ db }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="personSelect" class="form-label">Associate with Person (Optional)</label>
-                            <select class="form-select" id="personSelect" name="person_name">
-                                <option value="">-- None --</option>
-                                {% for person in persons %}
-                                <option value="{{ person.name }}">{{ person.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <button type="button" id="advancedOptionsToggle" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-cog me-1"></i> Advanced Options
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-info ms-1" data-bs-toggle="modal" data-bs-target="#saveQueryModal">
-                            <i class="fas fa-save me-1"></i> Save Query
-                        </button>
-                    </div>
-                    
-                    <!-- Advanced Options -->
-                    <div id="advancedOptions" class="search-options-container d-none">
-                        <div class="row mb-3">
-                            <div class="col-md-12">
-                                <label for="additionalTerms" class="form-label">Additional Terms</label>
-                                <input type="text" class="form-control" id="additionalTerms" name="additional_terms" placeholder="Additional terms to AND with main query">
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="searchModeContent">
+                        <!-- Simple Search Tab -->
+                        <div class="tab-pane fade show active" id="simple-search" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="simpleSearchQuery" class="form-label">Suchbegriff</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="simpleSearchQuery" name="search_query" placeholder="Stichwörter, Autoren oder spezifische Begriffe">
+                                    <button type="submit" class="btn btn-primary" id="simpleSearchButton">
+                                        <i class="fas fa-search me-1"></i> Suchen
+                                    </button>
+                                </div>
+                                <div class="form-text">Einfache Suche nach Schlüsselwörtern ohne komplexe Filter.</div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="simpleDatabase" class="form-label">Datenbank</label>
+                                    <select class="form-select" id="simpleDatabase" name="database">
+                                        {% for db in databases %}
+                                        <option value="{{ db }}">{{ db }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="startDate" class="form-label">Start Date</label>
-                                <input type="date" class="form-control date-picker" id="startDate" name="start_date">
+                        <!-- Database Search Tab -->
+                        <div class="tab-pane fade" id="database-search" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="databaseSearchQuery" class="form-label">Erweiterte Suchquery</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="databaseSearchQuery" name="search_query" placeholder="Erweiterte Suchbegriffe für detaillierte Datenbanksuche">
+                                    <button type="submit" class="btn btn-primary" id="databaseSearchButton">
+                                        <i class="fas fa-search me-1"></i> Suchen
+                                    </button>
+                                </div>
+                                <div class="form-text">Vollständige Datenbanksuche mit erweiterten Filtern und Optionen.</div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="endDate" class="form-label">End Date</label>
-                                <input type="date" class="form-control date-picker" id="endDate" name="end_date">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="databaseSelect" class="form-label">Datenbank</label>
+                                    <select class="form-select" id="databaseSelect" name="database">
+                                        {% for db in databases %}
+                                        <option value="{{ db }}">{{ db }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="dbPersonSelect" class="form-label">Personenauswahl (Optional)</label>
+                                    <select class="form-select" id="dbPersonSelect" name="person_name">
+                                        <option value="">-- Keine --</option>
+                                        {% for person in persons %}
+                                        <option value="{{ person.name }}">{{ person.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label for="dbAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe</label>
+                                    <input type="text" class="form-control" id="dbAdditionalTerms" name="additional_terms" placeholder="Zusätzliche Begriffe (mit AND verknüpft)">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="dbStartDate" class="form-label">Startdatum</label>
+                                    <input type="date" class="form-control date-picker" id="dbStartDate" name="start_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="dbEndDate" class="form-label">Enddatum</label>
+                                    <input type="date" class="form-control date-picker" id="dbEndDate" name="end_date">
+                                </div>
                             </div>
                         </div>
+                        
+                        <!-- Person Search Tab -->
+                        <div class="tab-pane fade" id="person-search" role="tabpanel">
+                            <div class="mb-3">
+                                <label class="form-label">Personen für die Suche</label>
+                                <div id="selectedPersonsContainer" class="mb-2">
+                                    <!-- Selected persons will be displayed here as tags -->
+                                    <div class="alert alert-light" id="noPersonsSelectedAlert">
+                                        Keine Personen ausgewählt. Bitte wählen Sie mindestens eine Person aus.
+                                    </div>
+                                </div>
+                                
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="personSearchInput" placeholder="Tippen Sie, um Personen zu suchen..." autocomplete="off">
+                                    <button class="btn btn-outline-secondary" type="button" id="personSearchButton">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Dropdown for person results -->
+                                <div id="personSearchResults" class="dropdown-menu w-100" style="display: none; max-height: 200px; overflow-y: auto;">
+                                    <!-- Results will be populated via JavaScript -->
+                                </div>
+                                
+                                <!-- Hidden input to store selected person IDs -->
+                                <input type="hidden" id="selectedPersonIds" name="selected_person_ids">
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="personDatabase" class="form-label">Datenbank</label>
+                                    <select class="form-select" id="personDatabase" name="database">
+                                        {% for db in databases %}
+                                        <option value="{{ db }}">{{ db }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="personAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe (Optional)</label>
+                                    <input type="text" class="form-control" id="personAdditionalTerms" name="additional_terms" placeholder="Weitere Suchbegriffe">
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="personStartDate" class="form-label">Startdatum (Optional)</label>
+                                    <input type="date" class="form-control date-picker" id="personStartDate" name="start_date">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="personEndDate" class="form-label">Enddatum (Optional)</label>
+                                    <input type="date" class="form-control date-picker" id="personEndDate" name="end_date">
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary" id="personSearchSubmitButton">
+                                    <i class="fas fa-search me-1"></i> Nach Personen suchen
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#saveQueryModal">
+                            <i class="fas fa-save me-1"></i> Suche speichern
+                        </button>
                     </div>
                 </form>
             </div>
