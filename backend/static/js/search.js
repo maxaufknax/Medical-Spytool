@@ -44,14 +44,16 @@ function handleSearchSubmit(event) {
                 showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein.', 'error');
                 return false;
             }
-        } else if (tabId === 'database-search-tab') {
-            searchModeField.value = 'database';
+        } else if (tabId === 'advanced-search-tab') {
+            searchModeField.value = 'advanced';
             
-            // Validate database search
-            const dbQuery = document.getElementById('databaseSearchQuery').value.trim();
-            if (!dbQuery) {
+            // Validate advanced search - either a query OR selected persons is required
+            const advancedQuery = document.getElementById('advancedSearchQuery').value.trim();
+            const advancedSelectedPersonIds = document.getElementById('advancedSelectedPersonIds').value;
+            
+            if (!advancedQuery && !advancedSelectedPersonIds) {
                 event.preventDefault();
-                showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein.', 'error');
+                showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein oder wählen Sie mindestens eine Person aus.', 'error');
                 return false;
             }
         } else if (tabId === 'person-search-tab') {
@@ -70,7 +72,7 @@ function handleSearchSubmit(event) {
     // Set loading state based on active tab
     const buttonMap = {
         'simple-search-tab': 'simpleSearchButton',
-        'database-search-tab': 'databaseSearchButton',
+        'advanced-search-tab': 'advancedSearchButton',
         'person-search-tab': 'personSearchSubmitButton'
     };
     setLoadingState(true, buttonMap[activeTab.id]);
