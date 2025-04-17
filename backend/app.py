@@ -105,6 +105,10 @@ def search():
         date_range = parse_date_range(start_date, end_date)
         additional_terms = request.form.get('additional_terms', '')
         
+        # Additional parameters for advanced search
+        language = request.form.get('language', '')
+        publication_type = request.form.get('publication_type', '')
+        
         # Handle different search modes
         if search_mode == 'simple':
             # Simple search mode
@@ -151,16 +155,22 @@ def search():
                 return redirect(url_for('search'))
                 
             # Get the persons from the database
-            person_ids = selected_person_ids.split(',')
             persons_list = []
             
             try:
+                # Try to parse as JSON first (for updated client code)
+                try:
+                    person_ids = json.loads(selected_person_ids)
+                except json.JSONDecodeError:
+                    # Fallback to comma-separated (for backward compatibility)
+                    person_ids = selected_person_ids.split(',')
+                
                 for person_id in person_ids:
                     person = Person.query.get(int(person_id))
                     if person:
                         persons_list.append(person)
             except Exception as e:
-                flash(f"Error retrieving persons: {str(e)}", "danger")
+                flash(f"Fehler beim Abrufen der Personen: {str(e)}", "danger")
                 log_message(f"Error retrieving persons: {str(e)}", level="ERROR")
                 return redirect(url_for('search'))
                 
@@ -256,9 +266,174 @@ def search():
             else:
                 flash("No results found for any of the selected persons.", "warning")
                 log_message("Person search returned no results")
+        elif search_mode == 'advanced':
+            # Advanced database search mode
+            search_query = request.form.get('search_query', '')
+            advanced_selected_person_ids = request.form.get('advanced_selected_person_ids', '')
+            
+            log_message(f"Starting advanced database search for '{search_query}' in {selected_database}")
+            
+            # Apply database-specific filters
+            original_additional_terms = additional_terms
+            
+            if selected_database == 'PubMed':
+                # Add PubMed-specific filters
+                full_text_only = request.form.get('full_text_only') == 'on'
+                free_access_only = request.form.get('free_access_only') == 'on'
+                
+                if full_text_only:
+                    additional_terms += " AND full text[sb]"
+                if free_access_only:
+                    additional_terms += " AND free full text[sb]"
+                    
+            elif selected_database == 'Deutsche Nationalbibliothek':
+                # Add DNB-specific filters
+                online_only = request.form.get('online_only') == 'on'
+                academic_only = request.form.get('academic_only') == 'on'
+                
+                if online_only:
+                    additional_terms += " AND elektronische Ressource"
+                if academic_only:
+                    additional_terms += " AND Hochschulschrift"
+            
+            # Add language and publication type filters if specified
+            if language:
+                if selected_database == 'PubMed':
+                    additional_terms += f" AND {language}[lang]"
+                else:
+                    additional_terms += f" AND sprache={language}"
+                    
+            if publication_type:
+                if selected_database == 'PubMed':
+                    additional_terms += f" AND {publication_type}[pt]"
+                else:
+                    additional_terms += f" AND {publication_type}"
+            
+            # Check if we have persons selected
+            persons_list = []
+            try:
+                if advanced_selected_person_ids:
+                    person_ids = json.loads(advanced_selected_person_ids)
+                    
+                    for person_id in person_ids:
+                        person = Person.query.get(int(person_id))
+                        if person:
+                            persons_list.append(person)
+                    
+                    log_message(f"Advanced search includes {len(persons_list)} persons")
+            except Exception as e:
+                log_message(f"Error retrieving persons for advanced search: {str(e)}", level="ERROR")
+                flash(f"Fehler beim Abrufen der Personen: {str(e)}", "danger")
+                return redirect(url_for('search'))
+            
+            # If we have a query or persons selected
+            if search_query or persons_list:
+                # If we only have a direct query with no persons
+                if search_query and not persons_list:
+                    log_message(f"Performing advanced search with direct query only")
+                    return perform_single_search(search_query, selected_database, "", additional_terms, date_range, start_date, end_date)
+                
+                # If we have persons (with or without a direct query)
+                if persons_list:
+                    # Perform search for each person and combine results
+                    all_results = []
+                    
+                    for person in persons_list:
+                        person_query = f"{person.first_name} {person.last_name}"
+                        if search_query:
+                            # If we have a direct query, combine it with the person
+                            combined_query = f"({search_query}) AND ({person_query})"
+                            log_message(f"Searching for: {combined_query}")
+                        else:
+                            # Otherwise just search for the person
+                            combined_query = person_query
+                            log_message(f"Searching for person: {person.name} ({person_query})")
+                        
+                        try:
+                            # Get connector for the selected database
+                            connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+                            
+                            # Execute search
+                            results = search_database(
+                                connector, 
+                                combined_query, 
+                                person_name=person.name,
+                                additional_terms=additional_terms,
+                                date_range=date_range
+                            )
+                            
+                            if results:
+                                all_results.extend(results)
+                                log_message(f"Found {len(results)} results for query with {person.name}")
+                            else:
+                                log_message(f"No results found for query with {person.name}")
+                        except Exception as e:
+                            log_message(f"Error searching for {person.name} in advanced mode: {str(e)}", level="ERROR")
+                    
+                    # Remove duplicates (based on identifier)
+                    seen_identifiers = set()
+                    unique_results = []
+                    for result in all_results:
+                        identifier = result.get('Identifier', '')
+                        if identifier and identifier not in seen_identifiers:
+                            seen_identifiers.add(identifier)
+                            unique_results.append(result)
+                            
+                    # Store results in session and database
+                    if unique_results:
+                        # Save to session
+                        session['search_results'] = unique_results
+                        session.modified = True
+                        
+                        # Save to database
+                        try:
+                            # First save the search query to reference results
+                            person_names = ", ".join([p.name for p in persons_list])
+                            search_name = f"Erweiterte Suche: {search_query or person_names} in {selected_database}"
+                            search_query_obj = SearchQuery(
+                                name=search_name,
+                                query=search_query,
+                                database=selected_database,
+                                additional_terms=original_additional_terms,  # Save original before filters
+                                start_date=start_date,
+                                end_date=end_date,
+                                person_name=person_names,
+                                search_mode='advanced'
+                            )
+                            db.session.add(search_query_obj)
+                            db.session.flush()  # Get ID without committing
+                            
+                            # Now save each result
+                            for result in unique_results:
+                                result_obj = SearchResult(
+                                    query_id=search_query_obj.id,
+                                    database=selected_database,
+                                    result_data=result
+                                )
+                                db.session.add(result_obj)
+                            
+                            db.session.commit()
+                            log_message(f"Advanced search results saved to database. Query ID: {search_query_obj.id}")
+                            
+                        except Exception as e:
+                            db.session.rollback()
+                            log_message(f"Failed to save advanced search results to database: {str(e)}", level="ERROR")
+                            # Continue since we at least have the results in the session
+                        
+                        log_message(f"Advanced search complete. Found {len(unique_results)} unique results.")
+                        flash(f"{len(unique_results)} Ergebnisse gefunden.", "success")
+                        return redirect(url_for('results'))
+                    else:
+                        flash("Keine Ergebnisse für die erweiterte Suche gefunden.", "warning")
+                        log_message("Advanced search returned no results")
+                        return redirect(url_for('search'))
+            else:
+                flash("Bitte geben Sie einen Suchbegriff ein oder wählen Sie mindestens eine Person aus.", "warning")
+                log_message("Advanced search attempted with no query and no persons")
+                return redirect(url_for('search'))
         else:
             # Invalid search mode
-            flash("Invalid search mode selected.", "danger")
+            flash("Ungültiger Suchmodus ausgewählt.", "danger")
             log_message(f"Invalid search mode: {search_mode}", level="ERROR")
     
     # Get persons list from database for dropdowns and person search
@@ -347,15 +522,15 @@ def perform_single_search(search_query, selected_database, person_name, addition
                 # Continue since we at least have the results in the session
             
             log_message(f"Search complete. Found {len(results)} results.")
-            flash(f"Found {len(results)} results.", "success")
+            flash(f"{len(results)} Ergebnisse gefunden.", "success")
             return redirect(url_for('results'))
         else:
-            flash("No results found for your search query.", "warning")
+            flash("Keine Ergebnisse für Ihre Suchanfrage gefunden.", "warning")
             log_message("Search returned no results")
             return redirect(url_for('search'))
             
     except Exception as e:
-        flash(f"Error during search: {str(e)}", "danger")
+        flash(f"Fehler während der Suche: {str(e)}", "danger")
         log_message(f"Search error: {str(e)}", level="ERROR")
         return redirect(url_for('search'))
 
