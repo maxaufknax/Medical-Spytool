@@ -194,8 +194,8 @@ def search():
                 return redirect(url_for('search'))
                 
             if not persons_list:
-                flash("No valid persons found with the provided IDs.", "warning")
-                log_message("Person search attempted with invalid person IDs")
+                flash("Keine gültigen Personen mit den angegebenen IDs gefunden.", "warning")
+                log_message("Personensuche mit ungültigen Personen-IDs versucht")
                 return redirect(url_for('search'))
                 
             # Perform search for each person and combine results
@@ -297,11 +297,11 @@ def search():
                     log_message(f"Failed to save person search results to database: {str(e)}", level="ERROR")
                 
                 log_message(f"Person search complete. Found {len(unique_results)} unique results across {len(persons_list)} persons.")
-                flash(f"Found {len(unique_results)} results for {len(persons_list)} persons.", "success")
+                flash(f"{len(unique_results)} Ergebnisse für {len(persons_list)} Personen gefunden.", "success")
                 return redirect(url_for('results'))
             else:
-                flash("No results found for any of the selected persons.", "warning")
-                log_message("Person search returned no results")
+                flash("Keine Ergebnisse für die ausgewählten Personen gefunden.", "warning")
+                log_message("Personensuche hat keine Ergebnisse zurückgegeben")
         elif search_mode == 'advanced':
             # Advanced database search mode
             search_query = request.form.get('search_query', '')
