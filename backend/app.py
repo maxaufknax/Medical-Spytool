@@ -522,18 +522,27 @@ def api_save_query():
     """API endpoint to save a search query"""
     data = request.json
     
-    if not data or 'query_name' not in data or 'search_query' not in data or 'database' not in data:
+    # Get search mode
+    search_mode = data.get('search_mode', 'simple')
+    
+    # Validate required fields based on search mode
+    if not data or 'query_name' not in data or 'database' not in data:
         return jsonify({"success": False, "message": "Missing required fields"}), 400
+    
+    # For person search mode, the query field might be empty
+    if search_mode != 'person' and ('search_query' not in data or not data['search_query']):
+        return jsonify({"success": False, "message": "Search query is required for this search mode"}), 400
     
     # Create new query object
     new_query = {
         'name': data['query_name'],
-        'query': data['search_query'],
+        'query': data.get('search_query', ''),
         'database': data['database'],
         'additional_terms': data.get('additional_terms', ''),
         'start_date': data.get('start_date', ''),
         'end_date': data.get('end_date', ''),
         'person_name': data.get('person_name', ''),
+        'search_mode': search_mode,
         'saved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
@@ -547,10 +556,14 @@ def api_save_query():
             additional_terms=new_query['additional_terms'],
             start_date=new_query['start_date'],
             end_date=new_query['end_date'],
-            person_name=new_query['person_name']
+            person_name=new_query['person_name'],
+            search_mode=search_mode
         )
         db.session.add(db_query)
         db.session.commit()
+        
+        # Update the new query with the database ID
+        new_query['id'] = db_query.id
         
         # Update the session
         saved_queries = session.get('saved_queries', [])
@@ -558,8 +571,8 @@ def api_save_query():
         session['saved_queries'] = saved_queries
         session.modified = True
         
-        log_message(f"Saved query: {data['query_name']}")
-        return jsonify({"success": True})
+        log_message(f"Saved query: {data['query_name']} (mode: {search_mode})")
+        return jsonify({"success": True, "query": new_query})
     except Exception as e:
         db.session.rollback()
         log_message(f"Failed to save query: {str(e)}", level="ERROR")

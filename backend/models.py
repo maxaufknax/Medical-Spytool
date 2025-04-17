@@ -25,6 +25,7 @@ class SearchQuery(db.Model):
     start_date = db.Column(db.String(20))
     end_date = db.Column(db.String(20))
     person_name = db.Column(db.String(255))
+    search_mode = db.Column(db.String(50), default='simple')  # 'simple', 'database', or 'person'
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship with search results
@@ -41,6 +42,7 @@ class SearchQuery(db.Model):
             'start_date': self.start_date,
             'end_date': self.end_date,
             'person_name': self.person_name,
+            'search_mode': self.search_mode,
             'saved_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
 
