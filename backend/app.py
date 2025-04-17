@@ -248,9 +248,7 @@ def search():
                         titles_seen.add(title)
                         unique_results.append(result)
                 
-                # Save unique results to session
-                session['search_results'] = unique_results
-                session.modified = True
+                # Speichere nur die Query-ID in der Session, nicht die kompletten Ergebnisse
                 
                 # Save to database
                 try:
@@ -273,6 +271,11 @@ def search():
                     )
                     db.session.add(search_query_obj)
                     db.session.flush()  # Get ID without committing
+                    
+                    # Speichere die Query-ID in der Session für späteren Zugriff auf die Ergebnisse
+                    session['current_query_id'] = search_query_obj.id
+                    session['results_count'] = len(unique_results)
+                    session.modified = True
                     
                     # Save each result
                     for result in unique_results:
@@ -665,30 +668,26 @@ def results():
             # Extrahiere die tatsächlichen Ergebnisdaten
             results = [result.result_data for result in results_from_db]
             
-            # Speichere die Ergebnisse für diese Anfrage temporär in der Session für einfacheren Zugriff
-            session['search_results'] = results
+            # WICHTIG: Wir speichern die Ergebnisse NICHT mehr in der Session, 
+            # sondern laden sie bei Bedarf aus der DB
+            # Das vermeidet die Session-Cookie-Größenbeschränkung
             
             log_message(f"Loaded {len(results)} results from database for query ID: {query_id}")
-            return render_template('results.html', results=results)
+            return render_template('results.html', results=results, query_id=query_id)
         except Exception as e:
             log_message(f"Error loading results from database: {str(e)}", level="ERROR")
             flash(f"Fehler beim Laden der Ergebnisse aus der Datenbank: {str(e)}", "danger")
             return redirect(url_for('search'))
     else:
-        # Wenn keine aktuelle Query ID vorhanden ist, versuche zuerst die Ergebnisse direkt aus der Session zu lesen
-        # (für Abwärtskompatibilität)
-        results = session.get('search_results', [])
-        if results:
-            return render_template('results.html', results=results)
-        else:
-            flash("Keine Suchergebnisse gefunden. Bitte führen Sie eine neue Suche durch.", "warning")
-            return redirect(url_for('search'))
+        # Wenn keine aktuelle Query ID vorhanden ist
+        flash("Keine Suchergebnisse gefunden. Bitte führen Sie eine neue Suche durch.", "warning")
+        return redirect(url_for('search'))
 
 @app.route('/analysis')
 def analysis():
     """Display analysis of search results"""
-    # Prüfe, ob wir Ergebnisse in der Session haben oder diese laden müssen
-    if 'search_results' not in session and 'current_query_id' in session:
+    # Direkt aus der Datenbank laden, um Session-Größe zu reduzieren
+    if 'current_query_id' in session:
         query_id = session.get('current_query_id')
         try:
             # Lade alle Ergebnisse für diese Query aus der Datenbank
@@ -696,17 +695,15 @@ def analysis():
             
             # Extrahiere die tatsächlichen Ergebnisdaten
             results = [result.result_data for result in results_from_db]
-            
-            # Speichere die Ergebnisse für diese Anfrage temporär in der Session für einfacheren Zugriff
-            session['search_results'] = results
             log_message(f"Loaded {len(results)} results from database for analysis (query ID: {query_id})")
         except Exception as e:
             log_message(f"Error loading results from database for analysis: {str(e)}", level="ERROR")
             flash(f"Fehler beim Laden der Ergebnisse aus der Datenbank: {str(e)}", "danger")
             return redirect(url_for('search'))
-    
-    # Lade die Ergebnisse aus der Session
-    results = session.get('search_results', [])
+    else:
+        # Wenn keine aktuelle Query ID vorhanden ist
+        flash("Keine Suchergebnisse für die Analyse gefunden. Bitte führen Sie eine neue Suche durch.", "warning")
+        return redirect(url_for('search'))
     
     # Prepare data for analysis if results exist
     analysis_data = {}
@@ -810,8 +807,9 @@ def api_export_results():
     """API endpoint to export search results"""
     format_type = request.form.get('format', 'csv')
     
-    # Prüfe, ob wir Ergebnisse in der Session haben oder diese laden müssen
-    if 'search_results' not in session and 'current_query_id' in session:
+    results = []
+    # Lade Ergebnisse aus der Datenbank anhand der in der Session gespeicherten Query-ID
+    if 'current_query_id' in session:
         query_id = session.get('current_query_id')
         try:
             # Lade alle Ergebnisse für diese Query aus der Datenbank
@@ -819,16 +817,13 @@ def api_export_results():
             
             # Extrahiere die tatsächlichen Ergebnisdaten
             results = [result.result_data for result in results_from_db]
-            
-            # Speichere die Ergebnisse für diese Anfrage temporär in der Session für einfacheren Zugriff
-            session['search_results'] = results
             log_message(f"Loaded {len(results)} results from database for export (query ID: {query_id})")
         except Exception as e:
             log_message(f"Error loading results from database for export: {str(e)}", level="ERROR")
             return jsonify({"success": False, "message": f"Fehler beim Laden der Ergebnisse: {str(e)}"}), 500
-    
-    # Lade die Ergebnisse aus der Session
-    results = session.get('search_results', [])
+    else:
+        # Für Abwärtskompatibilität
+        results = session.get('search_results', [])
     
     if not results:
         return jsonify({"success": False, "message": "Keine Ergebnisse zum Exportieren gefunden."}), 400

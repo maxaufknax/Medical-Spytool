@@ -1,0 +1,193 @@
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Starting gunicorn 23.0.0
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Listening at: http://0.0.0.0:5000 (12054)
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Using worker: sync
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Handling signal: winchd: 12064
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:50 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+Database URL: postgresql://neondb_owner:npg_c9zkTZnui2ej@ep-black-water-a6s0upe0.us-west-2.aws.neon.tech/neondb?sslmode=require
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:51 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+[2025-04-17 13:43:52 +0000] [12054] [INFO] Handling signal: winch
+2025-04-17 13:43:52,907 - MedicalSpy - INFO - Database tables created (if they didn't exist)
+2025-04-17 13:44:45,041 - MedicalSpy - INFO - Starting advanced database search for '' in PubMed, PubMed, Deutsche Nationalbibliothek, PubMed
+2025-04-17 13:44:45,277 - MedicalSpy - INFO - Multiple databases selected, database-specific filters won't be applied
+2025-04-17 13:44:45,497 - MedicalSpy - INFO - Advanced search attempted with no query and no persons
+2025-04-17 13:44:58,809 - MedicalSpy - INFO - Starting simple search for 'anette melk' in PubMed, Deutsche Nationalbibliothek, PubMed, PubMed
+2025-04-17 13:44:59,030 - MedicalSpy - INFO - Searching PubMed for: 'anette melk'
+2025-04-17 13:44:59,250 - MedicalSpy - INFO - Searching PubMed for: anette melk
+2025-04-17 13:44:59,250 - MedicalSpy - INFO - PubMed-Search: anette melk
+2025-04-17 13:44:59,251 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:44:59,253 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:44:59,434 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=anette%2520melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:44:59,450 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:44:59,451 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:44:59,452 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:44:59,866 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105dbb00abccc3d0e5437&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:02,644 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:45:03,146 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:45:03,148 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:03,821 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105dbb00abccc3d0e5437&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:04,681 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:45:04,682 - MedicalSpy - INFO - Found 747 results in PubMed
+2025-04-17 13:45:04,903 - MedicalSpy - INFO - Searching Deutsche Nationalbibliothek for: 'anette melk'
+2025-04-17 13:45:05,123 - MedicalSpy - INFO - Searching Deutsche Nationalbibliothek for: dc.creator all ("anette melk" or "melk, anette")
+2025-04-17 13:45:05,125 - MedicalSpy - INFO - DNB-Search: dc.creator all ("anette melk" or "melk, anette")
+2025-04-17 13:45:05,125 - MedicalSpy - INFO - DNB: Requesting records from position 1 (attempt 1/3)
+2025-04-17 13:45:05,127 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): services.dnb.de:443
+2025-04-17 13:45:05,543 - urllib3.connectionpool - DEBUG - https://services.dnb.de:443 "GET /sru/dnb?version=1.1&operation=searchRetrieve&query=dc.creator+all+%28%22anette+melk%22+or+%22melk%2C+anette%22%29&recordSchema=RDFxml&maximumRecords=1000&startRecord=1 HTTP/1.1" 200 None
+2025-04-17 13:45:05,705 - MedicalSpy - INFO - DNB: Total number of results: 28
+2025-04-17 13:45:05,715 - MedicalSpy - INFO - DNB: Page from 1: 28 results
+2025-04-17 13:45:05,715 - MedicalSpy - INFO - DNB: Retrieved all available results (28 records)
+2025-04-17 13:45:05,715 - MedicalSpy - INFO - DNB: Total search completed: 28 results
+2025-04-17 13:45:05,716 - MedicalSpy - INFO - Found 28 results in Deutsche Nationalbibliothek
+2025-04-17 13:45:05,937 - MedicalSpy - INFO - Searching PubMed for: 'anette melk'
+2025-04-17 13:45:06,159 - MedicalSpy - INFO - Searching PubMed for: anette melk
+2025-04-17 13:45:06,160 - MedicalSpy - INFO - PubMed-Search: anette melk
+2025-04-17 13:45:06,160 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:45:06,162 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:06,333 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=anette%2520melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:45:06,335 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:45:06,335 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:45:06,336 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:06,631 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105e251318d89c0029f9b&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:09,651 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:45:10,152 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:45:10,154 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:10,517 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105e251318d89c0029f9b&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:11,385 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:45:11,391 - MedicalSpy - INFO - Found 747 results in PubMed
+2025-04-17 13:45:11,615 - MedicalSpy - INFO - Searching PubMed for: 'anette melk'
+2025-04-17 13:45:11,835 - MedicalSpy - INFO - Searching PubMed for: anette melk
+2025-04-17 13:45:11,835 - MedicalSpy - INFO - PubMed-Search: anette melk
+2025-04-17 13:45:11,835 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:45:11,838 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:12,004 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=anette%2520melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:45:12,005 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:45:12,005 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:45:12,006 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:12,270 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105e713c83c7ed90d36a1&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:14,824 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:45:15,324 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:45:15,326 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:15,675 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_680105e713c83c7ed90d36a1&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:16,620 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:45:16,624 - MedicalSpy - INFO - Found 747 results in PubMed
+2025-04-17 13:45:17,854 - MedicalSpy - INFO - Search results saved to database. Query ID: 11
+2025-04-17 13:45:18,508 - MedicalSpy - INFO - Multi-database search complete. Found 772 unique results across 4 databases.
+2025-04-17 13:45:19,526 - MedicalSpy - INFO - Loaded 772 results from database for query ID: 11
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/sansio/response.py:232: UserWarning: The 'session' cookie is too large: the value was 137020 bytes but the header required 26 extra bytes. The final size was 137046 bytes but the limit is 4093 bytes. Browsers may silently ignore cookies larger than this.
+  dump_cookie(
+2025-04-17 13:45:41,676 - MedicalSpy - INFO - Starting person search for persons with IDs: 3 in PubMed, PubMed, PubMed, Deutsche Nationalbibliothek
+2025-04-17 13:45:42,042 - MedicalSpy - INFO - Searching for person: Anette Melk (Anette Melk)
+2025-04-17 13:45:42,260 - MedicalSpy - INFO - Searching PubMed for person: Anette Melk (Anette Melk)
+2025-04-17 13:45:42,477 - MedicalSpy - INFO - Searching PubMed for: Anette Melk
+2025-04-17 13:45:42,477 - MedicalSpy - INFO - PubMed-Search: Anette Melk
+2025-04-17 13:45:42,477 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:45:42,479 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:42,701 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=Anette%2520Melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:45:42,703 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:45:42,703 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:45:42,706 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:43,057 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_6801060699f15863b3000f41&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:45,855 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:45:46,355 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:45:46,357 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:46,664 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_6801060699f15863b3000f41&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:47,484 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:45:47,486 - MedicalSpy - INFO - Found 747 results for Anette Melk in PubMed
+2025-04-17 13:45:47,703 - MedicalSpy - INFO - Searching PubMed for person: Anette Melk (Anette Melk)
+2025-04-17 13:45:47,920 - MedicalSpy - INFO - Searching PubMed for: Anette Melk
+2025-04-17 13:45:47,920 - MedicalSpy - INFO - PubMed-Search: Anette Melk
+2025-04-17 13:45:47,920 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:45:47,921 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:48,094 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=Anette%2520Melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:45:48,096 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:45:48,096 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:45:48,098 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:48,411 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_6801060bf70a1eb77c0351b7&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:51,432 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:45:51,933 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:45:51,935 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:52,287 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_6801060bf70a1eb77c0351b7&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:45:53,634 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:45:53,636 - MedicalSpy - INFO - Found 747 results for Anette Melk in PubMed
+2025-04-17 13:45:53,853 - MedicalSpy - INFO - Searching PubMed for person: Anette Melk (Anette Melk)
+2025-04-17 13:45:54,071 - MedicalSpy - INFO - Searching PubMed for: Anette Melk
+2025-04-17 13:45:54,072 - MedicalSpy - INFO - PubMed-Search: Anette Melk
+2025-04-17 13:45:54,073 - MedicalSpy - INFO - PubMed ESearch attempt 1/3
+2025-04-17 13:45:54,074 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:54,246 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/esearch.fcgi?db=pubmed&term=Anette%2520Melk&retmax=1000&retmode=xml&usehistory=y HTTP/1.1" 200 None
+2025-04-17 13:45:54,261 - MedicalSpy - INFO - Using PubMed history server for retrieval
+2025-04-17 13:45:54,261 - MedicalSpy - INFO - PubMed EFetch batch 1/2 attempt 1/3
+2025-04-17 13:45:54,263 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:45:54,564 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_68010612ba815bb2550e6d2d&query_key=1&retstart=0&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:46:00,445 - MedicalSpy - INFO - Retrieved 500 records in batch 1
+2025-04-17 13:46:00,945 - MedicalSpy - INFO - PubMed EFetch batch 2/2 attempt 1/3
+2025-04-17 13:46:00,947 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): eutils.ncbi.nlm.nih.gov:443
+2025-04-17 13:46:01,550 - urllib3.connectionpool - DEBUG - https://eutils.ncbi.nlm.nih.gov:443 "GET /entrez/eutils/efetch.fcgi?db=pubmed&WebEnv=MCID_68010612ba815bb2550e6d2d&query_key=1&retstart=500&retmax=500&retmode=xml HTTP/1.1" 200 None
+2025-04-17 13:46:02,948 - MedicalSpy - INFO - Retrieved 247 records in batch 2
+2025-04-17 13:46:02,950 - MedicalSpy - INFO - Found 747 results for Anette Melk in PubMed
+2025-04-17 13:46:03,169 - MedicalSpy - INFO - Searching Deutsche Nationalbibliothek for person: Anette Melk (Anette Melk)
+2025-04-17 13:46:03,386 - MedicalSpy - INFO - Searching Deutsche Nationalbibliothek for: dc.creator all ("Anette Melk" or "Melk, Anette")
+2025-04-17 13:46:03,386 - MedicalSpy - INFO - DNB-Search: dc.creator all ("Anette Melk" or "Melk, Anette")
+2025-04-17 13:46:03,386 - MedicalSpy - INFO - DNB: Requesting records from position 1 (attempt 1/3)
+2025-04-17 13:46:03,388 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): services.dnb.de:443
+2025-04-17 13:46:04,030 - urllib3.connectionpool - DEBUG - https://services.dnb.de:443 "GET /sru/dnb?version=1.1&operation=searchRetrieve&query=dc.creator+all+%28%22Anette+Melk%22+or+%22Melk%2C+Anette%22%29&recordSchema=RDFxml&maximumRecords=1000&startRecord=1 HTTP/1.1" 200 None
+2025-04-17 13:46:04,143 - MedicalSpy - INFO - DNB: Total number of results: 28
+2025-04-17 13:46:04,149 - MedicalSpy - INFO - DNB: Page from 1: 28 results
+2025-04-17 13:46:04,149 - MedicalSpy - INFO - DNB: Retrieved all available results (28 records)
+2025-04-17 13:46:04,149 - MedicalSpy - INFO - DNB: Total search completed: 28 results
+2025-04-17 13:46:04,150 - MedicalSpy - INFO - Found 28 results for Anette Melk in Deutsche Nationalbibliothek
+2025-04-17 13:46:05,237 - MedicalSpy - INFO - Person search results saved to database. Query ID: 12
+2025-04-17 13:46:05,458 - MedicalSpy - INFO - Person search complete. Found 770 unique results across 1 persons.
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/sansio/response.py:232: UserWarning: The 'session' cookie is too large: the value was 137806 bytes but the header required 26 extra bytes. The final size was 137832 bytes but the limit is 4093 bytes. Browsers may silently ignore cookies larger than this.
+  dump_cookie(
+2025-04-17 13:46:06,782 - MedicalSpy - INFO - Loaded 772 results from database for query ID: 11
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/sansio/response.py:232: UserWarning: The 'session' cookie is too large: the value was 137056 bytes but the header required 26 extra bytes. The final size was 137082 bytes but the limit is 4093 bytes. Browsers may silently ignore cookies larger than this.
+  dump_cookie(

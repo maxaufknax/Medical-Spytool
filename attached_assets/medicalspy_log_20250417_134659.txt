@@ -1,0 +1,128 @@
+[2025-04-17 13:44:45] INFO: Starting advanced database search for '' in PubMed, PubMed, Deutsche Nationalbibliothek, PubMed
+[2025-04-17 13:44:45] INFO: Multiple databases selected, database-specific filters won't be applied
+[2025-04-17 13:44:45] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 13:44:58] INFO: Starting simple search for 'anette melk' in PubMed, Deutsche Nationalbibliothek, PubMed, PubMed
+[2025-04-17 13:44:59] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:45:04] INFO: Found 747 results in PubMed
+[2025-04-17 13:45:04] INFO: Searching Deutsche Nationalbibliothek for: 'anette melk'
+[2025-04-17 13:45:05] INFO: Found 28 results in Deutsche Nationalbibliothek
+[2025-04-17 13:45:05] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:45:11] INFO: Found 747 results in PubMed
+[2025-04-17 13:45:11] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:45:16] INFO: Found 747 results in PubMed
+[2025-04-17 13:45:17] INFO: Search results saved to database. Query ID: 11
+[2025-04-17 13:45:18] INFO: Multi-database search complete. Found 772 unique results across 4 databases.
+[2025-04-17 13:45:19] INFO: Loaded 772 results from database for query ID: 11
+[2025-04-17 13:45:41] INFO: Starting person search for persons with IDs: 3 in PubMed, PubMed, PubMed, Deutsche Nationalbibliothek
+[2025-04-17 13:45:42] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:42] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:47] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:45:47] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:53] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:45:53] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:46:02] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:46:03] INFO: Searching Deutsche Nationalbibliothek for person: Anette Melk (Anette Melk)
+[2025-04-17 13:46:04] INFO: Found 28 results for Anette Melk in Deutsche Nationalbibliothek
+[2025-04-17 13:46:05] INFO: Person search results saved to database. Query ID: 12
+[2025-04-17 13:46:05] INFO: Person search complete. Found 770 unique results across 1 persons.
+[2025-04-17 13:46:06] INFO: Loaded 772 results from database for query ID: 11
+[2025-04-17 13:46:06] INFO: Loaded 772 results from database for query ID: 11
+[2025-04-17 13:46:05] INFO: Person search complete. Found 770 unique results across 1 persons.
+[2025-04-17 13:46:05] INFO: Person search results saved to database. Query ID: 12
+[2025-04-17 13:46:04] INFO: Found 28 results for Anette Melk in Deutsche Nationalbibliothek
+[2025-04-17 13:46:03] INFO: Searching Deutsche Nationalbibliothek for person: Anette Melk (Anette Melk)
+[2025-04-17 13:46:02] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:45:53] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:53] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:45:47] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:47] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:45:42] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:42] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:45:41] INFO: Starting person search for persons with IDs: 3 in PubMed, PubMed, PubMed, Deutsche Nationalbibliothek
+[2025-04-17 13:45:19] INFO: Loaded 772 results from database for query ID: 11
+[2025-04-17 13:45:18] INFO: Multi-database search complete. Found 772 unique results across 4 databases.
+[2025-04-17 13:45:18] INFO: Search results saved to database. Query ID: 11
+[2025-04-17 13:45:16] INFO: Found 747 results in PubMed
+[2025-04-17 13:45:11] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:45:11] INFO: Found 747 results in PubMed
+[2025-04-17 13:45:05] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:45:05] INFO: Found 28 results in Deutsche Nationalbibliothek
+[2025-04-17 13:45:04] INFO: Searching Deutsche Nationalbibliothek for: 'anette melk'
+[2025-04-17 13:45:04] INFO: Found 747 results in PubMed
+[2025-04-17 13:44:59] INFO: Searching PubMed for: 'anette melk'
+[2025-04-17 13:44:58] INFO: Starting simple search for 'anette melk' in PubMed, Deutsche Nationalbibliothek, PubMed, PubMed
+[2025-04-17 13:44:45] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 13:44:45] INFO: Multiple databases selected, database-specific filters won't be applied
+[2025-04-17 13:44:45] INFO: Starting advanced database search for '' in PubMed, PubMed, Deutsche Nationalbibliothek, PubMed
+[2025-04-17 13:40:49] INFO: Starting advanced database search for '' in PubMed, PubMed, Deutsche Nationalbibliothek, PubMed
+[2025-04-17 13:39:34] INFO: Loaded 744 results from database for query ID: 9
+[2025-04-17 13:39:33] INFO: Person search complete. Found 744 unique results across 1 persons.
+[2025-04-17 13:39:33] INFO: Person search results saved to database. Query ID: 10
+[2025-04-17 13:39:32] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:39:27] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:39:26] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:39:21] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:39:21] INFO: Found 747 results for Anette Melk in PubMed
+[2025-04-17 13:39:16] INFO: Searching PubMed for person: Anette Melk (Anette Melk)
+[2025-04-17 13:39:15] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:39:15] INFO: Starting person search for persons with IDs: 3 in PubMed, PubMed, PubMed
+[2025-04-17 13:38:39] INFO: Loaded 744 results from database for query ID: 9
+[2025-04-17 13:38:38] INFO: Multi-database search complete. Found 744 unique results across 3 databases.
+[2025-04-17 13:38:38] INFO: Search results saved to database. Query ID: 9
+[2025-04-17 13:38:36] INFO: Found 747 results in PubMed
+[2025-04-17 13:38:30] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:38:29] INFO: Found 747 results in PubMed
+[2025-04-17 13:38:23] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:38:23] INFO: Found 747 results in PubMed
+[2025-04-17 13:38:18] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:38:18] INFO: Starting simple search for 'Anette Melk' in PubMed, PubMed, PubMed
+[2025-04-17 13:21:15] INFO: Multi-database search complete. Found 772 unique results across 4 databases.
+[2025-04-17 13:21:15] INFO: Search results saved to database. Query ID: 8
+[2025-04-17 13:21:13] INFO: Found 747 results in PubMed
+[2025-04-17 13:21:08] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:21:08] INFO: Found 747 results in PubMed
+[2025-04-17 13:21:02] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:21:02] INFO: Found 28 results in Deutsche Nationalbibliothek
+[2025-04-17 13:21:01] INFO: Searching Deutsche Nationalbibliothek for: 'Anette Melk'
+[2025-04-17 13:21:01] INFO: Found 747 results in PubMed
+[2025-04-17 13:20:56] INFO: Searching PubMed for: 'Anette Melk'
+[2025-04-17 13:20:56] INFO: Starting simple search for 'Anette Melk' in PubMed, Deutsche Nationalbibliothek, PubMed, PubMed
+[2025-04-17 13:04:51] INFO: Search complete. Found 999 results.
+[2025-04-17 13:04:51] INFO: Search results saved to database. Query ID: 7
+[2025-04-17 13:04:40] INFO: Starting simple search for 'markus cornberg' in PubMed
+[2025-04-17 13:04:22] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 13:04:22] INFO: Starting advanced database search for '' in PubMed
+[2025-04-17 13:03:51] INFO: Search complete. Found 28 results.
+[2025-04-17 13:03:51] INFO: Search results saved to database. Query ID: 6
+[2025-04-17 13:03:49] INFO: Starting simple search for 'anette melk' in Deutsche Nationalbibliothek
+[2025-04-17 13:03:31] INFO: Search complete. Found 747 results.
+[2025-04-17 13:03:31] INFO: Search results saved to database. Query ID: 5
+[2025-04-17 13:03:24] INFO: Starting simple search for 'anette melk' in PubMed
+[2025-04-17 13:03:09] INFO: Person search complete. Found 744 unique results across 1 persons.
+[2025-04-17 13:03:09] INFO: Person search results saved to database. Query ID: 4
+[2025-04-17 13:03:08] INFO: Found 747 results for Anette Melk
+[2025-04-17 13:03:03] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:03:00] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 13:00:06] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:00:05] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:59:55] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 12:59:55] INFO: Starting advanced database search for '' in PubMed
+[2025-04-17 12:59:08] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 12:59:07] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:58:21] INFO: Starting simple search for 'Anette Melk' in PubMed
+[2025-04-17 12:51:58] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:51:58] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:51:44] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 12:51:44] INFO: Starting advanced database search for '' in PubMed
+[2025-04-17 12:50:50] INFO: Starting simple search for 'Anette Melk' in PubMed
+[2025-04-17 12:50:41] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:50:41] INFO: Starting person search for persons with IDs: 2 in PubMed
+[2025-04-17 12:50:30] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:50:29] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:47:13] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 12:47:12] INFO: Starting person search for persons with IDs: 3,2 in PubMed
+[2025-04-17 12:37:37] INFO: Deleted query: Search in PubMed: medical school
+[2025-04-17 12:37:33] INFO: Deleted query: Search in Deutsche Nationalbibliothek: medical school
+[2025-04-17 12:31:49] INFO: Search complete. Found 16 results.
+[2025-04-17 12:31:49] INFO: Search results saved to database. Query ID: 3
+[2025-04-17 12:31:47] INFO: Starting simple search for 'meta analysis' in Deutsche Nationalbibliothek
