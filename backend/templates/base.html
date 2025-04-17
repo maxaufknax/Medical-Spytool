@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="de" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MedicalSpy - Scientific Publication Search Tool{% endblock %}</title>
+    <title>{% block title %}MedicalSpy - Wissenschaftliches Publikations-Suchwerkzeug{% endblock %}</title>
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <!-- Font Awesome for icons -->
@@ -28,22 +28,22 @@
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
-                            <i class="fas fa-home me-1"></i> Home
+                            <i class="fas fa-home me-1"></i> Startseite
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}" href="{{ url_for('search') }}">
-                            <i class="fas fa-search me-1"></i> Search
+                            <i class="fas fa-search me-1"></i> Suche
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'results' %}active{% endif %}" href="{{ url_for('results') }}">
-                            <i class="fas fa-list me-1"></i> Results
+                            <i class="fas fa-list me-1"></i> Ergebnisse
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'analysis' %}active{% endif %}" href="{{ url_for('analysis') }}">
-                            <i class="fas fa-chart-bar me-1"></i> Analysis
+                            <i class="fas fa-chart-bar me-1"></i> Analyse
                         </a>
                     </li>
                     <li class="nav-item">
@@ -53,12 +53,12 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">
-                            <i class="fas fa-cog me-1"></i> Settings
+                            <i class="fas fa-cog me-1"></i> Einstellungen
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'log' %}active{% endif %}" href="{{ url_for('log') }}">
-                            <i class="fas fa-clipboard-list me-1"></i> Log
+                            <i class="fas fa-clipboard-list me-1"></i> Protokoll
                         </a>
                     </li>
                 </ul>
@@ -91,7 +91,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <h5>MedicalSpy</h5>
-                    <p class="text-muted">A web-based scientific publication search tool</p>
+                    <p class="text-muted">Ein webbasiertes Suchwerkzeug für wissenschaftliche Publikationen</p>
                 </div>
                 <div class="col-md-6 text-md-end">
                     <p class="mb-0">Version 3.0</p>
