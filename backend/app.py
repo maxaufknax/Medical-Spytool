@@ -930,6 +930,24 @@ def api_save_query():
         log_message(f"Failed to save query: {str(e)}", level="ERROR")
         return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
 
+@app.route('/api/query/<int:query_id>', methods=['GET'])
+def api_get_query(query_id):
+    """API endpoint to get a single saved query"""
+    try:
+        # Find query in database
+        query = db.session.query(SearchQuery).get(query_id)
+        if query:
+            # Convert to dictionary
+            query_dict = query.to_dict()
+            
+            log_message(f"Retrieved query: {query.name}")
+            return jsonify({"success": True, "query": query_dict})
+        
+        return jsonify({"success": False, "message": "Query not found in database"}), 404
+    except Exception as e:
+        log_message(f"Failed to retrieve query: {str(e)}", level="ERROR")
+        return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
+
 @app.route('/api/delete_query/<int:query_id>', methods=['DELETE'])
 def api_delete_query(query_id):
     """API endpoint to delete a saved query"""
