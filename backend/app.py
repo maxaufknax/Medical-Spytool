@@ -447,7 +447,7 @@ def search():
     
     # Get saved queries from database
     try:
-        saved_queries_list = SearchQuery.query.order_by(SearchQuery.id.desc()).limit(20).all()
+        saved_queries_list = db.session.query(SearchQuery).order_by(SearchQuery.id.desc()).limit(20).all()
         saved_queries = [query.to_dict() for query in saved_queries_list]
         session['saved_queries'] = saved_queries  # Update session with latest from database
     except Exception as e:
@@ -485,10 +485,10 @@ def perform_single_search(search_query, selected_database, person_name, addition
             # Save to database
             try:
                 # First save the search query if not already saved
-                search_query_obj = SearchQuery.query.filter_by(
-                    query=search_query,
-                    database=selected_database,
-                    additional_terms=additional_terms
+                search_query_obj = db.session.query(SearchQuery).filter(
+                    SearchQuery.query == search_query,
+                    SearchQuery.database == selected_database,
+                    SearchQuery.additional_terms == additional_terms
                 ).first()
                 
                 if not search_query_obj:
