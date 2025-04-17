@@ -569,6 +569,25 @@ function handleSearchModeChange(event) {
     }
 }
 
+// Function to update database-specific filters based on selected database
+function updateDatabaseSpecificFilters() {
+    const selectedDatabase = document.getElementById('advancedDatabaseSelect').value;
+    const pubmedFilters = document.getElementById('pubmed-specific-filters');
+    const dnbFilters = document.getElementById('dnb-specific-filters');
+    
+    if (selectedDatabase === 'PubMed') {
+        pubmedFilters.style.display = 'block';
+        dnbFilters.style.display = 'none';
+    } else if (selectedDatabase === 'DNB') {
+        pubmedFilters.style.display = 'none';
+        dnbFilters.style.display = 'block';
+    } else {
+        // Hide all database-specific filters for other databases
+        pubmedFilters.style.display = 'none';
+        dnbFilters.style.display = 'none';
+    }
+}
+
 // Initialize the search page
 document.addEventListener('DOMContentLoaded', function() {
     // Load all persons
@@ -642,7 +661,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Initialize person selector
+    // Advanced person search input
+    const advancedPersonSearchInput = document.getElementById('advancedPersonSearchInput');
+    if (advancedPersonSearchInput) {
+        advancedPersonSearchInput.addEventListener('input', function() {
+            handleAdvancedPersonSearch();
+        });
+        
+        // Hide search results when clicking outside
+        document.addEventListener('click', function(event) {
+            const results = document.getElementById('advancedPersonSearchResults');
+            if (results && !advancedPersonSearchInput.contains(event.target) && !results.contains(event.target)) {
+                results.style.display = 'none';
+            }
+        });
+    }
+    
+    // Advanced person search button
+    const advancedPersonSearchButton = document.getElementById('advancedPersonSearchButton');
+    if (advancedPersonSearchButton) {
+        advancedPersonSearchButton.addEventListener('click', function() {
+            handleAdvancedPersonSearch();
+        });
+    }
+    
+    // Database selection change in advanced mode
+    const advancedDatabaseSelect = document.getElementById('advancedDatabaseSelect');
+    if (advancedDatabaseSelect) {
+        advancedDatabaseSelect.addEventListener('change', updateDatabaseSpecificFilters);
+        // Initialize filter visibility on page load
+        updateDatabaseSpecificFilters();
+    }
+    
+    // Initialize person selectors
     updateSelectedPersonsDisplay();
     
     // Enable tooltips
@@ -651,3 +702,143 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 });
+
+// Handle advanced person search input
+function handleAdvancedPersonSearch() {
+    const input = document.getElementById('advancedPersonSearchInput');
+    const results = document.getElementById('advancedPersonSearchResults');
+    
+    if (!input || !results) return;
+    
+    const searchTerm = input.value.trim().toLowerCase();
+    
+    // Clear previous results
+    results.innerHTML = '';
+    
+    if (searchTerm.length < 2) {
+        results.style.display = 'none';
+        return;
+    }
+    
+    // Filter persons
+    const matches = allPersons.filter(person => {
+        return person.name.toLowerCase().includes(searchTerm) ||
+            person.first_name.toLowerCase().includes(searchTerm) ||
+            person.last_name.toLowerCase().includes(searchTerm);
+    });
+    
+    if (matches.length === 0) {
+        results.innerHTML = '<div class="dropdown-item text-muted">Keine Ergebnisse gefunden</div>';
+    } else {
+        matches.forEach(person => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'dropdown-item';
+            item.textContent = `${person.name} (${person.first_name} ${person.last_name})`;
+            
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                selectAdvancedPerson(person);
+                input.value = '';
+                results.style.display = 'none';
+            });
+            
+            results.appendChild(item);
+        });
+    }
+    
+    results.style.display = 'block';
+}
+
+// Handle selection of a person in advanced search mode
+function selectAdvancedPerson(person) {
+    // Add to selected persons list if not already there
+    const selectedPersons = getSelectedAdvancedPersons();
+    
+    // Check if already selected
+    if (selectedPersons.find(p => p.id === person.id)) {
+        return; // Already selected
+    }
+    
+    // Add to list
+    selectedPersons.push(person);
+    
+    // Update the hidden input
+    document.getElementById('advancedSelectedPersonIds').value = JSON.stringify(selectedPersons.map(p => p.id));
+    
+    // Update display
+    updateAdvancedSelectedPersonsDisplay();
+}
+
+// Get list of currently selected persons in advanced search
+function getSelectedAdvancedPersons() {
+    const idsField = document.getElementById('advancedSelectedPersonIds');
+    
+    if (idsField && idsField.value) {
+        try {
+            const ids = JSON.parse(idsField.value);
+            return ids.map(id => {
+                return allPersons.find(p => p.id == id); // Use loose equality to handle numeric/string IDs
+            }).filter(p => p); // Filter out any undefined entries
+        } catch (e) {
+            console.error('Error parsing selected person IDs:', e);
+            return [];
+        }
+    }
+    
+    return [];
+}
+
+// Update the display of selected persons in advanced search
+function updateAdvancedSelectedPersonsDisplay() {
+    const container = document.getElementById('advancedSelectedPersonsContainer');
+    const noPersonsAlert = document.getElementById('advancedNoPersonsSelectedAlert');
+    
+    if (!container) return;
+    
+    const selectedPersons = getSelectedAdvancedPersons();
+    
+    // Clear existing tags (except the alert)
+    Array.from(container.children).forEach(child => {
+        if (child !== noPersonsAlert) {
+            container.removeChild(child);
+        }
+    });
+    
+    // Show/hide the "no persons" alert
+    if (noPersonsAlert) {
+        noPersonsAlert.style.display = selectedPersons.length ? 'none' : 'block';
+    }
+    
+    // Add tags for each selected person
+    selectedPersons.forEach(person => {
+        const tag = document.createElement('div');
+        tag.className = 'badge bg-primary me-2 mb-2 p-2';
+        tag.innerHTML = `
+            ${person.name}
+            <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove" 
+                   data-id="${person.id}" style="font-size: 0.5rem;"></button>
+        `;
+        
+        // Add event listener to remove button
+        tag.querySelector('.btn-close').addEventListener('click', function() {
+            removeAdvancedPerson(this.dataset.id);
+        });
+        
+        container.appendChild(tag);
+    });
+}
+
+// Remove a person from the advanced search selection
+function removeAdvancedPerson(personId) {
+    let selectedPersons = getSelectedAdvancedPersons();
+    
+    // Remove the person with matching ID
+    selectedPersons = selectedPersons.filter(p => p.id != personId); // Use loose equality
+    
+    // Update the hidden input
+    document.getElementById('advancedSelectedPersonIds').value = JSON.stringify(selectedPersons.map(p => p.id));
+    
+    // Update display
+    updateAdvancedSelectedPersonsDisplay();
+}
