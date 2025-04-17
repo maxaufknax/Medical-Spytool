@@ -272,7 +272,7 @@ def search():
     
     # Get saved queries from database
     try:
-        saved_queries_list = SearchQuery.query.order_by(SearchQuery.created_at.desc()).limit(20).all()
+        saved_queries_list = SearchQuery.query.order_by(SearchQuery.id.desc()).limit(20).all()
         saved_queries = [query.to_dict() for query in saved_queries_list]
         session['saved_queries'] = saved_queries  # Update session with latest from database
     except Exception as e:

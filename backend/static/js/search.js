@@ -560,8 +560,10 @@ function handleSearchModeChange(event) {
     // Update the search mode
     if (tabId === 'simple-search-tab') {
         searchModeField.value = 'simple';
-    } else if (tabId === 'database-search-tab') {
-        searchModeField.value = 'database';
+    } else if (tabId === 'advanced-search-tab') {
+        searchModeField.value = 'advanced';
+        // Show/hide database-specific filters based on selected database
+        updateDatabaseSpecificFilters();
     } else if (tabId === 'person-search-tab') {
         searchModeField.value = 'person';
     }

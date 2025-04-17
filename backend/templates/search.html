@@ -23,13 +23,13 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="database-search-tab" data-bs-toggle="tab" href="#database-search" role="tab">
-                            <i class="fas fa-database me-1"></i> Datenbank-Suche
+                        <a class="nav-link" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
+                            <i class="fas fa-users me-1"></i> Erweiterte Personensuche
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
-                            <i class="fas fa-users me-1"></i> Personensuche
+                        <a class="nav-link" id="advanced-search-tab" data-bs-toggle="tab" href="#advanced-search" role="tab">
+                            <i class="fas fa-database me-1"></i> Erweiterte Datenbanksuche
                         </a>
                     </li>
                 </ul>
@@ -66,54 +66,150 @@
                             </div>
                         </div>
                         
-                        <!-- Database Search Tab -->
-                        <div class="tab-pane fade" id="database-search" role="tabpanel">
+                        <!-- Advanced Database Search Tab -->
+                        <div class="tab-pane fade" id="advanced-search" role="tabpanel">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> 
+                                Die erweiterte Datenbanksuche ermöglicht die umfassendste Konfiguration und kombiniert Person- und Datenbanksuche.
+                            </div>
+                            
+                            <!-- Person Selection -->
                             <div class="mb-3">
-                                <label for="databaseSearchQuery" class="form-label">Erweiterte Suchquery</label>
+                                <label class="form-label">Personen für die Suche (Optional)</label>
+                                <div id="advancedSelectedPersonsContainer" class="mb-2">
+                                    <!-- Selected persons will be displayed here as tags -->
+                                    <div class="alert alert-light" id="advancedNoPersonsSelectedAlert">
+                                        Keine Personen ausgewählt. Die Suche wird ohne Personenfilter durchgeführt.
+                                    </div>
+                                </div>
+                                
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="advancedPersonSearchInput" placeholder="Tippen Sie, um Personen zu suchen..." autocomplete="off">
+                                    <button class="btn btn-outline-secondary" type="button" id="advancedPersonSearchButton">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Dropdown for person results -->
+                                <div id="advancedPersonSearchResults" class="dropdown-menu w-100" style="display: none; max-height: 200px; overflow-y: auto;">
+                                    <!-- Results will be populated via JavaScript -->
+                                </div>
+                                
+                                <!-- Hidden input to store selected person IDs -->
+                                <input type="hidden" id="advancedSelectedPersonIds" name="advanced_selected_person_ids">
+                            </div>
+                            
+                            <hr class="my-3">
+
+                            <!-- Query and Database Selection -->
+                            <div class="mb-3">
+                                <label for="advancedSearchQuery" class="form-label">Suchbegriff</label>
                                 <div class="input-group">
-                                    <input type="text" class="form-control" id="databaseSearchQuery" name="search_query" placeholder="Erweiterte Suchbegriffe für detaillierte Datenbanksuche">
-                                    <button type="submit" class="btn btn-primary" id="databaseSearchButton">
+                                    <input type="text" class="form-control" id="advancedSearchQuery" name="search_query" placeholder="Suchbegriffe für detaillierte Datenbanksuche">
+                                    <button type="submit" class="btn btn-primary" id="advancedSearchButton">
                                         <i class="fas fa-search me-1"></i> Suchen
                                     </button>
                                 </div>
-                                <div class="form-text">Vollständige Datenbanksuche mit erweiterten Filtern und Optionen.</div>
+                                <div class="form-text">Sie können auch ohne Suchbegriff suchen, wenn Personen ausgewählt sind.</div>
                             </div>
                             
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label for="databaseSelect" class="form-label">Datenbank</label>
-                                    <select class="form-select" id="databaseSelect" name="database">
+                                    <label for="advancedDatabaseSelect" class="form-label">Datenbank</label>
+                                    <select class="form-select" id="advancedDatabaseSelect" name="database">
                                         {% for db in databases %}
                                         <option value="{{ db }}">{{ db }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="dbPersonSelect" class="form-label">Personenauswahl (Optional)</label>
-                                    <select class="form-select" id="dbPersonSelect" name="person_name">
-                                        <option value="">-- Keine --</option>
-                                        {% for person in persons %}
-                                        <option value="{{ person.name }}">{{ person.name }}</option>
-                                        {% endfor %}
-                                    </select>
+                                    <label for="advancedAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe</label>
+                                    <input type="text" class="form-control" id="advancedAdditionalTerms" name="additional_terms" placeholder="Zusätzliche Begriffe (mit AND verknüpft)">
                                 </div>
                             </div>
                             
-                            <div class="row mb-3">
-                                <div class="col-md-12">
-                                    <label for="dbAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe</label>
-                                    <input type="text" class="form-control" id="dbAdditionalTerms" name="additional_terms" placeholder="Zusätzliche Begriffe (mit AND verknüpft)">
+                            <!-- Database-specific Filters -->
+                            <div id="database-specific-filters" class="border rounded p-3 mb-3">
+                                <h6 class="mb-3">Datenbankspezifische Filter</h6>
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="advancedStartDate" class="form-label">Startdatum</label>
+                                        <input type="date" class="form-control date-picker" id="advancedStartDate" name="start_date">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="advancedEndDate" class="form-label">Enddatum</label>
+                                        <input type="date" class="form-control date-picker" id="advancedEndDate" name="end_date">
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <div class="row mb-3">
-                                <div class="col-md-6">
-                                    <label for="dbStartDate" class="form-label">Startdatum</label>
-                                    <input type="date" class="form-control date-picker" id="dbStartDate" name="start_date">
+                                
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="advancedLanguage" class="form-label">Sprache</label>
+                                        <select class="form-select" id="advancedLanguage" name="language">
+                                            <option value="">Alle Sprachen</option>
+                                            <option value="eng">Englisch</option>
+                                            <option value="ger">Deutsch</option>
+                                            <option value="fre">Französisch</option>
+                                            <option value="spa">Spanisch</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="advancedPublicationType" class="form-label">Publikationstyp</label>
+                                        <select class="form-select" id="advancedPublicationType" name="publication_type">
+                                            <option value="">Alle Typen</option>
+                                            <option value="journal">Journal-Artikel</option>
+                                            <option value="review">Review</option>
+                                            <option value="book">Buch</option>
+                                            <option value="conference">Konferenzbeitrag</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="dbEndDate" class="form-label">Enddatum</label>
-                                    <input type="date" class="form-control date-picker" id="dbEndDate" name="end_date">
+                                
+                                <!-- PubMed-specific filters -->
+                                <div id="pubmed-specific-filters" class="border-top pt-3 mt-3">
+                                    <h6 class="mb-2">PubMed-spezifische Filter</h6>
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="pubmedFullTextFilter" name="full_text_only">
+                                                <label class="form-check-label" for="pubmedFullTextFilter">
+                                                    Nur Volltext-Artikel
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="pubmedFreeAccessFilter" name="free_access_only">
+                                                <label class="form-check-label" for="pubmedFreeAccessFilter">
+                                                    Nur freier Zugang
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- DNB-specific filters -->
+                                <div id="dnb-specific-filters" class="border-top pt-3 mt-3">
+                                    <h6 class="mb-2">DNB-spezifische Filter</h6>
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="dnbOnlineFilter" name="online_only">
+                                                <label class="form-check-label" for="dnbOnlineFilter">
+                                                    Nur Online-Ressourcen
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="dnbAcademicFilter" name="academic_only">
+                                                <label class="form-check-label" for="dnbAcademicFilter">
+                                                    Nur akademische Publikationen
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -226,33 +322,25 @@
             </div>
         </div>
         
-        <!-- Person Management -->
+        <!-- Quick Links -->
         <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Personenverwaltung</h5>
-                <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#addPersonModal">
-                    <i class="fas fa-user-plus"></i> Person hinzufügen
-                </button>
+            <div class="card-header">
+                <h5 class="mb-0">Schnell-Links</h5>
             </div>
             <div class="card-body">
-                {% if persons %}
-                <div class="list-group" id="persons-list">
-                    {% for person in persons %}
-                    <div class="list-group-item list-group-item-action" 
-                         data-id="{{ person.id }}"
-                         data-name="{{ person.name }}"
-                         data-first-name="{{ person.first_name }}"
-                         data-last-name="{{ person.last_name }}">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{ person.name }}</h6>
-                        </div>
-                        <p class="mb-1"><small>{{ person.first_name }} {{ person.last_name }}</small></p>
-                    </div>
-                    {% endfor %}
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('persons') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-users me-1"></i> Personenverwaltung
+                    </a>
+                    <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cog me-1"></i> Einstellungen
+                    </a>
                 </div>
-                {% else %}
-                <p class="text-muted">Keine Personen hinzugefügt. Klicken Sie auf "Person hinzufügen", um einen neuen Eintrag zu erstellen.</p>
-                {% endif %}
+                <hr />
+                <p class="small text-muted">
+                    Nutzen Sie die Personenverwaltung, um Personen für die Suche zu verwalten. 
+                    Diese können dann in der Personensuche und der erweiterten Datenbanksuche ausgewählt werden.
+                </p>
             </div>
         </div>
     </div>
