@@ -802,10 +802,7 @@ class PubMedConnector(DatabaseConnector):
 
                 pub_types_str = ", ".join(pub_types) if pub_types else "No publication types"
 
-                # Get citation count
-                citation_count = self.get_citation_count(pmid) if pmid != "No PMID" else "N/A"
-
-                # Create result entry
+                # Create result entry without citation count initially
                 result = {
                     "Name": "",  # Will be filled by the search function
                     "Titel": title,
@@ -817,7 +814,7 @@ class PubMedConnector(DatabaseConnector):
                     "PubMed-ID": pmid,
                     "DOI": doi,
                     "Publikationstypen": pub_types_str,
-                    "Zitationsanzahl": citation_count,
+                    "Zitationsanzahl": "Loading...",  # Will be updated later
                     "Datenbank": "PubMed"
                 }
 

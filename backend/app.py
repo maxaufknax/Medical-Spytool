@@ -44,6 +44,7 @@ database_url = os.environ.get('DATABASE_URL')
 print(f"Database URL: {database_url}")
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['TIMEOUT'] = 300  # Increase timeout to 5 minutes
 db.init_app(app)
 
 # Create database tables if they don't exist
