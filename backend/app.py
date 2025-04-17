@@ -310,38 +310,45 @@ def search():
             # Apply database-specific filters
             original_additional_terms = additional_terms
             
-            if selected_database == 'PubMed':
-                # Add PubMed-specific filters
-                full_text_only = request.form.get('full_text_only') == 'on'
-                free_access_only = request.form.get('free_access_only') == 'on'
-                
-                if full_text_only:
-                    additional_terms += " AND full text[sb]"
-                if free_access_only:
-                    additional_terms += " AND free full text[sb]"
-                    
-            elif selected_database == 'Deutsche Nationalbibliothek':
-                # Add DNB-specific filters
-                online_only = request.form.get('online_only') == 'on'
-                academic_only = request.form.get('academic_only') == 'on'
-                
-                if online_only:
-                    additional_terms += " AND elektronische Ressource"
-                if academic_only:
-                    additional_terms += " AND Hochschulschrift"
-            
-            # Add language and publication type filters if specified
-            if language:
+            # In multi-database mode, we need to manage filters per database
+            # but we'll only apply database-specific filters if there's just one database selected
+            if len(selected_databases) == 1:
+                selected_database = selected_databases[0]
                 if selected_database == 'PubMed':
-                    additional_terms += f" AND {language}[lang]"
-                else:
-                    additional_terms += f" AND sprache={language}"
+                    # Add PubMed-specific filters
+                    full_text_only = request.form.get('full_text_only') == 'on'
+                    free_access_only = request.form.get('free_access_only') == 'on'
                     
-            if publication_type:
-                if selected_database == 'PubMed':
-                    additional_terms += f" AND {publication_type}[pt]"
-                else:
-                    additional_terms += f" AND {publication_type}"
+                    if full_text_only:
+                        additional_terms += " AND full text[sb]"
+                    if free_access_only:
+                        additional_terms += " AND free full text[sb]"
+                        
+                elif selected_database == 'Deutsche Nationalbibliothek':
+                    # Add DNB-specific filters
+                    online_only = request.form.get('online_only') == 'on'
+                    academic_only = request.form.get('academic_only') == 'on'
+                    
+                    if online_only:
+                        additional_terms += " AND elektronische Ressource"
+                    if academic_only:
+                        additional_terms += " AND Hochschulschrift"
+                
+                # Add language and publication type filters if specified
+                if language:
+                    if selected_database == 'PubMed':
+                        additional_terms += f" AND {language}[lang]"
+                    else:
+                        additional_terms += f" AND sprache={language}"
+                        
+                if publication_type:
+                    if selected_database == 'PubMed':
+                        additional_terms += f" AND {publication_type}[pt]"
+                    else:
+                        additional_terms += f" AND {publication_type}"
+            else:
+                # Wenn mehrere Datenbanken ausgewählt sind, können wir keine datenbankspezifischen Filter anwenden
+                log_message("Multiple databases selected, database-specific filters won't be applied")
             
             # Check if we have persons selected
             persons_list = []
@@ -423,11 +430,6 @@ def search():
                             
                     # Store results in session and database
                     if unique_results:
-                        # Speichere nur die Query-ID in der Session, nicht die kompletten Ergebnisse
-                        session['current_query_id'] = search_query_obj.id
-                        session['results_count'] = len(unique_results)
-                        session.modified = True
-                        
                         # Save to database
                         try:
                             # First save the search query to reference results
@@ -446,6 +448,11 @@ def search():
                             )
                             db.session.add(search_query_obj)
                             db.session.flush()  # Get ID without committing
+                            
+                            # Speichere nur die Query-ID in der Session, nicht die kompletten Ergebnisse
+                            session['current_query_id'] = search_query_obj.id
+                            session['results_count'] = len(unique_results)
+                            session.modified = True
                             
                             # Now save each result
                             for result in unique_results:
