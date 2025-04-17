@@ -1,0 +1,80 @@
+[2025-04-17 13:00:06] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 13:00:05] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:59:55] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 12:59:55] INFO: Starting advanced database search for '' in PubMed
+[2025-04-17 12:59:08] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 12:59:07] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:58:21] INFO: Starting simple search for 'Anette Melk' in PubMed
+[2025-04-17 12:51:58] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:51:58] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:51:44] INFO: Advanced search attempted with no query and no persons
+[2025-04-17 12:51:44] INFO: Starting advanced database search for '' in PubMed
+[2025-04-17 12:50:50] INFO: Starting simple search for 'Anette Melk' in PubMed
+[2025-04-17 12:50:41] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:50:41] INFO: Starting person search for persons with IDs: 2 in PubMed
+[2025-04-17 12:50:30] ERROR: Error retrieving persons: 'int' object is not iterable
+[2025-04-17 12:50:29] INFO: Starting person search for persons with IDs: 3 in PubMed
+[2025-04-17 12:47:13] INFO: Searching for person: Anette Melk (Anette Melk)
+[2025-04-17 12:47:12] INFO: Starting person search for persons with IDs: 3,2 in PubMed
+[2025-04-17 12:37:37] INFO: Deleted query: Search in PubMed: medical school
+[2025-04-17 12:37:33] INFO: Deleted query: Search in Deutsche Nationalbibliothek: medical school
+[2025-04-17 12:31:49] INFO: Search complete. Found 16 results.
+[2025-04-17 12:31:49] INFO: Search results saved to database. Query ID: 3
+[2025-04-17 12:31:47] INFO: Starting simple search for 'meta analysis' in Deutsche Nationalbibliothek
+[2025-04-17 12:31:29] INFO: Search complete. Found 8 results.
+[2025-04-17 12:31:28] INFO: Search results saved to database. Query ID: 2
+[2025-04-17 12:31:27] INFO: Starting simple search for 'medical school' in Deutsche Nationalbibliothek
+[2025-04-17 12:30:33] INFO: Starting simple search for 'meta analysis' in PubMed
+[2025-04-17 12:30:21] INFO: Search complete. Found 1 results.
+[2025-04-17 12:30:21] INFO: Search results saved to database. Query ID: 1
+[2025-04-17 12:30:17] INFO: Starting simple search for 'medical school' in PubMed
+[2025-04-17 12:29:32] INFO: Added person: Anette Melk
+[2025-04-17 12:29:18] INFO: Deleted person: Prof. Dr. Dr. Anette Melk
+[2025-04-17 12:23:12] ERROR: Error retrieving saved queries from database: (psycopg2.errors.UndefinedColumn) column search_queries.search_mode does not exist
+LINE 1: ...ueries.person_name AS search_queries_person_name, search_que...
+                                                             ^
+
+[SQL: SELECT search_queries.id AS search_queries_id, search_queries.name AS search_queries_name, search_queries.query AS search_queries_query, search_queries.database AS search_queries_database, search_queries.additional_terms AS search_queries_additional_terms, search_queries.start_date AS search_queries_start_date, search_queries.end_date AS search_queries_end_date, search_queries.person_name AS search_queries_person_name, search_queries.search_mode AS search_queries_search_mode, search_queries.created_at AS search_queries_created_at 
+FROM search_queries ORDER BY search_queries.id DESC 
+ LIMIT %(param_1)s]
+[parameters: {'param_1': 20}]
+(Background on this error at: https://sqlalche.me/e/20/f405)
+[2025-04-17 12:13:37] INFO: Search complete. Found 200 results.
+[2025-04-17 12:13:37] ERROR: Failed to save search results to database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'filter_by'
+[2025-04-17 12:13:35] INFO: Starting simple search for 'meta' in Deutsche Nationalbibliothek
+[2025-04-17 12:13:27] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:13:25] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:13:24] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:13:18] INFO: Search complete. Found 200 results.
+[2025-04-17 12:13:12] INFO: Starting simple search for 'study' in Deutsche Nationalbibliothek
+[2025-04-17 12:12:10] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:11:36] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:10:30] INFO: Starting simple search for 'meta' in PubMed
+[2025-04-17 12:10:25] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:10:22] INFO: Added person: Prof. Dr. Markus Cornberg
+[2025-04-17 12:10:00] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 12:09:37] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:53:19] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:53:19] ERROR: Error retrieving persons from database: (psycopg2.OperationalError) SSL connection has been closed unexpectedly
+
+[SQL: SELECT persons.id AS persons_id, persons.name AS persons_name, persons.first_name AS persons_first_name, persons.last_name AS persons_last_name, persons.created_at AS persons_created_at 
+FROM persons]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2025-04-17 11:46:46] INFO: Searching for person: Prof. Dr. Dr. Anette Melk (Anette Melk)
+[2025-04-17 11:46:46] INFO: Starting person search for persons with IDs: 1 in PubMed
+[2025-04-17 11:46:25] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:45:48] INFO: Searching for person: Prof. Dr. Dr. Anette Melk (Anette Melk)
+[2025-04-17 11:45:48] INFO: Starting person search for persons with IDs: 1 in PubMed
+[2025-04-17 11:45:35] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:45:25] INFO: Added person: Prof. Dr. Dr. Anette Melk
+[2025-04-17 11:45:01] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:44:43] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:44:04] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:37:31] ERROR: Error retrieving saved queries from database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'order_by'
+[2025-04-17 11:18:18] INFO: Search complete. Found 200 results.
+[2025-04-17 11:18:18] ERROR: Failed to save search results to database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'filter_by'
+[2025-04-17 11:18:16] INFO: Starting search for 'meta' in Deutsche Nationalbibliothek
+[2025-04-17 11:17:20] INFO: Starting search for 'meta' in PubMed
+[2025-04-17 11:16:55] INFO: Search complete. Found 200 results.
+[2025-04-17 11:16:55] ERROR: Failed to save search results to database: Neither 'InstrumentedAttribute' object nor 'Comparator' object associated with SearchQuery.query has an attribute 'filter_by'
+[2025-04-17 11:16:53] INFO: Starting search for 'meta' in Deutsche Nationalbibliothek
