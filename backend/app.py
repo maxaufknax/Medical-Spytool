@@ -163,12 +163,16 @@ def search():
             persons_list = []
             
             try:
-                # Try to parse as JSON first (for updated client code)
-                try:
-                    person_ids = json.loads(selected_person_ids)
-                except json.JSONDecodeError:
-                    # Fallback to comma-separated (for backward compatibility)
-                    person_ids = selected_person_ids.split(',')
+                # Handle single ID case
+                if isinstance(selected_person_ids, (int, str)):
+                    person_ids = [int(selected_person_ids)]
+                else:
+                    # Try to parse as JSON first (for updated client code)
+                    try:
+                        person_ids = json.loads(selected_person_ids)
+                    except json.JSONDecodeError:
+                        # Fallback to comma-separated (for backward compatibility)
+                        person_ids = selected_person_ids.split(',')
                 
                 for person_id in person_ids:
                     person = db.session.query(Person).get(int(person_id))
