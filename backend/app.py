@@ -822,8 +822,8 @@ def api_export_results():
             log_message(f"Error loading results from database for export: {str(e)}", level="ERROR")
             return jsonify({"success": False, "message": f"Fehler beim Laden der Ergebnisse: {str(e)}"}), 500
     else:
-        # Für Abwärtskompatibilität
-        results = session.get('search_results', [])
+        # Wenn keine aktuelle Query ID vorhanden ist
+        return jsonify({"success": False, "message": "Keine Suchergebnisse zum Exportieren gefunden."}), 400
     
     if not results:
         return jsonify({"success": False, "message": "Keine Ergebnisse zum Exportieren gefunden."}), 400
