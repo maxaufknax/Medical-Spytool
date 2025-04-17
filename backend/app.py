@@ -41,16 +41,16 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
 # Configure database
 database_url = os.environ.get('DATABASE_URL')
-print(f"Database URL: {database_url}")
+logger.info(f"Verbindung zur Datenbank wird hergestellt...")
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['TIMEOUT'] = 300  # Increase timeout to 5 minutes
+app.config['TIMEOUT'] = 300  # Timeout auf 5 Minuten erhöhen
 db.init_app(app)
 
 # Create database tables if they don't exist
 with app.app_context():
     db.create_all()
-    logger.info("Database tables created (if they didn't exist)")
+    logger.info("Datenbanktabellen wurden erstellt (falls sie noch nicht existierten)")
 
 # Initialize session variables if not present
 @app.before_request
@@ -760,12 +760,12 @@ def settings():
             # Save to database
             Setting.save_settings_dict(updated_settings)
             
-            flash("Settings updated successfully!", "success")
-            log_message("Settings updated in session and database")
+            flash("Einstellungen erfolgreich aktualisiert!", "success")
+            log_message("Einstellungen in Session und Datenbank aktualisiert")
         except Exception as e:
             db.session.rollback()
-            flash(f"Settings saved to session but failed to save to database: {str(e)}", "warning")
-            log_message(f"Failed to save settings to database: {str(e)}", level="ERROR")
+            flash(f"Einstellungen wurden in der Session gespeichert, konnten aber nicht in der Datenbank gespeichert werden: {str(e)}", "warning")
+            log_message(f"Fehler beim Speichern der Einstellungen in der Datenbank: {str(e)}", level="ERROR")
         
     return render_template('settings.html', settings=session.get('settings', {}))
 
