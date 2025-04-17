@@ -316,7 +316,7 @@ def search():
                     person_ids = json.loads(advanced_selected_person_ids)
                     
                     for person_id in person_ids:
-                        person = Person.query.get(int(person_id))
+                        person = db.session.query(Person).get(int(person_id))
                         if person:
                             persons_list.append(person)
                     

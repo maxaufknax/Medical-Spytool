@@ -97,7 +97,7 @@ class Setting(db.Model):
     def get_settings_dict(cls):
         """Get all settings as a dictionary"""
         settings = {}
-        for setting in cls.query.all():
+        for setting in db.session.query(cls).all():
             # Handle special cases for non-string values
             if setting.key == 'unique_filenames':
                 settings[setting.key] = setting.value.lower() == 'true'
@@ -136,7 +136,7 @@ class Setting(db.Model):
                 value_str = str(value)
                 
             # Update or create
-            setting = cls.query.filter_by(key=key).first()
+            setting = db.session.query(cls).filter_by(key=key).first()
             if setting:
                 setting.value = value_str
             else:
@@ -166,7 +166,7 @@ class LogEntry(db.Model):
     @classmethod
     def get_logs(cls, limit=100):
         """Get the latest log entries"""
-        logs = cls.query.order_by(cls.timestamp.desc()).limit(limit).all()
+        logs = db.session.query(cls).order_by(cls.timestamp.desc()).limit(limit).all()
         return [f"[{log.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {log.level}: {log.message}" for log in logs]
         
     @classmethod
@@ -179,5 +179,5 @@ class LogEntry(db.Model):
     @classmethod
     def clear_logs(cls):
         """Clear all log entries"""
-        cls.query.delete()
+        db.session.query(cls).delete()
         db.session.commit()
