@@ -512,7 +512,7 @@ function showPersonSuggestions(suggestions, inputElement) {
     suggestions.forEach(person => {
         const div = document.createElement('div');
         div.className = 'suggestion-item';
-        div.textContent = `${person.first_name} ${person.last_name}`;
+        div.textContent = person.name;  // Use the full display name instead
         div.addEventListener('click', () => {
             selectPerson(person, inputElement);
             container.style.display = 'none';
@@ -524,7 +524,7 @@ function showPersonSuggestions(suggestions, inputElement) {
 }
 
 function selectPerson(person, inputElement) {
-    inputElement.value = `${person.first_name} ${person.last_name}`;
+    inputElement.value = person.name;  // Use the full display name
     selectedPersons.add(person.id);
 
     // Update hidden field if it exists
