@@ -59,7 +59,7 @@ def before_request():
     if 'saved_queries' not in session:
         # Load saved queries from database
         with app.app_context():
-            queries = SearchQuery.query.all()
+            queries = db.session.query(SearchQuery).all()
             session['saved_queries'] = [query.to_dict() for query in queries]
     if 'settings' not in session:
         # Load settings from database
@@ -85,7 +85,7 @@ def index():
 def persons():
     """Render the persons management page"""
     with app.app_context():
-        persons_list = Person.query.all()
+        persons_list = db.session.query(Person).all()
         persons = [person.to_dict() for person in persons_list]
     return render_template('persons.html', persons=persons)
 
@@ -166,7 +166,7 @@ def search():
                     person_ids = selected_person_ids.split(',')
                 
                 for person_id in person_ids:
-                    person = Person.query.get(int(person_id))
+                    person = db.session.query(Person).get(int(person_id))
                     if person:
                         persons_list.append(person)
             except Exception as e:
