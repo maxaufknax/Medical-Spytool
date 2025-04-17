@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}MedicalSpy - Settings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-cog me-2"></i>Application Settings</h1>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Configure Settings</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('settings') }}" method="post">
+            <!-- API Keys -->
+            <div class="mb-4">
+                <h5>API Keys</h5>
+                <div class="mb-3">
+                    <label for="pubmedApiKey" class="form-label">PubMed API Key</label>
+                    <input type="text" class="form-control" id="pubmedApiKey" name="pubmed_api_key" 
+                           value="{{ settings.pubmed_api_key }}" placeholder="Enter your PubMed API key (optional)">
+                    <div class="form-text">Using an API key increases rate limits for PubMed requests.</div>
+                </div>
+            </div>
+
+            <!-- Output Settings -->
+            <div class="mb-4">
+                <h5>Output Settings</h5>
+                <div class="mb-3">
+                    <label for="outputPath" class="form-label">Output Directory</label>
+                    <input type="text" class="form-control" id="outputPath" name="output_path" 
+                           value="{{ settings.output_path }}" placeholder="Path for saving exported files">
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="uniqueFilenames" name="unique_filenames" 
+                               {% if settings.unique_filenames %}checked{% endif %}>
+                        <label class="form-check-label" for="uniqueFilenames">
+                            Use unique filenames (include timestamp)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Person List Settings -->
+            <div class="mb-4">
+                <h5>Person List Settings</h5>
+                <div class="mb-3">
+                    <label for="personListPath" class="form-label">Person List Directory</label>
+                    <input type="text" class="form-control" id="personListPath" name="person_list_path" 
+                           value="{{ settings.person_list_path }}" placeholder="Path for saving person lists">
+                </div>
+            </div>
+
+            <!-- Default Database -->
+            <div class="mb-4">
+                <h5>Default Database</h5>
+                <div class="mb-3">
+                    <label for="defaultDatabase" class="form-label">Default Database for Searches</label>
+                    <select class="form-select" id="defaultDatabase" name="default_database">
+                        <option value="PubMed" {% if settings.default_database == 'PubMed' %}selected{% endif %}>PubMed</option>
+                        <option value="Deutsche Nationalbibliothek" {% if settings.default_database == 'Deutsche Nationalbibliothek' %}selected{% endif %}>Deutsche Nationalbibliothek</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Output Columns -->
+            <div class="mb-4">
+                <h5>Output Columns</h5>
+                <p class="text-muted">Select columns to include in exported files:</p>
+                <div class="row">
+                    {% set all_possible_columns = [
+                        "Name", "Titel", "Creator", "Erscheinungsjahr", "Identifier", 
+                        "URL", "Autoren", "Veröffentlichungsjahr", "Zitationsanzahl",
+                        "PubMed URL", "DOI URL", "PubMed-ID", "DOI", "Publikationstypen",
+                        "Datenbank", "Veröffentlichungsmonat"
+                    ] %}
+                    
+                    {% for column in all_possible_columns %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   id="column_{{ column|replace(' ', '_')|lower }}" 
+                                   name="output_columns" value="{{ column }}"
+                                   {% if column in settings.output_columns %}checked{% endif %}>
+                            <label class="form-check-label" for="column_{{ column|replace(' ', '_')|lower }}">
+                                {{ column }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-1"></i> Save Settings
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">About MedicalSpy</h5>
+    </div>
+    <div class="card-body">
+        <p>
+            <strong>MedicalSpy Version 3.0</strong> is a web-based scientific publication search tool 
+            for medical and scientific research.
+        </p>
+        <p>
+            This application allows you to search across multiple databases including PubMed and
+            the Deutsche Nationalbibliothek (DNB), analyze results, and export data in various formats.
+        </p>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Features:</h6>
+                <ul>
+                    <li>Multi-database scientific publication search</li>
+                    <li>Advanced search options with date ranges and filters</li>
+                    <li>Person management for associating searches</li>
+                    <li>Result visualization and analysis</li>
+                    <li>Export to CSV and Excel formats</li>
+                    <li>Detailed logging and error tracking</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Technology:</h6>
+                <ul>
+                    <li>Backend: Flask (Python)</li>
+                    <li>Frontend: Bootstrap, JavaScript, Chart.js</li>
+                    <li>Data Processing: Pandas, XML parsing</li>
+                    <li>APIs: PubMed E-utilities, DNB SRU</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

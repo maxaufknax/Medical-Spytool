@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}MedicalSpy - Analysis{% endblock %}
+
+{% block content %}
+<div id="analysisPage">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-chart-bar me-2"></i>Results Analysis</h1>
+        <div class="btn-group">
+            <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+                <i class="fas fa-search me-1"></i>New Search
+            </a>
+            <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-list me-1"></i>View Results
+            </a>
+        </div>
+    </div>
+
+    {% if results %}
+        <!-- Analysis content -->
+        <div class="row">
+            <!-- Year distribution -->
+            <div class="col-xl-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Publications by Year</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="yearChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database distribution -->
+            <div class="col-xl-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Publications by Database</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="databaseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top authors -->
+            <div class="col-xl-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Top Authors</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="authorChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Citation counts -->
+            <div class="col-xl-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">Top Cited Publications</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="citationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary statistics -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Summary Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Publications</h6>
+                                <h2 class="card-text">{{ results|length }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Unique Authors</h6>
+                                {% set authors = [] %}
+                                {% for result in results %}
+                                    {% if 'Autoren' in result %}
+                                        {% for author in result.Autoren.split(', ') %}
+                                            {% if author not in authors %}
+                                                {% set _ = authors.append(author) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% elif 'Creator' in result %}
+                                        {% for creator in result.Creator.split(', ') %}
+                                            {% if creator not in authors %}
+                                                {% set _ = authors.append(creator) %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endfor %}
+                                <h2 class="card-text">{{ authors|length }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Date Range</h6>
+                                {% set years = [] %}
+                                {% for result in results %}
+                                    {% set year = result.Veröffentlichungsjahr if 'Veröffentlichungsjahr' in result else result.Erscheinungsjahr if 'Erscheinungsjahr' in result else 'N/A' %}
+                                    {% if year != 'N/A' and year not in years %}
+                                        {% set _ = years.append(year) %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if years %}
+                                <h2 class="card-text">{{ years|sort|first }} - {{ years|sort|last }}</h2>
+                                {% else %}
+                                <h2 class="card-text">N/A</h2>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Total Citations</h6>
+                                {% set total_citations = 0 %}
+                                {% for result in results %}
+                                    {% if 'Zitationsanzahl' in result and result.Zitationsanzahl != 'N/A' %}
+                                        {% set total_citations = total_citations + result.Zitationsanzahl|int %}
+                                    {% endif %}
+                                {% endfor %}
+                                <h2 class="card-text">{{ total_citations }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden data elements for JavaScript to use -->
+        <script id="resultsData" type="application/json">
+            {{ results|tojson }}
+        </script>
+        <script id="analysisData" type="application/json">
+            {{ analysis_data|tojson }}
+        </script>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            No search results available for analysis. Please perform a search first.
+        </div>
+        <div class="text-center mt-5">
+            <a href="{{ url_for('search') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-search me-2"></i>Go to Search
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

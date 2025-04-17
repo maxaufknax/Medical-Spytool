@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}MedicalSpy - Log{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-clipboard-list me-2"></i>Application Log</h1>
+    <div class="btn-group">
+        <button type="button" class="btn btn-outline-secondary" id="clearLogBtn">
+            <i class="fas fa-trash me-1"></i>Clear Log
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="exportLogBtn">
+            <i class="fas fa-file-export me-1"></i>Export Log
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">System Messages</h5>
+    </div>
+    <div class="card-body">
+        {% if logs %}
+            <div class="log-container">
+                {% for log in logs %}
+                    <div class="log-entry">{{ log }}</div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No log entries available.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Log Actions Modal Confirmation -->
+<div class="modal fade" id="logActionModal" tabindex="-1" aria-labelledby="logActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="logActionModalLabel">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="logActionModalBody">
+                Are you sure you want to perform this action?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmLogActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const exportLogBtn = document.getElementById('exportLogBtn');
+        const logActionModal = new bootstrap.Modal(document.getElementById('logActionModal'));
+        const logActionModalBody = document.getElementById('logActionModalBody');
+        const confirmLogActionBtn = document.getElementById('confirmLogActionBtn');
+        
+        // Clear log button
+        if (clearLogBtn) {
+            clearLogBtn.addEventListener('click', function() {
+                logActionModalBody.textContent = 'Are you sure you want to clear the log? This action cannot be undone.';
+                confirmLogActionBtn.dataset.action = 'clear';
+                logActionModal.show();
+            });
+        }
+        
+        // Export log button
+        if (exportLogBtn) {
+            exportLogBtn.addEventListener('click', function() {
+                // Create form and submit for download
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/api/export_log';
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            });
+        }
+        
+        // Confirm action button
+        if (confirmLogActionBtn) {
+            confirmLogActionBtn.addEventListener('click', function() {
+                const action = confirmLogActionBtn.dataset.action;
+                
+                if (action === 'clear') {
+                    // Send request to clear log
+                    fetch('/api/clear_log', {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Reload page to show cleared log
+                            window.location.reload();
+                        } else {
+                            alert('Failed to clear log.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error clearing log:', error);
+                        alert('Error clearing log. See console for details.');
+                    });
+                }
+                
+                logActionModal.hide();
+            });
+        }
+    });
+</script>
+{% endblock %}

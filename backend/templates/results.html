@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}MedicalSpy - Search Results{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-list me-2"></i>Search Results</h1>
+    <div class="btn-group">
+        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+            <i class="fas fa-search me-1"></i>New Search
+        </a>
+        <a href="{{ url_for('analysis') }}" class="btn btn-outline-success">
+            <i class="fas fa-chart-bar me-1"></i>Analyze Results
+        </a>
+    </div>
+</div>
+
+{% if results %}
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <h5 class="mb-0">Results: <span id="resultCount">{{ results|length }}</span></h5>
+            </div>
+            <div class="col-md-4">
+                <input type="text" id="resultFilter" class="form-control" placeholder="Filter results...">
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="btn-group me-2">
+                    <button id="exportCsv" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-file-csv me-1"></i>CSV
+                    </button>
+                    <button id="exportExcel" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-file-excel me-1"></i>Excel
+                    </button>
+                </div>
+                <div class="btn-group">
+                    <button id="listViewBtn" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-list me-1"></i>List
+                    </button>
+                    <button id="cardViewBtn" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-th-large me-1"></i>Cards
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- List View -->
+        <div id="listView">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th data-sortable="true" data-type="text">Title</th>
+                            <th data-sortable="true" data-type="text">Authors</th>
+                            <th data-sortable="true" data-type="date">Year</th>
+                            <th data-sortable="true" data-type="text">Database</th>
+                            <th data-sortable="true" data-type="number">Citations</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.Titel }}</td>
+                            <td>{{ result.Autoren if 'Autoren' in result else result.Creator if 'Creator' in result else 'N/A' }}</td>
+                            <td>{{ result.Veröffentlichungsjahr if 'Veröffentlichungsjahr' in result else result.Erscheinungsjahr if 'Erscheinungsjahr' in result else 'N/A' }}</td>
+                            <td>
+                                <span class="badge {% if result.Datenbank == 'PubMed' %}badge-pubmed{% elif result.Datenbank == 'Deutsche Nationalbibliothek' %}badge-dnb{% endif %}">
+                                    {{ result.Datenbank }}
+                                </span>
+                            </td>
+                            <td>{{ result.Zitationsanzahl if 'Zitationsanzahl' in result else 'N/A' }}</td>
+                            <td>
+                                {% if 'PubMed URL' in result and result['PubMed URL'] %}
+                                <a href="{{ result['PubMed URL'] }}" target="_blank" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View on PubMed">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                {% elif 'URL' in result and result['URL'] %}
+                                <a href="{{ result['URL'] }}" target="_blank" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View Publication">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                {% endif %}
+                                
+                                {% if 'DOI URL' in result and result['DOI URL'] and result['DOI URL'] != 'Keine DOI URL' %}
+                                <a href="{{ result['DOI URL'] }}" target="_blank" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="View DOI">
+                                    <i class="fas fa-link"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Card View -->
+        <div id="cardView" class="d-none">
+            <div class="row">
+                {% for result in results %}
+                <div class="col-lg-6 mb-3">
+                    <div class="card result-card h-100 {% if result.Datenbank == 'PubMed' %}pubmed-result{% elif result.Datenbank == 'Deutsche Nationalbibliothek' %}dnb-result{% endif %}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ result.Titel }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">
+                                {{ result.Autoren if 'Autoren' in result else result.Creator if 'Creator' in result else 'No author information' }}
+                            </h6>
+                            <p class="card-text">
+                                <span class="badge {% if result.Datenbank == 'PubMed' %}badge-pubmed{% elif result.Datenbank == 'Deutsche Nationalbibliothek' %}badge-dnb{% endif %}">
+                                    {{ result.Datenbank }}
+                                </span>
+                                <span class="badge bg-secondary">
+                                    {{ result.Veröffentlichungsjahr if 'Veröffentlichungsjahr' in result else result.Erscheinungsjahr if 'Erscheinungsjahr' in result else 'N/A' }}
+                                </span>
+                                {% if 'Zitationsanzahl' in result and result.Zitationsanzahl != 'N/A' %}
+                                <span class="badge bg-info">Citations: {{ result.Zitationsanzahl }}</span>
+                                {% endif %}
+                            </p>
+                            
+                            {% if 'Publikationstypen' in result %}
+                            <p class="card-text small text-muted">
+                                {{ result.Publikationstypen }}
+                            </p>
+                            {% endif %}
+                            
+                            {% if result.Name %}
+                            <p class="card-text">
+                                <small class="text-muted">Associated with: {{ result.Name }}</small>
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            {% if 'PubMed-ID' in result and result['PubMed-ID'] != 'No PMID' %}
+                            <small class="text-muted">PMID: {{ result['PubMed-ID'] }}</small>
+                            {% elif 'Identifier' in result %}
+                            <small class="text-muted">ID: {{ result['Identifier']|truncate(30) }}</small>
+                            {% else %}
+                            <small class="text-muted">No ID available</small>
+                            {% endif %}
+                            
+                            <div>
+                                {% if 'PubMed URL' in result and result['PubMed URL'] %}
+                                <a href="{{ result['PubMed URL'] }}" target="_blank" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View on PubMed">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                {% elif 'URL' in result and result['URL'] %}
+                                <a href="{{ result['URL'] }}" target="_blank" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" title="View Publication">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                {% endif %}
+                                
+                                {% if 'DOI URL' in result and result['DOI URL'] and result['DOI URL'] != 'Keine DOI URL' %}
+                                <a href="{{ result['DOI URL'] }}" target="_blank" class="btn btn-sm btn-outline-secondary" data-bs-toggle="tooltip" title="View DOI">
+                                    <i class="fas fa-link"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    No search results available. Please perform a search first.
+</div>
+<div class="text-center mt-5">
+    <a href="{{ url_for('search') }}" class="btn btn-primary btn-lg">
+        <i class="fas fa-search me-2"></i>Go to Search
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/results.js') }}"></script>
+{% endblock %}

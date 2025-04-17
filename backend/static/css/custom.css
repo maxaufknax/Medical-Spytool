@@ -1,0 +1,75 @@
+/* Custom CSS for MedicalSpy */
+
+/* Hide elements during loading */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Custom container for search options */
+.search-options-container {
+    background-color: var(--bs-dark-bg-subtle);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Make date picker inputs match Bootstrap style */
+.date-picker {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+    border: 1px solid var(--bs-border-color) !important;
+}
+
+/* Custom style for result cards */
+.result-card {
+    transition: transform 0.2s;
+    border-left: 4px solid var(--bs-info);
+}
+
+.result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom styling for log entries */
+.log-container {
+    font-family: monospace;
+    height: 500px;
+    overflow-y: auto;
+    background-color: var(--bs-dark-bg-subtle);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+/* Special styles for PubMed vs DNB results */
+.pubmed-result {
+    border-left-color: var(--bs-info);
+}
+
+.dnb-result {
+    border-left-color: var(--bs-warning);
+}
+
+/* Badge styles for database indication */
+.badge-pubmed {
+    background-color: var(--bs-info);
+}
+
+.badge-dnb {
+    background-color: var(--bs-warning);
+}
+
+/* Chart containers */
+.chart-container {
+    height: 400px;
+    margin-bottom: 2rem;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}

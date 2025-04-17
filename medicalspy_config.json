@@ -1,0 +1,18 @@
+{
+    "output_path": "./output",
+    "person_list_path": "./person_lists",
+    "unique_filenames": false,
+    "pubmed_api_key": "",
+    "output_columns": [
+        "Name",
+        "Titel",
+        "Creator",
+        "Erscheinungsjahr",
+        "Identifier",
+        "URL",
+        "Autoren",
+        "Ver\u00f6ffentlichungsjahr",
+        "Zitationsanzahl"
+    ],
+    "default_database": "PubMed"
+}
