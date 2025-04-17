@@ -231,6 +231,61 @@
                             </div>
                         </div>
                         
+                        <!-- Saved Queries Tab -->
+                        <div class="tab-pane fade" id="saved-queries" role="tabpanel">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i> 
+                                Hier können Sie Ihre gespeicherten Suchanfragen verwalten, laden und löschen.
+                            </div>
+                            
+                            {% if saved_queries %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Suchart</th>
+                                            <th>Datenbank(en)</th>
+                                            <th>Gespeichert am</th>
+                                            <th>Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="savedQueriesTableBody">
+                                        {% for query in saved_queries %}
+                                        <tr data-query-id="{{ query.id }}">
+                                            <td>{{ query.name }}</td>
+                                            <td>
+                                                {% if query.search_mode == 'simple' %}
+                                                <span class="badge bg-primary">Einfache Suche</span>
+                                                {% elif query.search_mode == 'person' %}
+                                                <span class="badge bg-success">Personensuche</span>
+                                                {% elif query.search_mode == 'advanced' %}
+                                                <span class="badge bg-info">Erweiterte Suche</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ query.database }}</td>
+                                            <td>{{ query.saved_at }}</td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-primary load-query" data-query-id="{{ query.id }}">
+                                                    <i class="fas fa-search me-1"></i> Laden
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger delete-query" data-query-id="{{ query.id }}">
+                                                    <i class="fas fa-trash me-1"></i> Löschen
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Keine gespeicherten Suchanfragen vorhanden. Speichern Sie Suchanfragen mit dem "Suche speichern"-Button.
+                            </div>
+                            {% endif %}
+                        </div>
+                        
                         <!-- Person Search Tab -->
                         <div class="tab-pane fade" id="person-search" role="tabpanel">
                             <div class="mb-3">
@@ -310,40 +365,7 @@
     
     <!-- Saved Queries and Person Management -->
     <div class="col-lg-4">
-        <!-- Saved Queries -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Saved Queries</h5>
-            </div>
-            <div class="card-body">
-                {% if saved_queries %}
-                <div class="list-group">
-                    {% for query in saved_queries %}
-                    <div class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{ query.name }}</h6>
-                            <small class="text-muted">{{ query.database }}</small>
-                        </div>
-                        <p class="mb-1 text-truncate"><small>{{ query.query }}</small></p>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <small class="text-muted">Saved: {{ query.saved_at }}</small>
-                            <div>
-                                <button class="btn btn-sm btn-outline-primary" onclick="loadQuery({{ query|tojson }})">
-                                    <i class="fas fa-upload"></i> Load
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="deleteQuery({{ loop.index0 }})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <p class="text-muted">No saved queries. Use the "Save Query" button to save your searches.</p>
-                {% endif %}
-            </div>
-        </div>
+
         
         <!-- Quick Links -->
         <div class="card">

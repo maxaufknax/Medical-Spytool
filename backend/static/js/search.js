@@ -41,7 +41,13 @@ function handleSearchSubmit(event) {
     // Get the active search mode
     const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
     if (!activeTab) return true;
-
+    
+    // Check if we're in the saved queries tab and prevent form submission
+    if (activeTab.id === 'saved-queries-tab') {
+        event.preventDefault();
+        return false;
+    }
+    
     // Update the search mode hidden field
     const searchModeField = document.getElementById('searchMode');
     if (searchModeField) {
@@ -402,7 +408,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize person search fields
     initializePersonSearch();
+    
+    // Initialize event listeners for the saved queries tab
+    initializeSavedQueriesTab();
 });
+
+// Initialize event listeners for saved queries tab
+function initializeSavedQueriesTab() {
+    // Add event listeners to Load buttons
+    document.querySelectorAll('.load-query').forEach(button => {
+        button.addEventListener('click', function() {
+            const queryId = this.getAttribute('data-query-id');
+            
+            // Fetch the query details and load it
+            fetch(`/api/query/${queryId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadQuery(data.query);
+                    } else {
+                        showToast('Fehler', data.message || 'Fehler beim Laden der Suchanfrage', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading query:', error);
+                    showToast('Fehler', 'Technischer Fehler beim Laden der Suchanfrage', 'error');
+                });
+        });
+    });
+    
+    // Add event listeners to Delete buttons
+    document.querySelectorAll('.delete-query').forEach(button => {
+        button.addEventListener('click', function() {
+            const queryId = this.getAttribute('data-query-id');
+            deleteQuery(queryId);
+        });
+    });
+}
 
 function initializePersonSearch() {
     // Advanced search person field
