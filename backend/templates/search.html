@@ -351,6 +351,44 @@
                                 </button>
                             </div>
                         </div>
+                        
+                        <!-- Saved Queries Tab -->
+                        <div class="tab-pane fade" id="saved-queries" role="tabpanel">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> 
+                                Gespeicherte Suchanfragen laden und verwalten.
+                            </div>
+                            
+                            {% if saved_queries %}
+                                <div class="list-group mb-4">
+                                    {% for query in saved_queries %}
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ query.name }}</h5>
+                                            <small class="text-muted">{{ query.database }}</small>
+                                        </div>
+                                        <p class="mb-1">{{ query.query }}</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <small class="text-muted">Gespeichert: {{ query.saved_at }}</small>
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-outline-primary load-query" data-query-id="{{ query.id }}">
+                                                    <i class="fas fa-upload me-1"></i> Laden
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-query" data-query-id="{{ query.id }}">
+                                                    <i class="fas fa-trash me-1"></i> Löschen
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="alert alert-light">
+                                    <p>Keine gespeicherten Suchanfragen gefunden.</p>
+                                    <p>Verwenden Sie die Schaltfläche "Suche speichern", um Ihre Suchanfragen zu speichern.</p>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="mt-3">
