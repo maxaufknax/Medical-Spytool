@@ -952,18 +952,20 @@ def api_get_query(query_id):
 def api_delete_query(query_id):
     """API endpoint to delete a saved query"""
     try:
-        # Find query in database
+        # First delete associated results
+        db.session.query(SearchResult).filter_by(query_id=query_id).delete()
+        
+        # Then find and delete the query
         query = db.session.query(SearchQuery).get(query_id)
         if query:
             query_name = query.name
-            
-            # Delete from database
             db.session.delete(query)
+            
+            # Commit all changes
             db.session.commit()
             
             # Update session
             saved_queries = session.get('saved_queries', [])
-            # Filter out the deleted query
             saved_queries = [q for q in saved_queries if q.get('id') != query_id]
             session['saved_queries'] = saved_queries
             session.modified = True

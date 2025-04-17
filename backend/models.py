@@ -16,21 +16,20 @@ db = SQLAlchemy()
 class SearchQuery(db.Model):
     """Model for saved search queries"""
     __tablename__ = 'search_queries'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    query = db.Column(db.String(1000), nullable=False)
-    database = db.Column(db.String(100), nullable=False)
-    additional_terms = db.Column(db.String(1000))
-    start_date = db.Column(db.String(20))
-    end_date = db.Column(db.String(20))
+    query = db.Column(db.Text)
+    database = db.Column(db.String(255))
+    additional_terms = db.Column(db.Text)
+    start_date = db.Column(db.String(50))
+    end_date = db.Column(db.String(50))
     person_name = db.Column(db.String(255))
-    search_mode = db.Column(db.String(50), default='simple')  # 'simple', 'database', or 'person'
+    search_mode = db.Column(db.String(50))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationship with search results
-    results = db.relationship('SearchResult', backref='query', lazy=True, cascade="all, delete-orphan")
-    
+
+    results = db.relationship('SearchResult', backref='query', cascade='all, delete-orphan')
+
     def to_dict(self):
         """Convert model to dictionary"""
         return {
@@ -49,13 +48,13 @@ class SearchQuery(db.Model):
 class SearchResult(db.Model):
     """Model for search results"""
     __tablename__ = 'search_results'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     query_id = db.Column(db.Integer, db.ForeignKey('search_queries.id'), nullable=False)
     database = db.Column(db.String(100), nullable=False)
     result_data = db.Column(JSONB, nullable=False)  # Store the full result as JSON
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def to_dict(self):
         """Convert model to dictionary"""
         return {
@@ -69,13 +68,13 @@ class SearchResult(db.Model):
 class Person(db.Model):
     """Model for persons"""
     __tablename__ = 'persons'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def to_dict(self):
         """Convert model to dictionary"""
         return {
@@ -88,11 +87,11 @@ class Person(db.Model):
 class Setting(db.Model):
     """Model for application settings"""
     __tablename__ = 'settings'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(255), unique=True, nullable=False)
     value = db.Column(db.Text, nullable=True)
-    
+
     @classmethod
     def get_settings_dict(cls):
         """Get all settings as a dictionary"""
@@ -108,7 +107,7 @@ class Setting(db.Model):
                     settings[setting.key] = []
             else:
                 settings[setting.key] = setting.value
-        
+
         # Add default values if not present
         if 'output_path' not in settings:
             settings['output_path'] = './output'
@@ -120,9 +119,9 @@ class Setting(db.Model):
             settings['output_columns'] = []
         if 'default_database' not in settings:
             settings['default_database'] = 'PubMed'
-            
+
         return settings
-        
+
     @classmethod
     def save_settings_dict(cls, settings_dict):
         """Save a dictionary of settings"""
@@ -134,7 +133,7 @@ class Setting(db.Model):
                 value_str = json.dumps(value)
             else:
                 value_str = str(value)
-                
+
             # Update or create
             setting = db.session.query(cls).filter_by(key=key).first()
             if setting:
@@ -142,18 +141,18 @@ class Setting(db.Model):
             else:
                 setting = cls(key=key, value=value_str)
                 db.session.add(setting)
-                
+
         db.session.commit()
 
 class LogEntry(db.Model):
     """Model for logging messages"""
     __tablename__ = 'log_entries'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     level = db.Column(db.String(20), default='INFO')
     message = db.Column(db.Text, nullable=False)
-    
+
     def to_dict(self):
         """Convert model to dictionary"""
         return {
@@ -162,20 +161,20 @@ class LogEntry(db.Model):
             'level': self.level,
             'message': self.message
         }
-        
+
     @classmethod
     def get_logs(cls, limit=100):
         """Get the latest log entries"""
         logs = db.session.query(cls).order_by(cls.timestamp.desc()).limit(limit).all()
         return [f"[{log.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {log.level}: {log.message}" for log in logs]
-        
+
     @classmethod
     def add_log(cls, message, level='INFO'):
         """Add a new log entry"""
         log = cls(message=message, level=level)
         db.session.add(log)
         db.session.commit()
-        
+
     @classmethod
     def clear_logs(cls):
         """Clear all log entries"""
