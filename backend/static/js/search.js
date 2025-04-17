@@ -616,6 +616,30 @@ document.addEventListener('DOMContentLoaded', function() {
         addPersonButton.addEventListener('click', addPerson);
     }
     
+    // Add click event to person list items
+    const personsList = document.getElementById('persons-list');
+    if (personsList) {
+        const personItems = personsList.querySelectorAll('.list-group-item');
+        personItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const personId = this.dataset.id;
+                const personName = this.dataset.name;
+                const personFirstName = this.dataset.firstName;
+                const personLastName = this.dataset.lastName;
+                
+                if (personId) {
+                    selectPerson({
+                        id: personId,
+                        name: personName,
+                        first_name: personFirstName,
+                        last_name: personLastName
+                    });
+                }
+            });
+        });
+    }
+    
     // Initialize person selector
     updateSelectedPersonsDisplay();
     
