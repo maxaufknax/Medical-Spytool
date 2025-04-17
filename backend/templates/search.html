@@ -354,33 +354,54 @@
                         
                         <!-- Saved Queries Tab -->
                         <div class="tab-pane fade" id="saved-queries" role="tabpanel">
-                            <div class="alert alert-info">
+                            <div class="alert alert-info mb-3">
                                 <i class="fas fa-info-circle me-2"></i> 
                                 Gespeicherte Suchanfragen laden und verwalten.
                             </div>
                             
                             {% if saved_queries %}
-                                <div class="list-group mb-4">
-                                    {% for query in saved_queries %}
-                                    <div class="list-group-item">
-                                        <div class="d-flex w-100 justify-content-between">
-                                            <h5 class="mb-1">{{ query.name }}</h5>
-                                            <small class="text-muted">{{ query.database }}</small>
-                                        </div>
-                                        <p class="mb-1">{{ query.query }}</p>
-                                        <div class="d-flex justify-content-between align-items-center mt-2">
-                                            <small class="text-muted">Gespeichert: {{ query.saved_at }}</small>
-                                            <div>
-                                                <button type="button" class="btn btn-sm btn-outline-primary load-query" data-query-id="{{ query.id }}">
-                                                    <i class="fas fa-upload me-1"></i> Laden
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger delete-query" data-query-id="{{ query.id }}">
-                                                    <i class="fas fa-trash me-1"></i> Löschen
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Suchmodus</th>
+                                                <th>Datenbank(en)</th>
+                                                <th>Gespeichert am</th>
+                                                <th>Aktionen</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for query in saved_queries %}
+                                            <tr>
+                                                <td>{{ query.name }}</td>
+                                                <td>
+                                                    {% if query.search_mode == 'simple' %}
+                                                    <span class="badge bg-primary">Einfache Suche</span>
+                                                    {% elif query.search_mode == 'person' %}
+                                                    <span class="badge bg-success">Personensuche</span>
+                                                    {% elif query.search_mode == 'advanced' %}
+                                                    <span class="badge bg-info">Erweiterte Suche</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ query.search_mode }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ query.database }}</td>
+                                                <td>{{ query.saved_at }}</td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary load-query" data-query-id="{{ query.id }}" title="Laden">
+                                                            <i class="fas fa-upload"></i> Laden
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-query" data-query-id="{{ query.id }}" title="Löschen">
+                                                            <i class="fas fa-trash"></i> Löschen
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
                             {% else %}
                                 <div class="alert alert-light">
@@ -434,19 +455,19 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="saveQueryModalLabel">Save Search Query</h5>
+                <h5 class="modal-title" id="saveQueryModalLabel">Suchanfrage speichern</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label for="queryName" class="form-label">Query Name</label>
-                    <input type="text" class="form-control" id="queryName" placeholder="Enter a name for this query">
+                    <label for="queryName" class="form-label">Name der Suchanfrage</label>
+                    <input type="text" class="form-control" id="queryName" placeholder="Geben Sie einen Namen für diese Suche ein">
                 </div>
-                <p class="text-muted small">This will save your current search form settings for future use.</p>
+                <p class="text-muted small">Ihre aktuellen Sucheinstellungen werden gespeichert und können später wiederverwendet werden.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveQueryButton">Save Query</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="saveQueryButton">Speichern</button>
             </div>
         </div>
     </div>
@@ -457,26 +478,26 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addPersonModalLabel">Add Person</h5>
+                <h5 class="modal-title" id="addPersonModalLabel">Person hinzufügen</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label for="personName" class="form-label">Display Name</label>
-                    <input type="text" class="form-control" id="personName" placeholder="Display name for this person">
+                    <label for="personName" class="form-label">Anzeigename</label>
+                    <input type="text" class="form-control" id="personName" placeholder="Anzeigename für diese Person">
                 </div>
                 <div class="mb-3">
-                    <label for="personFirstName" class="form-label">First Name</label>
-                    <input type="text" class="form-control" id="personFirstName" placeholder="First name">
+                    <label for="personFirstName" class="form-label">Vorname</label>
+                    <input type="text" class="form-control" id="personFirstName" placeholder="Vorname">
                 </div>
                 <div class="mb-3">
-                    <label for="personLastName" class="form-label">Last Name</label>
-                    <input type="text" class="form-control" id="personLastName" placeholder="Last name">
+                    <label for="personLastName" class="form-label">Nachname</label>
+                    <input type="text" class="form-control" id="personLastName" placeholder="Nachname">
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="addPersonButton">Add Person</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-success" id="addPersonButton">Person hinzufügen</button>
             </div>
         </div>
     </div>
