@@ -160,11 +160,12 @@ def search():
             # Person search mode
             selected_person_ids = request.form.get('selected_person_ids', '')
             
-            log_message(f"Starting person search for persons with IDs: {selected_person_ids} in {selected_database}")
+            databases_str = ", ".join(selected_databases)
+            log_message(f"Starting person search for persons with IDs: {selected_person_ids} in {databases_str}")
             
             # Validate person selection
             if not selected_person_ids:
-                flash("Please select at least one person for the search.", "warning")
+                flash("Bitte wählen Sie mindestens eine Person für die Suche aus.", "warning")
                 log_message("Person search attempted with no persons selected")
                 return redirect(url_for('search'))
                 
@@ -203,28 +204,36 @@ def search():
                 person_query = f"{person.first_name} {person.last_name}"
                 log_message(f"Searching for person: {person.name} ({person_query})")
                 
-                try:
-                    # Get connector for the selected database
-                    connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
-                    
-                    # Execute search
-                    results = search_database(
-                        connector, 
-                        person_query, 
-                        person_name=person.name,
-                        additional_terms=additional_terms,
-                        date_range=date_range
-                    )
-                    
-                    if results:
-                        log_message(f"Found {len(results)} results for {person.name}")
-                        all_results.extend(results)
-                    else:
-                        log_message(f"No results found for {person.name}")
-                    
-                except Exception as e:
-                    log_message(f"Error searching for {person.name}: {str(e)}", level="ERROR")
-                    # Continue with other persons
+                # Suche für diese Person in allen ausgewählten Datenbanken
+                for db_name in selected_databases:
+                    try:
+                        log_message(f"Searching {db_name} for person: {person.name} ({person_query})")
+                        
+                        # Get connector for the current database
+                        connector = get_connector_for_database(db_name, api_key=session['settings'].get('pubmed_api_key', ''))
+                        
+                        # Execute search
+                        results = search_database(
+                            connector, 
+                            person_query, 
+                            person_name=person.name,
+                            additional_terms=additional_terms,
+                            date_range=date_range
+                        )
+                        
+                        # Add database name to each result
+                        for result in results:
+                            result['Database'] = db_name
+                        
+                        if results:
+                            log_message(f"Found {len(results)} results for {person.name} in {db_name}")
+                            all_results.extend(results)
+                        else:
+                            log_message(f"No results found for {person.name} in {db_name}")
+                        
+                    except Exception as e:
+                        log_message(f"Error searching for {person.name} in {db_name}: {str(e)}", level="ERROR")
+                        # Continue with other databases and persons
                     
             # Save combined results
             if all_results:
@@ -249,10 +258,13 @@ def search():
                     person_names = [p.name for p in persons_list]
                     person_names_str = ", ".join(person_names)
                     
+                    # Store databases as comma-separated string
+                    databases_str = ", ".join(selected_databases)
+                    
                     search_query_obj = SearchQuery(
-                        name=f"Person search in {selected_database}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}",
+                        name=f"Person search in {databases_str}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}",
                         query="",  # No direct query for person search
-                        database=selected_database,
+                        database=databases_str,  # Store multiple databases
                         additional_terms=additional_terms,
                         start_date=start_date,
                         end_date=end_date,
@@ -264,9 +276,12 @@ def search():
                     
                     # Save each result
                     for result in unique_results:
+                        # Extract database from result if available, or use the first selected database
+                        result_database = result.get('Database', selected_databases[0])
+                        
                         result_obj = SearchResult(
                             query_id=search_query_obj.id,
-                            database=selected_database,
+                            database=result_database,
                             result_data=result
                         )
                         db.session.add(result_obj)
@@ -289,7 +304,8 @@ def search():
             search_query = request.form.get('search_query', '')
             advanced_selected_person_ids = request.form.get('advanced_selected_person_ids', '')
             
-            log_message(f"Starting advanced database search for '{search_query}' in {selected_database}")
+            databases_str = ", ".join(selected_databases)
+            log_message(f"Starting advanced database search for '{search_query}' in {databases_str}")
             
             # Apply database-specific filters
             original_additional_terms = additional_terms
@@ -349,7 +365,7 @@ def search():
                 # If we only have a direct query with no persons
                 if search_query and not persons_list:
                     log_message(f"Performing advanced search with direct query only")
-                    return perform_single_search(search_query, selected_database, "", additional_terms, date_range, start_date, end_date)
+                    return perform_multi_database_search(search_query, selected_databases, "", additional_terms, date_range, start_date, end_date)
                 
                 # If we have persons (with or without a direct query)
                 if persons_list:
@@ -367,26 +383,34 @@ def search():
                             combined_query = person_query
                             log_message(f"Searching for person: {person.name} ({person_query})")
                         
-                        try:
-                            # Get connector for the selected database
-                            connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
-                            
-                            # Execute search
-                            results = search_database(
-                                connector, 
-                                combined_query, 
-                                person_name=person.name,
-                                additional_terms=additional_terms,
-                                date_range=date_range
-                            )
-                            
-                            if results:
-                                all_results.extend(results)
-                                log_message(f"Found {len(results)} results for query with {person.name}")
-                            else:
-                                log_message(f"No results found for query with {person.name}")
-                        except Exception as e:
-                            log_message(f"Error searching for {person.name} in advanced mode: {str(e)}", level="ERROR")
+                        # Search in all selected databases for this person
+                        for db_name in selected_databases:
+                            try:
+                                log_message(f"Searching {db_name} for combined query: {combined_query}")
+                                
+                                # Get connector for the current database
+                                connector = get_connector_for_database(db_name, api_key=session['settings'].get('pubmed_api_key', ''))
+                                
+                                # Execute search
+                                results = search_database(
+                                    connector, 
+                                    combined_query, 
+                                    person_name=person.name,
+                                    additional_terms=additional_terms,
+                                    date_range=date_range
+                                )
+                                
+                                # Add database name to each result
+                                for result in results:
+                                    result['Database'] = db_name
+                                
+                                if results:
+                                    all_results.extend(results)
+                                    log_message(f"Found {len(results)} results for query with {person.name} in {db_name}")
+                                else:
+                                    log_message(f"No results found for query with {person.name} in {db_name}")
+                            except Exception as e:
+                                log_message(f"Error searching for {person.name} in {db_name}: {str(e)}", level="ERROR")
                     
                     # Remove duplicates (based on identifier)
                     seen_identifiers = set()
@@ -407,11 +431,12 @@ def search():
                         try:
                             # First save the search query to reference results
                             person_names = ", ".join([p.name for p in persons_list])
-                            search_name = f"Erweiterte Suche: {search_query or person_names} in {selected_database}"
+                            databases_str = ", ".join(selected_databases)
+                            search_name = f"Erweiterte Suche: {search_query or person_names} in {databases_str}"
                             search_query_obj = SearchQuery(
                                 name=search_name,
                                 query=search_query,
-                                database=selected_database,
+                                database=databases_str,  # Store multiple databases
                                 additional_terms=original_additional_terms,  # Save original before filters
                                 start_date=start_date,
                                 end_date=end_date,
@@ -423,9 +448,12 @@ def search():
                             
                             # Now save each result
                             for result in unique_results:
+                                # Extract database from result if available, or use the first selected database
+                                result_database = result.get('Database', selected_databases[0])
+                                
                                 result_obj = SearchResult(
                                     query_id=search_query_obj.id,
-                                    database=selected_database,
+                                    database=result_database,
                                     result_data=result
                                 )
                                 db.session.add(result_obj)
