@@ -102,13 +102,13 @@ function saveSearchQuery() {
         startDate = '';
         endDate = '';
         personName = '';
-    } else if (activeTab.id === 'database-search-tab') {
-        searchQuery = document.getElementById('databaseSearchQuery').value;
-        database = document.getElementById('databaseSelect').value;
-        additionalTerms = document.getElementById('dbAdditionalTerms').value;
-        startDate = document.getElementById('dbStartDate').value;
-        endDate = document.getElementById('dbEndDate').value;
-        personName = document.getElementById('dbPersonSelect').value;
+    } else if (activeTab.id === 'advanced-search-tab') {
+        searchQuery = document.getElementById('advancedSearchQuery').value;
+        database = document.getElementById('advancedDatabaseSelect').value;
+        additionalTerms = document.getElementById('advancedAdditionalTerms').value;
+        startDate = document.getElementById('advancedStartDate').value;
+        endDate = document.getElementById('advancedEndDate').value;
+        personName = document.getElementById('advancedSelectedPersonIds').value;
     } else if (activeTab.id === 'person-search-tab') {
         // For person search, combine selected person names into query
         searchQuery = '';  // Will be built from selected persons on the server
@@ -199,8 +199,8 @@ function loadQuery(query) {
     let tabId;
     if (query.search_mode === 'simple') {
         tabId = 'simple-search-tab';
-    } else if (query.search_mode === 'database') {
-        tabId = 'database-search-tab';
+    } else if (query.search_mode === 'advanced') {
+        tabId = 'advanced-search-tab';
     } else if (query.search_mode === 'person') {
         tabId = 'person-search-tab';
     } else {
@@ -223,24 +223,36 @@ function loadQuery(query) {
         if (document.getElementById('simpleDatabase')) {
             document.getElementById('simpleDatabase').value = query.database || '';
         }
-    } else if (query.search_mode === 'database') {
-        if (document.getElementById('databaseSearchQuery')) {
-            document.getElementById('databaseSearchQuery').value = query.query || '';
+    } else if (query.search_mode === 'advanced') {
+        if (document.getElementById('advancedSearchQuery')) {
+            document.getElementById('advancedSearchQuery').value = query.query || '';
         }
-        if (document.getElementById('databaseSelect')) {
-            document.getElementById('databaseSelect').value = query.database || '';
+        if (document.getElementById('advancedDatabaseSelect')) {
+            document.getElementById('advancedDatabaseSelect').value = query.database || '';
         }
-        if (document.getElementById('dbAdditionalTerms')) {
-            document.getElementById('dbAdditionalTerms').value = query.additional_terms || '';
+        if (document.getElementById('advancedAdditionalTerms')) {
+            document.getElementById('advancedAdditionalTerms').value = query.additional_terms || '';
         }
-        if (document.getElementById('dbStartDate')) {
-            document.getElementById('dbStartDate').value = query.start_date || '';
+        if (document.getElementById('advancedStartDate')) {
+            document.getElementById('advancedStartDate').value = query.start_date || '';
         }
-        if (document.getElementById('dbEndDate')) {
-            document.getElementById('dbEndDate').value = query.end_date || '';
+        if (document.getElementById('advancedEndDate')) {
+            document.getElementById('advancedEndDate').value = query.end_date || '';
         }
-        if (document.getElementById('dbPersonSelect')) {
-            document.getElementById('dbPersonSelect').value = query.person_name || '';
+        
+        // Handle selected persons for advanced search
+        if (query.person_name) {
+            try {
+                document.getElementById('advancedSelectedPersonIds').value = query.person_name;
+                
+                // Try to load the person names and display them as tags
+                updateAdvancedSelectedPersonsDisplay();
+                
+                // Update database-specific filters
+                updateDatabaseSpecificFilters();
+            } catch (e) {
+                console.error('Error loading advanced person list:', e);
+            }
         }
     } else if (query.search_mode === 'person') {
         if (document.getElementById('personDatabase')) {
@@ -435,12 +447,19 @@ function selectPerson(person) {
     if (!selectedPersonIds || !selectedPersonsContainer) return;
     
     // Get current selected IDs
-    const currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',') : [];
+    let currentIds = [];
+    try {
+        // Try to parse as JSON first
+        currentIds = JSON.parse(selectedPersonIds.value || '[]');
+    } catch (e) {
+        // Fallback to comma-separated for backward compatibility
+        currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',').map(id => parseInt(id)) : [];
+    }
     
     // Add the new ID if not already selected
-    if (!currentIds.includes(person.id.toString())) {
-        currentIds.push(person.id.toString());
-        selectedPersonIds.value = currentIds.join(',');
+    if (!currentIds.includes(parseInt(person.id))) {
+        currentIds.push(parseInt(person.id));
+        selectedPersonIds.value = JSON.stringify(currentIds);
         
         // Update the display
         updateSelectedPersonsDisplay();
@@ -456,7 +475,14 @@ function updateSelectedPersonsDisplay() {
     if (!selectedPersonIds || !selectedPersonsContainer) return;
     
     // Get current selected IDs
-    const currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',') : [];
+    let currentIds = [];
+    try {
+        // Try to parse as JSON first
+        currentIds = JSON.parse(selectedPersonIds.value || '[]');
+    } catch (e) {
+        // Fallback to comma-separated for backward compatibility
+        currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',') : [];
+    }
     
     // Clear the container except for the alert
     const tags = selectedPersonsContainer.querySelectorAll('.badge');
@@ -469,15 +495,20 @@ function updateSelectedPersonsDisplay() {
     
     // Add tags for each selected person
     currentIds.forEach(id => {
-        const person = allPersons.find(p => p.id.toString() === id);
+        const person = allPersons.find(p => p.id == id); // Use loose equality for type comparison
         if (person) {
             const tag = document.createElement('span');
             tag.className = 'badge bg-primary me-2 mb-2';
             tag.innerHTML = `
                 ${person.name}
                 <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove" 
-                    onclick="removePerson(${person.id})"></button>
+                    data-id="${person.id}" style="font-size: 0.5rem;"></button>
             `;
+            
+            // Add event listener to remove button
+            tag.querySelector('.btn-close').addEventListener('click', function() {
+                removePerson(this.dataset.id);
+            });
             
             // Insert the tag before the alert
             if (noPersonsSelectedAlert) {
@@ -497,11 +528,20 @@ function removePerson(personId) {
     if (!selectedPersonIds) return;
     
     // Get current selected IDs
-    const currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',') : [];
+    let currentIds = [];
+    try {
+        // Try to parse as JSON first
+        currentIds = JSON.parse(selectedPersonIds.value || '[]');
+    } catch (e) {
+        // Fallback to comma-separated for backward compatibility
+        currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',').map(id => parseInt(id)) : [];
+    }
     
-    // Remove the ID
-    const updatedIds = currentIds.filter(id => id !== personId.toString());
-    selectedPersonIds.value = updatedIds.join(',');
+    // Remove the ID - convert to number for comparison to ensure type matching
+    const updatedIds = currentIds.filter(id => parseInt(id) !== parseInt(personId));
+    
+    // Update with JSON format
+    selectedPersonIds.value = JSON.stringify(updatedIds);
     
     // Update the display
     updateSelectedPersonsDisplay();
