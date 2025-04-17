@@ -259,7 +259,15 @@
                                                 <span class="badge bg-primary">Einfache Suche</span>
                                                 {% elif query.search_mode == 'person' %}
                                                 <span class="badge bg-success">Personensuche</span>
+                                                {% elif query.search_mode == 'database' %}
+                                                <span class="badge bg-info">Datenbanksuche</span>
                                                 {% elif query.search_mode == 'advanced' %}
+                                                <span class="badge bg-warning">Erweiterte Suche</span>
+                                                {% elif query.search_mode == 'multi' %}
+                                                <span class="badge bg-info">Multi-Datenbank Suche</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">{{ query.search_mode }}</span>
+                                                {% endif %}de == 'advanced' %}
                                                 <span class="badge bg-info">Erweiterte Suche</span>
                                                 {% endif %}
                                             </td>
