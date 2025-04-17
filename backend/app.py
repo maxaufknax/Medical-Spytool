@@ -105,7 +105,13 @@ def search():
         search_mode = request.form.get('search_mode', 'simple')
         
         # Common parameters
-        selected_database = request.form.get('database', 'PubMed')
+        # Unterstützt sowohl alte als auch neue Form der Datenbankauswahl
+        selected_databases = request.form.getlist('databases[]')
+        if not selected_databases:
+            # Fallback für die alte Methode mit einem einzelnen "database" Feld
+            selected_database = request.form.get('database', 'PubMed')
+            selected_databases = [selected_database]
+        
         start_date = request.form.get('start_date', '')
         end_date = request.form.get('end_date', '')
         date_range = parse_date_range(start_date, end_date)
@@ -121,32 +127,34 @@ def search():
             search_query = request.form.get('search_query', '')
             person_name = ''
             
-            log_message(f"Starting simple search for '{search_query}' in {selected_database}")
+            databases_str = ", ".join(selected_databases)
+            log_message(f"Starting simple search for '{search_query}' in {databases_str}")
             
             # Validate search query
             if not search_query:
-                flash("Please enter a search query.", "warning")
+                flash("Bitte geben Sie einen Suchbegriff ein.", "warning")
                 log_message("Simple search attempted with empty query")
                 return redirect(url_for('search'))
                 
             # Perform the search
-            return perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date)
+            return perform_multi_database_search(search_query, selected_databases, person_name, additional_terms, date_range, start_date, end_date)
             
         elif search_mode == 'database':
             # Database search mode
             search_query = request.form.get('search_query', '')
             person_name = request.form.get('person_name', '')
             
-            log_message(f"Starting database search for '{search_query}' in {selected_database} with person: {person_name}")
+            databases_str = ", ".join(selected_databases)
+            log_message(f"Starting database search for '{search_query}' in {databases_str} with person: {person_name}")
             
             # Validate search query
             if not search_query:
-                flash("Please enter a search query.", "warning")
+                flash("Bitte geben Sie einen Suchbegriff ein.", "warning")
                 log_message("Database search attempted with empty query")
                 return redirect(url_for('search'))
                 
             # Perform the search
-            return perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date)
+            return perform_multi_database_search(search_query, selected_databases, person_name, additional_terms, date_range, start_date, end_date)
             
         elif search_mode == 'person':
             # Person search mode
@@ -472,57 +480,111 @@ def search():
     )
 
 def perform_single_search(search_query, selected_database, person_name, additional_terms, date_range, start_date, end_date):
-    """Helper function to perform a single search"""
+    """
+    Abwärtskompatible Funktion für Aufrufe des alten Codes.
+    Leitet einfach an die neue multi-datenbank Funktion weiter.
+    """
+    return perform_multi_database_search(search_query, [selected_database], person_name, additional_terms, date_range, start_date, end_date)
+
+def perform_multi_database_search(search_query, selected_databases, person_name, additional_terms, date_range, start_date, end_date):
+    """Helper function to perform a search across multiple databases"""
     try:
-        # Get appropriate connector
-        connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+        if not selected_databases:
+            flash("Bitte wählen Sie mindestens eine Datenbank aus.", "warning")
+            log_message("Search attempted with no databases selected")
+            return redirect(url_for('search'))
+            
+        all_results = []
+        search_summary = {}
+        total_results = 0
         
-        # Execute search
-        results = search_database(
-            connector, 
-            search_query, 
-            person_name=person_name,
-            additional_terms=additional_terms,
-            date_range=date_range
-        )
+        # Iterate through each selected database
+        for selected_database in selected_databases:
+            try:
+                log_message(f"Searching {selected_database} for: '{search_query}'")
+                
+                # Get appropriate connector for this database
+                connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+                
+                # Execute search
+                db_results = search_database(
+                    connector, 
+                    search_query, 
+                    person_name=person_name,
+                    additional_terms=additional_terms,
+                    date_range=date_range
+                )
+                
+                # Track results count for this database
+                if db_results:
+                    num_results = len(db_results)
+                    search_summary[selected_database] = num_results
+                    total_results += num_results
+                    all_results.extend(db_results)
+                    log_message(f"Found {num_results} results in {selected_database}")
+                else:
+                    search_summary[selected_database] = 0
+                    log_message(f"No results found in {selected_database}")
+                
+            except Exception as e:
+                log_message(f"Error searching {selected_database}: {str(e)}", level="ERROR")
+                search_summary[selected_database] = f"Error: {str(e)}"
+                # Continue with other databases
         
-        # Store results in session and database
-        if results:
-            # Save to session
-            session['search_results'] = results
+        # Store combined results in session and database
+        if all_results:
+            # Remove duplicate results based on title and identifier
+            unique_results = []
+            identifiers_seen = set()
+            titles_seen = set()
+            
+            for result in all_results:
+                identifier = result.get('Identifier', '')
+                title = result.get('Titel', '')
+                
+                # Use identifier if available, otherwise use title
+                if identifier and identifier not in identifiers_seen:
+                    identifiers_seen.add(identifier)
+                    unique_results.append(result)
+                elif title and title not in titles_seen and not identifier:
+                    titles_seen.add(title)
+                    unique_results.append(result)
+            
+            # Save to session for display
+            session['search_results'] = unique_results
             session.modified = True
             
             # Save to database
             try:
-                # First save the search query if not already saved
-                search_query_obj = db.session.query(SearchQuery).filter(
-                    SearchQuery.query == search_query,
-                    SearchQuery.database == selected_database,
-                    SearchQuery.additional_terms == additional_terms
-                ).first()
+                # Store databases as comma-separated string
+                databases_str = ", ".join(selected_databases)
                 
-                if not search_query_obj:
-                    search_query_obj = SearchQuery(
-                        name=f"Search in {selected_database}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
-                        query=search_query,
-                        database=selected_database,
-                        additional_terms=additional_terms,
-                        start_date=start_date,
-                        end_date=end_date,
-                        person_name=person_name
-                    )
-                    db.session.add(search_query_obj)
-                    db.session.flush()  # Get ID without committing
-                
+                # First save the search query
+                search_query_obj = SearchQuery(
+                    name=f"Search in {databases_str}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
+                    query=search_query,
+                    database=databases_str,  # Store multiple databases
+                    additional_terms=additional_terms,
+                    start_date=start_date,
+                    end_date=end_date,
+                    person_name=person_name,
+                    search_mode='multi'  # Marker for multi-database search
+                )
+                db.session.add(search_query_obj)
+                db.session.flush()  # Get ID without committing
+            
                 # Now save each result
-                for result in results:
+                for result in unique_results:
+                    # Extract database from result if available, otherwise use the first one
+                    result_database = result.get('Database', selected_databases[0])
+                    
                     result_obj = SearchResult(
                         query_id=search_query_obj.id,
-                        database=selected_database,
+                        database=result_database,
                         result_data=result
                     )
                     db.session.add(result_obj)
-                
+            
                 db.session.commit()
                 log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
                 
@@ -531,12 +593,21 @@ def perform_single_search(search_query, selected_database, person_name, addition
                 log_message(f"Failed to save search results to database: {str(e)}", level="ERROR")
                 # Continue since we at least have the results in the session
             
-            log_message(f"Search complete. Found {len(results)} results.")
-            flash(f"{len(results)} Ergebnisse gefunden.", "success")
+            # Format search summary for display
+            summary_text = ", ".join([f"{db}: {count}" for db, count in search_summary.items() if isinstance(count, int)])
+            unique_count = len(unique_results)
+            
+            log_message(f"Multi-database search complete. Found {unique_count} unique results across {len(selected_databases)} databases.")
+            
+            if unique_count < total_results:
+                flash(f"{unique_count} einzigartige Ergebnisse gefunden (insgesamt {total_results} Treffer - {summary_text}).", "success")
+            else:
+                flash(f"{unique_count} Ergebnisse gefunden ({summary_text}).", "success")
+                
             return redirect(url_for('results'))
         else:
             flash("Keine Ergebnisse für Ihre Suchanfrage gefunden.", "warning")
-            log_message("Search returned no results")
+            log_message("Multi-database search returned no results")
             return redirect(url_for('search'))
             
     except Exception as e:
