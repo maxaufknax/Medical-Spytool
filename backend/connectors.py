@@ -9,9 +9,17 @@ import xml.etree.ElementTree as ET
 import requests
 import time
 import logging
+import urllib.parse
+from io import BytesIO
 from functools import lru_cache
+from datetime import datetime
 
 logger = logging.getLogger("MedicalSpy")
+
+# Global settings
+DEFAULT_TIMEOUT = 30  # seconds
+MAX_RETRIES = 3
+RETRY_BACKOFF_FACTOR = 0.5
 
 # DNB Namespace dictionary
 dnb_ns = {
@@ -20,7 +28,9 @@ dnb_ns = {
     'dc': 'http://purl.org/dc/elements/1.1/',
     'dcterms': 'http://purl.org/dc/terms/',
     'foaf': 'http://xmlns.com/foaf/0.1/',
-    'rdau': 'http://rdaregistry.info/Elements/u/'
+    'rdau': 'http://rdaregistry.info/Elements/u/',
+    'bibo': 'http://purl.org/ontology/bibo/',
+    'isbd': 'http://iflastandards.info/ns/isbd/elements/'
 }
 
 class DatabaseConnector:
@@ -50,7 +60,10 @@ class DatabaseConnector:
         Parse the search results. To be implemented by subclasses.
         
         Args:
-            response: The response from the database
+            response: The response from the database (string, bytes, or other format)
+            
+        Returns:
+            list: List of parsed results
             
         Raises:
             NotImplementedError: This method must be implemented by subclasses
@@ -165,13 +178,23 @@ class DNBConnector(DatabaseConnector):
         Returns:
             str: The transformed search term
         """
-        if not search_term.lower().startswith("dc.any"):
-            parts = search_term.split()
-            if len(parts) == 2:
-                return f'dc.any all ("{search_term}" or "{parts[1]}, {parts[0]}")'
-            else:
-                return f'dc.any all "{search_term}"'
-        return search_term
+        if not search_term or not search_term.strip():
+            return 'dc.any all "*"'
+            
+        # Don't transform if it's already a CQL query
+        if search_term.lower().startswith("dc."):
+            return search_term
+        
+        # Special handling for person names (assuming "first last" format)
+        parts = search_term.split()
+        if len(parts) == 2:
+            # Try both "first last" and "last, first" formats
+            return f'dc.creator all ("{search_term}" or "{parts[1]}, {parts[0]}")'
+        
+        # General search across all fields
+        # Escape double quotes and properly format
+        safe_term = search_term.replace('"', '\\"')
+        return f'dc.any all "{safe_term}"'
         
     def search(self, query, params=None):
         """
@@ -194,10 +217,16 @@ class DNBConnector(DatabaseConnector):
             params = {}
         
         page_size = params.get('page_size', self.max_results_per_page)
+        max_results = params.get('max_results', 2000)  # Safety limit
         
-        while True:
+        # Track request attempts for each page
+        attempt = 0
+        max_attempts = MAX_RETRIES
+        
+        while attempt < max_attempts:
             try:
-                # Send request to DNB
+                # Send request to DNB with timeout
+                logger.info(f"DNB: Requesting records from position {start_record} (attempt {attempt+1}/{max_attempts})")
                 response = self.search_page(query, start_record, page_size)
                 
                 # Parse total number of results on first run
@@ -208,28 +237,79 @@ class DNBConnector(DatabaseConnector):
                         if num_elem is not None and num_elem.text:
                             total_records = int(num_elem.text)
                             logger.info(f"DNB: Total number of results: {total_records}")
+                            
+                            # Apply safety limit if needed
+                            if total_records > max_results:
+                                logger.warning(f"DNB: Limiting results to {max_results} (total available: {total_records})")
+                                total_records = max_results
                         else:
+                            logger.warning("DNB: Could not determine total number of results, assuming zero.")
                             total_records = 0
-                            logger.warning("DNB: Could not determine total number of results.")
+                            break  # No results, exit loop
                     except ET.ParseError as e:
                         logger.error(f"DNB: XML parsing error for result count: {e}")
+                        if attempt < max_attempts - 1:
+                            attempt += 1
+                            time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                            continue
                         total_records = 0
+                        break
                 
                 # Process current page
                 page_results = self.parse_results(response)
-                all_results.extend(page_results)
-                logger.info(f"DNB: Page from {start_record}: {len(page_results)} results")
-                
-                # Check if all results have been retrieved
-                if total_records is not None and start_record + page_size > total_records:
+                if page_results:
+                    all_results.extend(page_results)
+                    logger.info(f"DNB: Page from {start_record}: {len(page_results)} results")
+                    
+                    # Reset attempt counter for next page
+                    attempt = 0
+                    
+                    # Check if all results have been retrieved
+                    if len(all_results) >= total_records or start_record + page_size > total_records:
+                        logger.info(f"DNB: Retrieved all available results ({len(all_results)} records)")
+                        break
+                    
+                    # Next page
+                    start_record += page_size
+                    time.sleep(0.5)  # Pause between requests
+                else:
+                    logger.warning(f"DNB: No results in page starting at {start_record}")
+                    if attempt < max_attempts - 1:
+                        attempt += 1
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
                     break
                 
-                # Next page
-                start_record += page_size
-                time.sleep(0.5)  # Pause between requests
+            except requests.exceptions.Timeout:
+                logger.error(f"DNB: Timeout for request from position {start_record}")
+                if attempt < max_attempts - 1:
+                    attempt += 1
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
+                break
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"DNB: Request error from position {start_record}: {e}")
+                if attempt < max_attempts - 1:
+                    attempt += 1
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
+                break
+                
+            except ET.ParseError as e:
+                logger.error(f"DNB: XML parse error from position {start_record}: {e}")
+                if attempt < max_attempts - 1:
+                    attempt += 1
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
+                break
                 
             except Exception as e:
-                logger.error(f"DNB: Error in request from position {start_record}: {e}")
+                logger.error(f"DNB: Unexpected error from position {start_record}: {e}")
+                if attempt < max_attempts - 1:
+                    attempt += 1
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
                 break
                 
         logger.info(f"DNB: Total search completed: {len(all_results)} results")
@@ -247,6 +327,7 @@ class DNBConnector(DatabaseConnector):
         Returns:
             str: The response text
         """
+        # Properly encode parameters for DNB SRU service
         params = {
             "version": "1.1",
             "operation": "searchRetrieve",
@@ -256,19 +337,32 @@ class DNBConnector(DatabaseConnector):
             "startRecord": str(start_record)
         }
         
-        response = requests.get(self.base_url, params=params)
+        # Add API key if available (for future compatibility)
+        if self.api_key:
+            params["apiKey"] = self.api_key
+            
+        # Make the request with timeout
+        response = requests.get(
+            self.base_url, 
+            params=params, 
+            timeout=DEFAULT_TIMEOUT,
+            headers={"User-Agent": "MedicalSpy/3.0"}
+        )
+        
+        # Check for HTTP errors
         if response.status_code != 200:
             logger.error(f"DNB: HTTP error {response.status_code} for request from position {start_record}")
+            logger.debug(f"DNB: Response content: {response.text[:500]}...")
             response.raise_for_status()
             
         return response.text
         
-    def parse_results(self, xml_text):
+    def parse_results(self, response):
         """
         Parse the RDF/XML response from DNB.
         
         Args:
-            xml_text (str): The XML response text
+            response (str): The XML response text
             
         Returns:
             list: List of parsed results
@@ -423,54 +517,216 @@ class PubMedConnector(DatabaseConnector):
         esearch_url = self.base_url + "esearch.fcgi"
         esearch_params = {
             "db": "pubmed",
-            "term": query,
+            "term": urllib.parse.quote(query),  # Properly encode the query term
             "retmax": max_results,
-            "retmode": "xml"
+            "retmode": "xml",
+            "usehistory": "y"  # Use the history server for better reliability
         }
         
         # Add API key if available
         if self.api_key:
             esearch_params["api_key"] = self.api_key
             
-        try:
-            response = requests.get(esearch_url, params=esearch_params)
-            response.raise_for_status()
-            esearch_xml = ET.fromstring(response.content)
-            id_list = [node.text for node in esearch_xml.findall(".//Id")]
-            
-            if not id_list:
-                logger.info(f"No publications found for query: {query}")
-                return []
+        for attempt in range(MAX_RETRIES):
+            try:
+                logger.info(f"PubMed ESearch attempt {attempt + 1}/{MAX_RETRIES}")
+                response = requests.get(
+                    esearch_url, 
+                    params=esearch_params, 
+                    timeout=DEFAULT_TIMEOUT
+                )
+                response.raise_for_status()
+                esearch_xml = ET.fromstring(response.content)
                 
-            logger.info(f"Found {len(id_list)} PMIDs for query: {query}")
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error in ESearch request: {e}")
-            return []
-        except ET.ParseError as e:
-            logger.error(f"Error parsing ESearch response: {e}")
-            return []
-            
-        # Step 2: Use EFetch to get publication details
-        efetch_url = self.base_url + "efetch.fcgi"
-        efetch_params = {
-            "db": "pubmed",
-            "id": ",".join(id_list),
-            "retmode": "xml"
-        }
+                # Check if there's an error message
+                error_elem = esearch_xml.find(".//ERROR")
+                if error_elem is not None and error_elem.text:
+                    logger.error(f"PubMed ESearch returned error: {error_elem.text}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
+                    return []
+                
+                # Try to get WebEnv and QueryKey for history server
+                web_env = esearch_xml.find(".//WebEnv")
+                query_key = esearch_xml.find(".//QueryKey")
+                
+                if web_env is not None and web_env.text and query_key is not None and query_key.text:
+                    # Use history server approach (more reliable for large result sets)
+                    logger.info("Using PubMed history server for retrieval")
+                    return self._fetch_from_history(web_env.text, query_key.text, max_results)
+                else:
+                    # Fallback to direct ID list if history server info not available
+                    id_list = [node.text for node in esearch_xml.findall(".//Id")]
+                    
+                    if not id_list:
+                        logger.info(f"No publications found for query: {query}")
+                        return []
+                        
+                    logger.info(f"Found {len(id_list)} PMIDs for query: {query}")
+                    return self._fetch_by_id_list(id_list)
+                
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error in ESearch request: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
+                return []
+            except ET.ParseError as e:
+                logger.error(f"Error parsing ESearch response: {e}")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                    continue
+                return []
         
-        # Add API key if available
-        if self.api_key:
-            efetch_params["api_key"] = self.api_key
+        # If we've reached here, all attempts failed
+        logger.error(f"All {MAX_RETRIES} attempts to ESearch PubMed failed")
+        return []
+        
+    def _fetch_from_history(self, web_env, query_key, max_results):
+        """
+        Fetch results using PubMed history server.
+        
+        Args:
+            web_env (str): WebEnv parameter from ESearch
+            query_key (str): QueryKey parameter from ESearch
+            max_results (int): Maximum number of results to retrieve
             
-        try:
-            response = requests.get(efetch_url, params=efetch_params)
-            response.raise_for_status()
-            return self.parse_results(response.content)
+        Returns:
+            list: List of search results
+        """
+        efetch_url = self.base_url + "efetch.fcgi"
+        
+        # Calculate number of batches needed (PubMed recommends max 500 records per request)
+        batch_size = 500
+        num_batches = (max_results + batch_size - 1) // batch_size  # Ceiling division
+        
+        all_results = []
+        
+        for batch in range(num_batches):
+            start = batch * batch_size
             
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error in EFetch request: {e}")
+            efetch_params = {
+                "db": "pubmed",
+                "WebEnv": web_env,
+                "query_key": query_key,
+                "retstart": start,
+                "retmax": min(batch_size, max_results - start),
+                "retmode": "xml"
+            }
+            
+            # Add API key if available
+            if self.api_key:
+                efetch_params["api_key"] = self.api_key
+                
+            for attempt in range(MAX_RETRIES):
+                try:
+                    logger.info(f"PubMed EFetch batch {batch+1}/{num_batches} attempt {attempt+1}/{MAX_RETRIES}")
+                    response = requests.get(
+                        efetch_url, 
+                        params=efetch_params, 
+                        timeout=DEFAULT_TIMEOUT
+                    )
+                    response.raise_for_status()
+                    
+                    batch_results = self.parse_results(response.content)
+                    all_results.extend(batch_results)
+                    
+                    logger.info(f"Retrieved {len(batch_results)} records in batch {batch+1}")
+                    
+                    # Success, move to next batch
+                    break
+                    
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Error in EFetch request (batch {batch+1}): {e}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
+                    # Skip to next batch if all attempts for this batch failed
+                    break
+                    
+                except ET.ParseError as e:
+                    logger.error(f"Error parsing EFetch response (batch {batch+1}): {e}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
+                    break
+            
+            # Small delay between batches to be nice to the API
+            if batch < num_batches - 1:
+                time.sleep(0.5)
+                
+        return all_results
+        
+    def _fetch_by_id_list(self, id_list):
+        """
+        Fetch results using direct ID list.
+        
+        Args:
+            id_list (list): List of PMIDs to fetch
+            
+        Returns:
+            list: List of search results
+        """
+        if not id_list:
             return []
+            
+        efetch_url = self.base_url + "efetch.fcgi"
+        
+        # If we have more than 200 IDs, split into batches
+        batch_size = 200
+        all_results = []
+        
+        for i in range(0, len(id_list), batch_size):
+            batch_ids = id_list[i:i+batch_size]
+            
+            efetch_params = {
+                "db": "pubmed",
+                "id": ",".join(batch_ids),
+                "retmode": "xml"
+            }
+            
+            # Add API key if available
+            if self.api_key:
+                efetch_params["api_key"] = self.api_key
+                
+            for attempt in range(MAX_RETRIES):
+                try:
+                    logger.info(f"PubMed EFetch (ID list) batch {i//batch_size + 1} attempt {attempt+1}/{MAX_RETRIES}")
+                    response = requests.get(
+                        efetch_url, 
+                        params=efetch_params,
+                        timeout=DEFAULT_TIMEOUT
+                    )
+                    response.raise_for_status()
+                    
+                    batch_results = self.parse_results(response.content)
+                    all_results.extend(batch_results)
+                    
+                    logger.info(f"Retrieved {len(batch_results)} records in ID batch {i//batch_size + 1}")
+                    
+                    # Success, move to next batch
+                    break
+                    
+                except requests.exceptions.RequestException as e:
+                    logger.error(f"Error in EFetch request (ID batch {i//batch_size + 1}): {e}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
+                    break
+                    
+                except ET.ParseError as e:
+                    logger.error(f"Error parsing EFetch response (ID batch {i//batch_size + 1}): {e}")
+                    if attempt < MAX_RETRIES - 1:
+                        time.sleep(RETRY_BACKOFF_FACTOR * (2 ** attempt))
+                        continue
+                    break
+            
+            # Small delay between batches
+            if i + batch_size < len(id_list):
+                time.sleep(0.5)
+                
+        return all_results
         
     def parse_results(self, xml_content):
         """
