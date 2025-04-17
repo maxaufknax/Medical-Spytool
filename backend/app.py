@@ -22,6 +22,7 @@ from backend.config import load_settings, save_settings
 from backend.connectors import get_connector_for_database
 from backend.search import search_database, parse_date_range
 from backend.utils import generate_filename, export_to_csv, export_to_excel, log_message, get_log_messages, clear_log_messages
+from backend.models import db, SearchQuery, SearchResult, Person, Setting, LogEntry
 
 # Configure logging
 logging.basicConfig(
@@ -38,18 +39,37 @@ logger = logging.getLogger("MedicalSpy")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
+# Configure database
+database_url = os.environ.get('DATABASE_URL')
+print(f"Database URL: {database_url}")
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
+
+# Create database tables if they don't exist
+with app.app_context():
+    db.create_all()
+    logger.info("Database tables created (if they didn't exist)")
+
 # Initialize session variables if not present
 @app.before_request
 def before_request():
     if 'search_results' not in session:
         session['search_results'] = []
     if 'saved_queries' not in session:
-        session['saved_queries'] = []
+        # Load saved queries from database
+        with app.app_context():
+            queries = SearchQuery.query.all()
+            session['saved_queries'] = [query.to_dict() for query in queries]
     if 'settings' not in session:
-        # Load settings from file
-        session['settings'] = load_settings()
+        # Load settings from database
+        with app.app_context():
+            session['settings'] = Setting.get_settings_dict()
     if 'persons' not in session:
-        session['persons'] = []
+        # Load persons from database
+        with app.app_context():
+            persons = Person.query.all()
+            session['persons'] = [person.to_dict() for person in persons]
 
 # Add context processor to provide current year to all templates
 @app.context_processor
@@ -96,10 +116,51 @@ def search():
                 date_range=date_range
             )
             
-            # Store results in session
+            # Store results in session and database
             if results:
+                # Save to session
                 session['search_results'] = results
                 session.modified = True
+                
+                # Save to database
+                try:
+                    # First save the search query if not already saved
+                    search_query_obj = SearchQuery.query.filter_by(
+                        query=search_query,
+                        database=selected_database,
+                        additional_terms=additional_terms
+                    ).first()
+                    
+                    if not search_query_obj:
+                        search_query_obj = SearchQuery(
+                            name=f"Search in {selected_database}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
+                            query=search_query,
+                            database=selected_database,
+                            additional_terms=additional_terms,
+                            start_date=start_date,
+                            end_date=end_date,
+                            person_name=person_name
+                        )
+                        db.session.add(search_query_obj)
+                        db.session.flush()  # Get ID without committing
+                    
+                    # Now save each result
+                    for result in results:
+                        result_obj = SearchResult(
+                            query_id=search_query_obj.id,
+                            database=selected_database,
+                            result_data=result
+                        )
+                        db.session.add(result_obj)
+                    
+                    db.session.commit()
+                    log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
+                    
+                except Exception as e:
+                    db.session.rollback()
+                    log_message(f"Failed to save search results to database: {str(e)}", level="ERROR")
+                    # Continue since we at least have the results in the session
+                
                 log_message(f"Search complete. Found {len(results)} results.")
                 return redirect(url_for('results'))
             else:
@@ -182,12 +243,19 @@ def settings():
             'default_database': request.form.get('default_database', 'PubMed')
         }
         
-        # Save settings
+        # Save settings to session and database
         session['settings'] = updated_settings
-        save_settings(updated_settings)
         
-        flash("Settings updated successfully!", "success")
-        log_message("Settings updated")
+        try:
+            # Save to database
+            Setting.save_settings_dict(updated_settings)
+            
+            flash("Settings updated successfully!", "success")
+            log_message("Settings updated in session and database")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Settings saved to session but failed to save to database: {str(e)}", "warning")
+            log_message(f"Failed to save settings to database: {str(e)}", level="ERROR")
         
     return render_template('settings.html', settings=session.get('settings', {}))
 
@@ -201,6 +269,9 @@ def log():
 def api_clear_log():
     """API endpoint to clear the log"""
     clear_log_messages()
+    # Also clear logs in database
+    with app.app_context():
+        LogEntry.clear_logs()
     return jsonify({"success": True})
 
 @app.route('/api/export_log', methods=['POST'])
@@ -279,8 +350,7 @@ def api_save_query():
     if not data or 'query_name' not in data or 'search_query' not in data or 'database' not in data:
         return jsonify({"success": False, "message": "Missing required fields"}), 400
     
-    saved_queries = session.get('saved_queries', [])
-    
+    # Create new query object
     new_query = {
         'name': data['query_name'],
         'query': data['search_query'],
@@ -292,27 +362,62 @@ def api_save_query():
         'saved_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     
-    saved_queries.append(new_query)
-    session['saved_queries'] = saved_queries
-    session.modified = True
-    
-    log_message(f"Saved query: {data['query_name']}")
-    
-    return jsonify({"success": True})
-
-@app.route('/api/delete_query/<int:query_index>', methods=['DELETE'])
-def api_delete_query(query_index):
-    """API endpoint to delete a saved query"""
-    saved_queries = session.get('saved_queries', [])
-    
-    if 0 <= query_index < len(saved_queries):
-        deleted_query = saved_queries.pop(query_index)
+    # Save to database
+    try:
+        # Create database entry
+        db_query = SearchQuery(
+            name=new_query['name'],
+            query=new_query['query'],
+            database=new_query['database'],
+            additional_terms=new_query['additional_terms'],
+            start_date=new_query['start_date'],
+            end_date=new_query['end_date'],
+            person_name=new_query['person_name']
+        )
+        db.session.add(db_query)
+        db.session.commit()
+        
+        # Update the session
+        saved_queries = session.get('saved_queries', [])
+        saved_queries.append(new_query)
         session['saved_queries'] = saved_queries
         session.modified = True
-        log_message(f"Deleted query: {deleted_query['name']}")
+        
+        log_message(f"Saved query: {data['query_name']}")
         return jsonify({"success": True})
-    
-    return jsonify({"success": False, "message": "Query not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        log_message(f"Failed to save query: {str(e)}", level="ERROR")
+        return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
+
+@app.route('/api/delete_query/<int:query_id>', methods=['DELETE'])
+def api_delete_query(query_id):
+    """API endpoint to delete a saved query"""
+    try:
+        # Find query in database
+        query = SearchQuery.query.get(query_id)
+        if query:
+            query_name = query.name
+            
+            # Delete from database
+            db.session.delete(query)
+            db.session.commit()
+            
+            # Update session
+            saved_queries = session.get('saved_queries', [])
+            # Filter out the deleted query
+            saved_queries = [q for q in saved_queries if q.get('id') != query_id]
+            session['saved_queries'] = saved_queries
+            session.modified = True
+            
+            log_message(f"Deleted query: {query_name}")
+            return jsonify({"success": True})
+        
+        return jsonify({"success": False, "message": "Query not found in database"}), 404
+    except Exception as e:
+        db.session.rollback()
+        log_message(f"Failed to delete query: {str(e)}", level="ERROR")
+        return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
 
 @app.route('/api/manage_persons', methods=['POST'])
 def api_manage_persons():
@@ -328,67 +433,112 @@ def api_manage_persons():
         if not name or not first_name or not last_name:
             return jsonify({"success": False, "message": "Missing required fields"}), 400
         
-        new_person = {
-            'name': name,
-            'first_name': first_name,
-            'last_name': last_name
-        }
-        
-        persons = session.get('persons', [])
-        persons.append(new_person)
-        session['persons'] = persons
-        session.modified = True
-        
-        log_message(f"Added person: {name}")
-        
-        return jsonify({"success": True})
-        
-    elif action == 'update':
-        # Update an existing person
-        index = int(request.form.get('index', -1))
-        name = request.form.get('name', '')
-        first_name = request.form.get('first_name', '')
-        last_name = request.form.get('last_name', '')
-        
-        if index < 0 or not name or not first_name or not last_name:
-            return jsonify({"success": False, "message": "Missing required fields"}), 400
-        
-        persons = session.get('persons', [])
-        
-        if 0 <= index < len(persons):
-            persons[index] = {
+        try:
+            # Create new person in database
+            person = Person(
+                name=name,
+                first_name=first_name,
+                last_name=last_name
+            )
+            db.session.add(person)
+            db.session.commit()
+            
+            # Add to session
+            new_person = {
+                'id': person.id,
                 'name': name,
                 'first_name': first_name,
                 'last_name': last_name
             }
+            
+            persons = session.get('persons', [])
+            persons.append(new_person)
+            session['persons'] = persons
+            session.modified = True
+            
+            log_message(f"Added person: {name}")
+            return jsonify({"success": True, "person": new_person})
+            
+        except Exception as e:
+            db.session.rollback()
+            log_message(f"Failed to add person: {str(e)}", level="ERROR")
+            return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
+        
+    elif action == 'update':
+        # Update an existing person
+        person_id = int(request.form.get('id', -1))
+        name = request.form.get('name', '')
+        first_name = request.form.get('first_name', '')
+        last_name = request.form.get('last_name', '')
+        
+        if person_id < 0 or not name or not first_name or not last_name:
+            return jsonify({"success": False, "message": "Missing required fields"}), 400
+        
+        try:
+            # Update person in database
+            person = Person.query.get(person_id)
+            if not person:
+                return jsonify({"success": False, "message": "Person not found in database"}), 404
+                
+            person.name = name
+            person.first_name = first_name
+            person.last_name = last_name
+            db.session.commit()
+            
+            # Update in session
+            updated_person = {
+                'id': person.id,
+                'name': name,
+                'first_name': first_name,
+                'last_name': last_name
+            }
+            
+            persons = session.get('persons', [])
+            # Replace the person with matching ID
+            persons = [p for p in persons if p.get('id') != person_id]
+            persons.append(updated_person)
             session['persons'] = persons
             session.modified = True
             
             log_message(f"Updated person: {name}")
+            return jsonify({"success": True, "person": updated_person})
             
-            return jsonify({"success": True})
-        
-        return jsonify({"success": False, "message": "Person not found"}), 404
+        except Exception as e:
+            db.session.rollback()
+            log_message(f"Failed to update person: {str(e)}", level="ERROR")
+            return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
         
     elif action == 'delete':
         # Delete a person
-        index = int(request.form.get('index', -1))
+        person_id = int(request.form.get('id', -1))
         
-        if index < 0:
-            return jsonify({"success": False, "message": "Missing index"}), 400
+        if person_id < 0:
+            return jsonify({"success": False, "message": "Missing person ID"}), 400
         
-        persons = session.get('persons', [])
-        
-        if 0 <= index < len(persons):
-            deleted_person = persons.pop(index)
+        try:
+            # Delete from database
+            person = Person.query.get(person_id)
+            if not person:
+                return jsonify({"success": False, "message": "Person not found in database"}), 404
+                
+            person_name = person.name
+            db.session.delete(person)
+            db.session.commit()
+            
+            # Update session
+            persons = session.get('persons', [])
+            # Remove the person with matching ID
+            persons = [p for p in persons if p.get('id') != person_id]
             session['persons'] = persons
             session.modified = True
             
-            log_message(f"Deleted person: {deleted_person['name']}")
-            
+            log_message(f"Deleted person: {person_name}")
             return jsonify({"success": True})
-        
-        return jsonify({"success": False, "message": "Person not found"}), 404
+            
+        except Exception as e:
+            db.session.rollback()
+            log_message(f"Failed to delete person: {str(e)}", level="ERROR")
+            return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
     
     return jsonify({"success": False, "message": "Invalid action"}), 400
 

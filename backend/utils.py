@@ -17,16 +17,17 @@ logger = logging.getLogger("MedicalSpy")
 # Global log storage
 _log_messages = []
 
-def log_message(message, level="INFO"):
+def log_message(message, level="INFO", save_to_db=True):
     """
     Log a message to the global log.
     
     Args:
         message (str): The message to log
         level (str, optional): The log level (INFO, WARNING, ERROR)
+        save_to_db (bool, optional): Whether to save the log message to the database
     """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    full_msg = f"[{timestamp}] {message}"
+    full_msg = f"[{timestamp}] {level}: {message}"
     _log_messages.append(full_msg)
     
     if level == "INFO":
@@ -35,15 +36,49 @@ def log_message(message, level="INFO"):
         logger.warning(message)
     elif level == "ERROR":
         logger.error(message)
+        
+    # Save to database if requested
+    if save_to_db:
+        try:
+            # Import here to avoid circular imports
+            from backend.models import LogEntry, db
+            from flask import current_app
+            
+            # Only save to DB if within app context
+            if current_app:
+                with current_app.app_context():
+                    LogEntry.add_log(message, level)
+        except Exception as e:
+            logger.error(f"Failed to save log to database: {e}")
 
-def get_log_messages():
+def get_log_messages(include_db_logs=True):
     """
     Get all log messages.
     
+    Args:
+        include_db_logs (bool, optional): Whether to include logs from the database
+        
     Returns:
         list: List of log messages
     """
-    return _log_messages
+    logs = _log_messages.copy()
+    
+    if include_db_logs:
+        try:
+            # Import here to avoid circular imports
+            from backend.models import LogEntry
+            from flask import current_app
+            
+            # Only get DB logs if within app context
+            if current_app:
+                with current_app.app_context():
+                    db_logs = LogEntry.get_logs()
+                    logs.extend(db_logs)
+        except:
+            # If there's an error, just return in-memory logs
+            pass
+    
+    return logs
 
 def clear_log_messages():
     """Clear all log messages."""
