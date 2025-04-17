@@ -56,12 +56,18 @@
                             
                             <div class="row mb-3">
                                 <div class="col-md-12">
-                                    <label for="simpleDatabase" class="form-label">Datenbank</label>
-                                    <select class="form-select" id="simpleDatabase" name="database">
+                                    <label class="form-label">Datenbanken</label>
+                                    <div class="border rounded p-2 database-selection" style="min-height: 60px; background-color: #f8f9fa;">
                                         {% for db in databases %}
-                                        <option value="{{ db }}">{{ db }}</option>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
+                                                id="db-simple-{{ db }}" name="databases[]" 
+                                                {% if db == 'PubMed' %}checked{% endif %}>
+                                            <label class="form-check-label" for="db-simple-{{ db }}">{{ db }}</label>
+                                        </div>
                                         {% endfor %}
-                                    </select>
+                                    </div>
+                                    <div class="form-text">Wählen Sie eine oder mehrere Datenbanken für die Suche aus.</div>
                                 </div>
                             </div>
                         </div>
@@ -115,12 +121,18 @@
                             
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label for="advancedDatabaseSelect" class="form-label">Datenbank</label>
-                                    <select class="form-select" id="advancedDatabaseSelect" name="database">
+                                    <label class="form-label">Datenbanken</label>
+                                    <div class="border rounded p-2 database-selection" style="min-height: 60px; background-color: #f8f9fa;">
                                         {% for db in databases %}
-                                        <option value="{{ db }}">{{ db }}</option>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
+                                                id="db-advanced-{{ db }}" name="databases[]" 
+                                                {% if db == 'PubMed' %}checked{% endif %}>
+                                            <label class="form-check-label" for="db-advanced-{{ db }}">{{ db }}</label>
+                                        </div>
                                         {% endfor %}
-                                    </select>
+                                    </div>
+                                    <div class="form-text">Wählen Sie eine oder mehrere Datenbanken aus.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="advancedAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe</label>
@@ -243,12 +255,18 @@
                             
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label for="personDatabase" class="form-label">Datenbank</label>
-                                    <select class="form-select" id="personDatabase" name="database">
+                                    <label class="form-label">Datenbanken</label>
+                                    <div class="border rounded p-2 database-selection" style="min-height: 60px; background-color: #f8f9fa;">
                                         {% for db in databases %}
-                                        <option value="{{ db }}">{{ db }}</option>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
+                                                id="db-person-{{ db }}" name="databases[]" 
+                                                {% if db == 'PubMed' %}checked{% endif %}>
+                                            <label class="form-check-label" for="db-person-{{ db }}">{{ db }}</label>
+                                        </div>
                                         {% endfor %}
-                                    </select>
+                                    </div>
+                                    <div class="form-text">Wählen Sie eine oder mehrere Datenbanken aus.</div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="personAdditionalTerms" class="form-label">Zusätzliche Suchbegriffe (Optional)</label>
