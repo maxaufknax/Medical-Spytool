@@ -423,8 +423,9 @@ def search():
                             
                     # Store results in session and database
                     if unique_results:
-                        # Save to session
-                        session['search_results'] = unique_results
+                        # Speichere nur die Query-ID in der Session, nicht die kompletten Ergebnisse
+                        session['current_query_id'] = search_query_obj.id
+                        session['results_count'] = len(unique_results)
                         session.modified = True
                         
                         # Save to database
@@ -578,10 +579,6 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                     titles_seen.add(title)
                     unique_results.append(result)
             
-            # Save to session for display
-            session['search_results'] = unique_results
-            session.modified = True
-            
             # Save to database
             try:
                 # Store databases as comma-separated string
@@ -600,7 +597,7 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                 )
                 db.session.add(search_query_obj)
                 db.session.flush()  # Get ID without committing
-            
+                
                 # Now save each result
                 for result in unique_results:
                     # Extract database from result if available, otherwise use the first one
@@ -612,14 +609,19 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                         result_data=result
                     )
                     db.session.add(result_obj)
-            
-                db.session.commit()
-                log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
                 
+                db.session.commit()
+                
+                # Speichere nur die Query-ID in der Session, nicht die kompletten Ergebnisse
+                session['current_query_id'] = search_query_obj.id
+                session['results_count'] = len(unique_results)
+                session.modified = True
+                
+                log_message(f"Search results saved to database. Query ID: {search_query_obj.id}")
             except Exception as e:
                 db.session.rollback()
                 log_message(f"Failed to save search results to database: {str(e)}", level="ERROR")
-                # Continue since we at least have the results in the session
+                # Continue since we at least have results to display
             
             # Format search summary for display
             summary_text = ", ".join([f"{db}: {count}" for db, count in search_summary.items() if isinstance(count, int)])
