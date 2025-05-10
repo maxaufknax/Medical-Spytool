@@ -41,6 +41,8 @@ class DatabaseConnector:
         self.name = "Generic Database"
         self.max_results_per_page = 100
         self.search_fields = []
+        self.last_error = None
+        self.connection_status = "Not connected"
 
     def search(self, query, params=None):
         """
@@ -121,6 +123,62 @@ class DatabaseConnector:
             query = f"({query}) AND ({additional_terms})"
         # Date, language, and publication type are added in specific subclasses
         return query
+        
+    def check_connection(self):
+        """
+        Check if the connector can successfully connect to the database.
+        
+        Returns:
+            bool: True if connection is successful, False otherwise
+        """
+        try:
+            # Try a simple search to check connection
+            self.search("test", {"max_results": 1})
+            self.connection_status = "Connected"
+            return True
+        except Exception as e:
+            self.last_error = str(e)
+            self.connection_status = f"Connection error: {str(e)}"
+            logger.error(f"Connection check failed for {self.name}: {e}")
+            return False
+            
+    def get_status(self):
+        """
+        Get the current status of the connector.
+        
+        Returns:
+            dict: Status information
+        """
+        return {
+            "name": self.name,
+            "connection_status": self.connection_status,
+            "api_key_configured": bool(self.api_key),
+            "last_error": self.last_error
+        }
+        
+    def handle_request_error(self, e, request_info=""):
+        """
+        Handle and log a request error.
+        
+        Args:
+            e (Exception): The exception
+            request_info (str): Additional information about the request
+            
+        Returns:
+            str: Error message
+        """
+        error_msg = f"Error in {self.name} request"
+        if request_info:
+            error_msg += f" ({request_info})"
+        error_msg += f": {str(e)}"
+        
+        self.last_error = error_msg
+        logger.error(error_msg)
+        
+        if hasattr(e, "response") and hasattr(e.response, "status_code"):
+            logger.error(f"{self.name} HTTP error code: {e.response.status_code}")
+            
+        return error_msg
 
 class DNBConnector(DatabaseConnector):
     """Connector for the Deutsche Nationalbibliothek"""
