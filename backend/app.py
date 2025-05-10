@@ -75,12 +75,43 @@ def before_request():
 # Add context processor to provide current year to all templates
 @app.context_processor
 def inject_current_year():
+    """Add current year to all templates"""
     return {'current_year': datetime.now().year}
 
 @app.route('/')
 def index():
     """Render the main page"""
     return render_template('index.html')
+
+@app.route('/health')
+def health_check():
+    """
+    Health check endpoint for monitoring and container orchestration.
+    Returns a 200 OK response if the application is running correctly.
+    """
+    health = {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "version": "3.0",
+        "database": "unknown"
+    }
+    
+    # Check database connection
+    try:
+        # Try a simple database query
+        from sqlalchemy import text
+        with app.app_context():
+            db.session.execute(text("SELECT 1")).scalar()
+            health["database"] = "connected"
+    except Exception as e:
+        health["status"] = "degraded"
+        health["database"] = "error"
+        health["error"] = str(e)
+    
+    # Return different status codes based on health status
+    status_code = 200 if health["status"] == "ok" else 503
+    
+    return jsonify(health), status_code
 
 @app.route('/persons')
 def persons():

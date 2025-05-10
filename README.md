@@ -2,6 +2,14 @@
 
 MedicalSpy is a comprehensive web application for searching, analyzing, and managing scientific medical publications. It provides an intuitive interface for querying multiple scientific databases, managing researcher profiles, visualizing results, and exporting data in various formats.
 
+![MedicalSpy Logo](generated-icon.png)
+
+## Status
+
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Docker Support](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
+
 ## Features
 
 - **Multi-Database Search**: Query PubMed and Deutsche Nationalbibliothek (DNB) with a unified interface
@@ -114,6 +122,43 @@ gunicorn --bind 0.0.0.0:5000 main:app
 ```
 
 For a more robust setup, consider using a reverse proxy like Nginx in front of Gunicorn.
+
+### Using Docker
+
+The application includes Docker and Docker Compose configurations for easy deployment:
+
+```bash
+# Build and start with Docker Compose
+docker-compose up --build
+
+# Run in detached mode
+docker-compose up -d
+
+# Stop containers
+docker-compose down
+
+# To retain database data between runs
+docker-compose down
+docker-compose up
+```
+
+### Database Management
+
+The application includes database management tools:
+
+```bash
+# Check database connection
+python db_tools.py --check
+
+# Initialize database tables
+python db_tools.py --init
+
+# Reset database (drop and recreate all tables)
+python db_tools.py --reset
+
+# Add a sample person for testing
+python db_tools.py --add-sample
+```
 
 ## Database Schema
 
