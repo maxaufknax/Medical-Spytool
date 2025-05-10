@@ -41,7 +41,7 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
 # Configure database
 database_url = os.environ.get('DATABASE_URL')
-logger.info(f"Verbindung zur Datenbank wird hergestellt...")
+logger.info("Establishing database connection...")
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['TIMEOUT'] = 300  # Timeout auf 5 Minuten erhöhen
@@ -50,7 +50,7 @@ db.init_app(app)
 # Create database tables if they don't exist
 with app.app_context():
     db.create_all()
-    logger.info("Datenbanktabellen wurden erstellt (falls sie noch nicht existierten)")
+    logger.info("Database tables created (if they didn't exist already)")
 
 # Initialize session variables if not present
 @app.before_request

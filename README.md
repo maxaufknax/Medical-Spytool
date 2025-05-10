@@ -86,6 +86,25 @@ python run.py --log-level DEBUG
 python run.py --check-only
 ```
 
+### Running Tests
+
+The application includes a test suite that can be run with:
+
+```bash
+# Run all tests
+python run_tests.py
+
+# Run with increased verbosity
+python run_tests.py -v
+python run_tests.py -vv
+
+# Run specific test file
+python run_tests.py --test-path tests/test_config.py
+
+# Run specific test directory
+python run_tests.py --test-path tests/
+```
+
 ### For Production
 
 We recommend using Gunicorn as a WSGI server:
