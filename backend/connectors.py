@@ -481,15 +481,15 @@ class DNBConnector(DatabaseConnector):
                         url = identifier
                         break
 
-                # Create result entry
+                # Create result entry with English field names
                 result = {
                     "Name": "",  # Will be filled by the search function
-                    "Titel": title,
+                    "Title": title,
                     "Creator": creators_str,
-                    "Erscheinungsjahr": year,
+                    "Publication Year": year,
                     "Identifier": identifier_str,
                     "URL": url,
-                    "Datenbank": "Deutsche Nationalbibliothek"
+                    "Database": "Deutsche Nationalbibliothek"
                 }
 
                 results.append(result)
@@ -860,20 +860,20 @@ class PubMedConnector(DatabaseConnector):
 
                 pub_types_str = ", ".join(pub_types) if pub_types else "No publication types"
 
-                # Create result entry without citation count initially
+                # Create result entry with standardized English field names
                 result = {
                     "Name": "",  # Will be filled by the search function
-                    "Titel": title,
-                    "Veröffentlichungsjahr": year,
-                    "Veröffentlichungsmonat": month,
-                    "Autoren": authors_str,
+                    "Title": title,
+                    "Publication Year": year,
+                    "Publication Month": month,
+                    "Authors": authors_str,
                     "PubMed URL": pubmed_url,
                     "DOI URL": doi_url,
                     "PubMed-ID": pmid,
                     "DOI": doi,
-                    "Publikationstypen": pub_types_str,
-                    "Zitationsanzahl": "Loading...",  # Will be updated later
-                    "Datenbank": "PubMed"
+                    "Publication Types": pub_types_str,
+                    "Citation Count": "Loading...",  # Will be updated later
+                    "Database": "PubMed"
                 }
 
                 results.append(result)

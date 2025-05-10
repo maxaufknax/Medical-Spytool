@@ -57,11 +57,34 @@ class SearchResult(db.Model):
 
     def to_dict(self):
         """Convert model to dictionary"""
+        # Process the result data to standardize field names to English
+        standardized_data = {}
+        
+        # Map of German field names to English equivalents
+        field_name_map = {
+            'Titel': 'Title',
+            'Autoren': 'Authors',
+            'Erscheinungsjahr': 'Publication Year',
+            'Veröffentlichungsjahr': 'Publication Year',
+            'Creator': 'Creator',
+            'Name': 'Name',
+            'Identifier': 'Identifier',
+            'URL': 'URL',
+            'Zitationsanzahl': 'Citation Count',
+            'Datenbank': 'Database'
+        }
+        
+        # Transfer result data with standardized field names
+        for key, value in self.result_data.items():
+            # Use English name if mapping exists, otherwise keep original
+            english_key = field_name_map.get(key, key)
+            standardized_data[english_key] = value
+            
         return {
             'id': self.id,
             'query_id': self.query_id,
             'database': self.database,
-            **self.result_data,
+            **standardized_data,
             'saved_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
         }
 
