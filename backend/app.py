@@ -23,6 +23,7 @@ from backend.connectors import get_connector_for_database
 from backend.search import search_database, parse_date_range
 from backend.utils import generate_filename, export_to_csv, export_to_excel, log_message, get_log_messages, clear_log_messages
 from backend.models import db, SearchQuery, SearchResult, Person, Setting, LogEntry
+from backend.ai_integration import get_ai_integration
 
 # Configure logging
 logging.basicConfig(
