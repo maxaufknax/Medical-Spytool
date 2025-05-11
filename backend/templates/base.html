@@ -52,6 +52,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'ai_search_page' %}active{% endif %}" href="{{ url_for('ai_search_page') }}">
+                            <i class="fas fa-brain me-1"></i> KI-Suche
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">
                             <i class="fas fa-cog me-1"></i> Einstellungen
                         </a>

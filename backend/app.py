@@ -17,6 +17,9 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import pandas as pd
 from io import BytesIO
 
+# OpenAI API-Schlüssel aus der Umgebung
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
 # Import custom modules
 from backend.config import load_settings, save_settings
 from backend.connectors import get_connector_for_database
@@ -172,7 +175,42 @@ def search():
         publication_type = request.form.get('publication_type', '')
         
         # Handle different search modes
-        if search_mode == 'simple':
+        if search_mode == 'ai':
+            # KI-basierte Suche
+            if request.is_json:
+                # Wenn die Anfrage im JSON-Format ist (API-Aufruf)
+                query_text = request.json.get('query', '')
+                
+                # KI verwenden, um strukturierte Parameter zu extrahieren
+                ai_integration = get_ai_integration()
+                result = ai_integration.process_query(query_text)
+                
+                if result.get('success', False) and 'parameters' in result:
+                    params = result['parameters']
+                    
+                    # Parameter aus KI-Analyse extrahieren
+                    search_query = params.get('search_term', '')
+                    person_name = params.get('person_name', '')
+                    additional_terms = params.get('additional_terms', '')
+                    date_range = params.get('date_range', '')
+                    
+                    # Datenbank bestimmen
+                    db_name = params.get('database', '')
+                    if db_name and db_name.lower() in ['pubmed', 'deutsche nationalbibliothek']:
+                        selected_databases = [db_name]
+                    
+                    # Sprache übernehmen
+                    language = params.get('language', '')
+                else:
+                    # Wenn die KI-Analyse fehlschlägt, verwenden wir den gesamten Text als Suchbegriff
+                    search_query = query_text
+                    person_name = ""
+            else:
+                # Formular-Submission
+                search_query = request.form.get('search_query', '')
+                person_name = ""
+                
+        elif search_mode == 'simple':
             # Simple search mode
             search_query = request.form.get('search_query', '')
             person_name = ''
@@ -1155,6 +1193,81 @@ def api_manage_persons():
             return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
     
     return jsonify({"success": False, "message": "Invalid action"}), 400
+
+# KI-bezogene Routen
+@app.route('/ai/process_query', methods=['POST'])
+def ai_process_query():
+    """
+    Verarbeitet eine natürlichsprachliche Anfrage mit KI und gibt strukturierte Suchparameter zurück
+    """
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
+    
+    query_text = request.json.get('query', '')
+    if not query_text:
+        return jsonify({"success": False, "error": "Keine Suchanfrage angegeben"}), 400
+    
+    # KI-Integration abrufen und Anfrage verarbeiten
+    ai_integration = get_ai_integration()
+    result = ai_integration.process_query(query_text)
+    
+    if not result.get('success', False):
+        log_message(f"KI-Verarbeitung fehlgeschlagen: {result.get('error', 'Unbekannter Fehler')}", level="ERROR")
+    
+    return jsonify(result)
+
+@app.route('/ai/analyze_results', methods=['POST'])
+def ai_analyze_results():
+    """
+    Analysiert Suchergebnisse mit Hilfe der KI und gibt eine Zusammenfassung zurück
+    """
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
+    
+    results = request.json.get('results', [])
+    query = request.json.get('query', '')
+    
+    if not results:
+        return jsonify({"success": False, "error": "Keine Suchergebnisse zur Analyse angegeben"}), 400
+    
+    # KI-Integration abrufen und Ergebnisse analysieren
+    ai_integration = get_ai_integration()
+    analysis = ai_integration.analyze_results(results, query)
+    
+    if not analysis.get('success', False):
+        log_message(f"KI-Analyse fehlgeschlagen: {analysis.get('error', 'Unbekannter Fehler')}", level="ERROR")
+    
+    return jsonify(analysis)
+
+@app.route('/ai/check_status', methods=['GET'])
+def ai_check_status():
+    """
+    Überprüft den Status der KI-Integration
+    """
+    ai_integration = get_ai_integration()
+    
+    return jsonify({
+        "is_configured": ai_integration.is_configured,
+        "api_key_available": OPENAI_API_KEY is not None
+    })
+
+@app.route('/ai_search')
+def ai_search_page():
+    """
+    Rendert die KI-Suche-Seite
+    """
+    # Überprüfe, ob die KI-Integration konfiguriert ist
+    ai_integration = get_ai_integration()
+    is_configured = ai_integration.is_configured
+    
+    # Datenbanken für die Suche
+    databases = ["PubMed", "Deutsche Nationalbibliothek"]
+    
+    return render_template(
+        'ai_search.html',
+        is_configured=is_configured,
+        databases=databases
+    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
