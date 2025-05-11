@@ -22,6 +22,7 @@ try:
     DOTENV_AVAILABLE = True
 except ImportError:
     DOTENV_AVAILABLE = False
+    load_dotenv = None
 
 # Configuration file (used as fallback and for saving non-sensitive settings)
 CONFIG_FILE = "medicalspy_config.json"

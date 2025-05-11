@@ -48,7 +48,8 @@ def setup_logging(log_level, log_to_file=True):
         
         # Create a daily log file
         log_file = log_dir / f"medicalspy_{datetime.now().strftime('%Y%m%d')}.log"
-        handlers.append(logging.FileHandler(log_file))
+        file_handler = logging.FileHandler(log_file)
+        handlers.append(file_handler)
         
     logging.basicConfig(
         level=numeric_level,
@@ -73,7 +74,8 @@ def check_database():
         
         with current_app.app_context():
             # Try a simple query to check connection
-            db.session.execute("SELECT 1")
+            from sqlalchemy import text
+            db.session.execute(text("SELECT 1"))
             logger.info("Database connection successful")
             return True
     except Exception as e:
