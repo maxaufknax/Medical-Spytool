@@ -1,18 +1,76 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "repl-nix-workspace"
-version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.11"
-dependencies = [
-    "aiohttp>=3.11.16",
-    "email-validator>=2.2.0",
-    "flask>=3.1.0",
-    "flask-sqlalchemy>=3.1.1",
-    "gunicorn>=23.0.0",
-    "matplotlib>=3.10.1",
-    "pandas>=2.2.3",
-    "psycopg2-binary>=2.9.10",
-    "python-dotenv>=1.1.0",
-    "requests>=2.32.3",
-    "trafilatura>=2.0.0",
+name = "medicalspy"
+version = "3.0.0"
+description = "A comprehensive medical and scientific publication search tool"
+readme = "README.md"
+authors = [{name = "MedicalSpy Team"}]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp",
+    "email-validator",
+    "flask",
+    "flask-sqlalchemy",
+    "gunicorn",
+    "matplotlib",
+    "pandas",
+    "psycopg2-binary",
+    "python-dotenv",
+    "requests",
+    "trafilatura",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "flake8",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pylint",
+]
+
+[tool.setuptools]
+packages = ["backend"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pylint.master]
+ignore = "tests"
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-docstring",
+    "invalid-name",
+    "too-few-public-methods",
+]
+
+[tool.pylint.format]
+max-line-length = 100
