@@ -840,10 +840,20 @@ def settings():
             'output_path': request.form.get('output_path', './output'),
             'person_list_path': request.form.get('person_list_path', './person_lists'),
             'pubmed_api_key': request.form.get('pubmed_api_key', ''),
+            'openai_api_key': request.form.get('openai_api_key', ''),
             'unique_filenames': request.form.get('unique_filenames') == 'on',
             'output_columns': request.form.getlist('output_columns'),
             'default_database': request.form.get('default_database', 'PubMed')
         }
+        
+        # Wenn ein OpenAI API-Schlüssel gesetzt wurde, aktualisieren wir die Umgebungsvariable
+        openai_api_key = updated_settings.get('openai_api_key')
+        if openai_api_key:
+            os.environ['OPENAI_API_KEY'] = openai_api_key
+            # KI-Integration neu initialisieren
+            from backend.ai_integration import get_ai_integration
+            ai_integration = get_ai_integration()
+            ai_integration.__init__()  # Neu initialisieren mit dem neuen Schlüssel
         
         # Save settings to session and database
         session['settings'] = updated_settings

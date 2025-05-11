@@ -22,9 +22,10 @@ class AIIntegration:
     
     def __init__(self):
         """Initialisiert die KI-Integration"""
-        self.is_configured = OPENAI_API_KEY is not None
+        api_key = os.environ.get("OPENAI_API_KEY")  # Aktuelle Umgebungsvariable verwenden
+        self.is_configured = api_key is not None
         if self.is_configured:
-            openai.api_key = OPENAI_API_KEY
+            openai.api_key = api_key
             logger.info("KI-Integration wurde initialisiert")
         else:
             logger.warning("KI-Integration konnte nicht initialisiert werden: API-Schlüssel fehlt")
