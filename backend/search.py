@@ -29,16 +29,36 @@ def search_database(connector, query, person_name="", additional_terms="", date_
     Returns:
         list: List of search results
     """
+    if connector is None:
+        logger.error("No connector provided for search")
+        raise ValueError("Kein Datenbank-Connector für die Suche angegeben")
+    
+    # Stelle sicher, dass query ein nicht-leerer String ist
+    if not query or not isinstance(query, str):
+        logger.warning(f"Invalid search query: {query}")
+        query = str(query) if query else ""
+    
+    # Parameter-Dictionary erstellen, falls None
+    if params is None:
+        params = {}
+    
     try:
         # Construct the full query
-        full_query = connector.construct_query(
-            query, 
-            additional_terms=additional_terms,
-            date_range=date_range,
-            language=language,
-            pub_type=pub_type,
-            field=field
-        )
+        try:
+            full_query = connector.construct_query(
+                query, 
+                additional_terms=additional_terms,
+                date_range=date_range,
+                language=language,
+                pub_type=pub_type,
+                field=field
+            )
+        except AttributeError:
+            # Falls der Connector keine construct_query Methode hat
+            logger.warning(f"Connector {connector.name} has no construct_query method, using raw query")
+            full_query = query
+            if additional_terms:
+                full_query += f" {additional_terms}"
         
         # Log the search
         logger.info(f"Searching {connector.name} for: {full_query}")
@@ -46,15 +66,22 @@ def search_database(connector, query, person_name="", additional_terms="", date_
         # Execute the search
         results = connector.search(full_query, params)
         
+        # Überprüfe, ob Ergebnisse zurückgegeben wurden
+        if results is None:
+            logger.warning(f"Connector {connector.name} returned None instead of empty list")
+            results = []
+        
         # Associate results with the person name
         for result in results:
             result["Name"] = person_name
             
+        logger.info(f"Found {len(results)} results from {connector.name}")
         return results
         
     except Exception as e:
-        logger.error(f"Error during search: {e}")
-        raise
+        logger.error(f"Error during search with {connector.name}: {e}")
+        # Re-raise mit aussagekräftiger Fehlermeldung
+        raise Exception(f"Fehler bei der Suche in {connector.name}: {str(e)}") from e
 
 def parse_date_range(start_date, end_date):
     """

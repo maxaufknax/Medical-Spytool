@@ -290,16 +290,15 @@ def search():
                     # Store databases as comma-separated string
                     databases_str = ", ".join(selected_databases)
                     
-                    search_query_obj = SearchQuery(
-                        name=f"Person search in {databases_str}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}",
-                        query="",  # No direct query for person search
-                        database=databases_str,  # Store multiple databases
-                        additional_terms=additional_terms,
-                        start_date=start_date,
-                        end_date=end_date,
-                        person_name=person_names_str,
-                        search_mode='person'
-                    )
+                    search_query_obj = SearchQuery()
+                    search_query_obj.name = f"Person search in {databases_str}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}"
+                    search_query_obj.query = ""  # No direct query for person search
+                    search_query_obj.database = databases_str  # Store multiple databases
+                    search_query_obj.additional_terms = additional_terms
+                    search_query_obj.start_date = start_date
+                    search_query_obj.end_date = end_date
+                    search_query_obj.person_name = person_names_str
+                    search_query_obj.search_mode = 'person'
                     db.session.add(search_query_obj)
                     db.session.flush()  # Get ID without committing
                     
@@ -470,16 +469,15 @@ def search():
                             person_names = ", ".join([p.name for p in persons_list])
                             databases_str = ", ".join(selected_databases)
                             search_name = f"Erweiterte Suche: {search_query or person_names} in {databases_str}"
-                            search_query_obj = SearchQuery(
-                                name=search_name,
-                                query=search_query,
-                                database=databases_str,  # Store multiple databases
-                                additional_terms=original_additional_terms,  # Save original before filters
-                                start_date=start_date,
-                                end_date=end_date,
-                                person_name=person_names,
-                                search_mode='advanced'
-                            )
+                            search_query_obj = SearchQuery()
+                            search_query_obj.name = search_name
+                            search_query_obj.query = search_query
+                            search_query_obj.database = databases_str  # Store multiple databases
+                            search_query_obj.additional_terms = original_additional_terms  # Save original before filters
+                            search_query_obj.start_date = start_date
+                            search_query_obj.end_date = end_date
+                            search_query_obj.person_name = person_names
+                            search_query_obj.search_mode = 'advanced'
                             db.session.add(search_query_obj)
                             db.session.flush()  # Get ID without committing
                             
