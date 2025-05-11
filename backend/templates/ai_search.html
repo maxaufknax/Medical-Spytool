@@ -205,14 +205,13 @@ function executeAiSearch() {
     // Diese Implementierung hängt von der genauen Struktur Ihrer Anwendung ab
     // Hier wird angenommen, dass ein Endpunkt für die Suche existiert
     
-    // Beispiel:
-    fetch('/search', {
+    // Verwendung des speziellen AI-Endpunkts für die Suche
+    fetch('/ai/execute_search', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            search_mode: 'ai',
             query: currentQueryText
         }),
     })

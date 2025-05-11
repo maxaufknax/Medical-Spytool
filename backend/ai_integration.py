@@ -15,7 +15,7 @@ from openai.types.chat import ChatCompletion
 
 # Konfiguration
 logger = logging.getLogger("MedicalSpy")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+# API-Schlüssel wird dynamisch aus der Umgebung oder den Einstellungen geholt
 
 class AIIntegration:
     """KI-Integrationsklasse für MedicalSpy"""

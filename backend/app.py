@@ -1249,6 +1249,178 @@ def ai_analyze_results():
     
     return jsonify(analysis)
 
+@app.route('/ai/execute_search', methods=['POST'])
+def ai_execute_search():
+    """
+    Führt eine Suche mit den KI-generierten Parametern durch
+    """
+    if not request.is_json:
+        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
+    
+    # Die Anfrage des Nutzers abrufen
+    query_text = request.json.get('query', '')
+    if not query_text:
+        return jsonify({"success": False, "error": "Keine Suchanfrage angegeben"}), 400
+    
+    # KI-Integration abrufen und Anfrage analysieren
+    ai_integration = get_ai_integration()
+    result = ai_integration.process_query(query_text)
+    
+    if not result.get('success', False) or 'parameters' not in result:
+        log_message(f"KI-Anfrageverarbeitung fehlgeschlagen: {result.get('error', 'Unbekannter Fehler')}", level="ERROR")
+        return jsonify({"success": False, "error": result.get('error', 'Fehler bei der KI-Verarbeitung')})
+    
+    # Parameter aus der KI-Analyse extrahieren
+    params = result['parameters']
+    search_term = params.get('search_term', '')
+    person_name = params.get('person_name', '')
+    additional_terms = params.get('additional_terms', '')
+    date_range = params.get('date_range', '')
+    db_name = params.get('database', '')
+    language = params.get('language', '')
+    
+    # Fehlermeldung, wenn kein Suchbegriff gefunden wurde
+    if not search_term and not person_name:
+        return jsonify({
+            "success": False, 
+            "error": "Konnte keinen Suchbegriff oder Namen aus der Anfrage extrahieren"
+        })
+    
+    # Zeitraum parsen (könnte ein natürlichsprachlicher Ausdruck sein)
+    start_date = ''
+    end_date = ''
+    if date_range:
+        # Einfache Verarbeitung typischer Formate
+        if '-' in date_range:
+            try:
+                parts = date_range.split('-')
+                if len(parts) == 2:
+                    start_date = parts[0].strip()
+                    end_date = parts[1].strip()
+            except:
+                pass
+        # TODO: Weitere Verarbeitung natürlichsprachlicher Zeitangaben
+    
+    # Datenbank(en) festlegen
+    selected_databases = []
+    if db_name:
+        if 'pubmed' in db_name.lower():
+            selected_databases.append('PubMed')
+        elif 'deutsche' in db_name.lower() or 'national' in db_name.lower() or 'dnb' in db_name.lower():
+            selected_databases.append('Deutsche Nationalbibliothek')
+    
+    # Wenn keine spezifische Datenbank genannt wurde, alle durchsuchen
+    if not selected_databases:
+        selected_databases = ["PubMed", "Deutsche Nationalbibliothek"]
+    
+    # Start der Zeitmessung für Suchdauer
+    start_time = datetime.now()
+    
+    # Suche in jeder ausgewählten Datenbank durchführen
+    all_results = []
+    
+    try:
+        for db_name in selected_databases:
+            try:
+                # Connector für die Datenbank abrufen
+                connector = get_connector_for_database(db_name)
+                if not connector:
+                    log_message(f"Kein Connector für Datenbank {db_name} gefunden", level="WARNING")
+                    continue
+                
+                # Suche durchführen
+                db_results = []
+                if person_name:
+                    # Suche mit Personenname
+                    person_search_term = f"{person_name}"
+                    if search_term or additional_terms:
+                        person_search_term += f" AND ({search_term} {additional_terms})"
+                    
+                    db_results = connector.search(
+                        query=person_search_term,
+                        date_from=start_date or None,
+                        date_to=end_date or None,
+                        language=language or None
+                    )
+                else:
+                    # Normale Suche ohne Person
+                    full_query = search_term
+                    if additional_terms:
+                        full_query += f" {additional_terms}"
+                    
+                    db_results = connector.search(
+                        query=full_query,
+                        date_from=start_date or None,
+                        date_to=end_date or None,
+                        language=language or None
+                    )
+                
+                # Ergebnisse der aktuellen Datenbank hinzufügen
+                if 'results' in db_results and db_results['results']:
+                    all_results.extend(db_results['results'])
+            
+            except Exception as e:
+                log_message(f"Fehler bei der Suche in {db_name}: {str(e)}", level="ERROR")
+        
+        # Suchdauer berechnen
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        # Ergebnisse in der Datenbank speichern (falls gewünscht)
+        search_id = None
+        if all_results:
+            try:
+                # Neue Suchanfrage in der Datenbank speichern
+                new_query = SearchQuery(
+                    query=query_text,
+                    databases=", ".join(selected_databases),
+                    result_count=len(all_results),
+                    execution_time=execution_time
+                )
+                db.session.add(new_query)
+                db.session.commit()
+                search_id = new_query.id
+                
+                # Ergebnisse in der Datenbank speichern
+                for result in all_results:
+                    search_result = SearchResult(
+                        query_id=search_id,
+                        title=result.get('title', ''),
+                        authors=result.get('authors', ''),
+                        year=result.get('year', ''),
+                        source=result.get('source', ''),
+                        url=result.get('url', ''),
+                        full_data=json.dumps(result, ensure_ascii=False)
+                    )
+                    db.session.add(search_result)
+                
+                db.session.commit()
+                log_message(f"KI-Suche gespeichert (ID: {search_id}) mit {len(all_results)} Ergebnissen")
+                
+            except Exception as e:
+                db.session.rollback()
+                log_message(f"Fehler beim Speichern der KI-Suchergebnisse: {str(e)}", level="ERROR")
+        
+        # Ergebnisse zurückgeben
+        return jsonify({
+            "success": True,
+            "results": all_results,
+            "query": query_text,
+            "execution_time": round(execution_time, 2),
+            "search_id": search_id,
+            "used_parameters": {
+                "search_term": search_term,
+                "person_name": person_name,
+                "additional_terms": additional_terms,
+                "date_range": date_range,
+                "selected_databases": selected_databases,
+                "language": language
+            }
+        })
+        
+    except Exception as e:
+        log_message(f"Fehler bei der KI-gestützten Suche: {str(e)}", level="ERROR")
+        return jsonify({"success": False, "error": f"Ein Fehler ist aufgetreten: {str(e)}"})
+
 @app.route('/ai/check_status', methods=['GET'])
 def ai_check_status():
     """
@@ -1256,9 +1428,12 @@ def ai_check_status():
     """
     ai_integration = get_ai_integration()
     
+    # Hole den API-Schlüssel aus den Einstellungen oder Umgebungsvariablen
+    api_key = os.environ.get("OPENAI_API_KEY") or session.get('settings', {}).get('openai_api_key')
+    
     return jsonify({
         "is_configured": ai_integration.is_configured,
-        "api_key_available": OPENAI_API_KEY is not None
+        "api_key_available": api_key is not None and len(api_key) > 0
     })
 
 @app.route('/ai_search')
