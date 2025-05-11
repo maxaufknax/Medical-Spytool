@@ -22,36 +22,40 @@ MedicalSpy is a comprehensive web application for searching, analyzing, and mana
 
 ## Installation
 
-### Prerequisites
+### Voraussetzungen
 
-- Python 3.10 or higher
-- PostgreSQL database
-- System dependencies for Matplotlib (see below)
+- Python 3.10 oder höher
+- PostgreSQL Datenbank
+- Systemabhängigkeiten für Matplotlib (siehe unten)
 
-### System Dependencies
+### Systemabhängigkeiten
 
-If you're using Linux, you may need these packages for Matplotlib and PostgreSQL:
+Wenn Sie Linux verwenden, benötigen Sie möglicherweise diese Pakete für Matplotlib und PostgreSQL:
 
 ```bash
 # Debian/Ubuntu
 sudo apt-get install libpq-dev python3-dev libfreetype6-dev pkg-config
 ```
 
-### Setting Up a Virtual Environment
+### Einrichtung einer virtuellen Umgebung
 
 ```bash
-# Create a virtual environment
+# Virtuelle Umgebung erstellen
 python -m venv venv
 
-# Activate the virtual environment
-# On Windows:
+# Virtuelle Umgebung aktivieren
+# Unter Windows:
 venv\Scripts\activate
-# On macOS/Linux:
+# Unter macOS/Linux:
 source venv/bin/activate
 
-# Install dependencies
+# Abhängigkeiten installieren
 pip install -r project_requirements.txt
 ```
+
+### Detaillierte Anleitung für lokale Entwicklung in VS Code
+
+Für eine umfassende Anleitung zur Einrichtung und Entwicklung mit Visual Studio Code, Tipps zur Fehlerbehebung und bewährte Praktiken, lesen Sie bitte die [Anleitung zur lokalen Entwicklung](LOCAL_DEVELOPMENT.md).
 
 ### Environment Variables
 
