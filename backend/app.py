@@ -126,13 +126,28 @@ def search():
     """Render the search page or perform a search"""
     databases = ["PubMed", "Deutsche Nationalbibliothek"]
     
-    # Fetch persons for autocomplete
+    # Initialize variables with safe defaults
+    persons = []
+    saved_queries = []
+    
+    # Fetch persons for autocomplete with error handling
     try:
         persons_list = db.session.query(Person).all()
         persons = [person.to_dict() for person in persons_list]
     except Exception as e:
         app.logger.error(f"Error fetching persons for search page: {str(e)}")
-        persons = []  # Provide empty list as fallback
+        # Try to retrieve from session as fallback
+        persons = session.get('persons', [])
+        
+    # Fetch saved queries with error handling
+    try:
+        saved_queries_list = db.session.query(SearchQuery).order_by(SearchQuery.created_at.desc()).limit(20).all()
+        saved_queries = [query.to_dict() for query in saved_queries_list]
+        session['saved_queries'] = saved_queries  # Update session
+    except Exception as e:
+        app.logger.error(f"Error fetching saved queries for search page: {str(e)}")
+        # Try to retrieve from session as fallback
+        saved_queries = session.get('saved_queries', [])
     
     if request.method == 'POST':
         # Get the search mode
@@ -532,15 +547,14 @@ def search():
         log_message(f"Error retrieving persons from database: {str(e)}", level="ERROR")
         persons = session.get('persons', [])
     
-    # Get saved queries from database
-    try:
-        saved_queries_list = db.session.query(SearchQuery).order_by(SearchQuery.id.desc()).limit(20).all()
-        saved_queries = [query.to_dict() for query in saved_queries_list]
-        session['saved_queries'] = saved_queries  # Update session with latest from database
-    except Exception as e:
-        log_message(f"Error retrieving saved queries from database: {str(e)}", level="ERROR")
-        saved_queries = session.get('saved_queries', [])
+    # At this point we've already fetched saved queries at the beginning of the function
+    # But add a safety check before rendering the template
+    if saved_queries is None:
+        saved_queries = []
+    if persons is None:
+        persons = []
     
+    # Return the search page template with our safely fetched data
     return render_template(
         'search.html', 
         databases=databases, 
