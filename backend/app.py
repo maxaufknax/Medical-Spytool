@@ -312,11 +312,10 @@ def search():
                         # Extract database from result if available, or use the first selected database
                         result_database = result.get('Database', selected_databases[0])
                         
-                        result_obj = SearchResult(
-                            query_id=search_query_obj.id,
-                            database=result_database,
-                            result_data=result
-                        )
+                        result_obj = SearchResult()
+                        result_obj.query_id = search_query_obj.id
+                        result_obj.database = result_database
+                        result_obj.result_data = result
                         db.session.add(result_obj)
                     
                     db.session.commit()
@@ -491,11 +490,10 @@ def search():
                                 # Extract database from result if available, or use the first selected database
                                 result_database = result.get('Database', selected_databases[0])
                                 
-                                result_obj = SearchResult(
-                                    query_id=search_query_obj.id,
-                                    database=result_database,
-                                    result_data=result
-                                )
+                                result_obj = SearchResult()
+                                result_obj.query_id = search_query_obj.id
+                                result_obj.database = result_database
+                                result_obj.result_data = result
                                 db.session.add(result_obj)
                             
                             db.session.commit()
@@ -635,16 +633,15 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                 databases_str = ", ".join(selected_databases)
                 
                 # First save the search query
-                search_query_obj = SearchQuery(
-                    name=f"Search in {databases_str}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}",
-                    query=search_query,
-                    database=databases_str,  # Store multiple databases
-                    additional_terms=additional_terms,
-                    start_date=start_date,
-                    end_date=end_date,
-                    person_name=person_name,
-                    search_mode='multi'  # Marker for multi-database search
-                )
+                search_query_obj = SearchQuery()
+                search_query_obj.name = f"Search in {databases_str}: {search_query[:30]}{'...' if len(search_query) > 30 else ''}"
+                search_query_obj.query = search_query
+                search_query_obj.database = databases_str  # Store multiple databases
+                search_query_obj.additional_terms = additional_terms
+                search_query_obj.start_date = start_date
+                search_query_obj.end_date = end_date
+                search_query_obj.person_name = person_name
+                search_query_obj.search_mode = 'multi'  # Marker for multi-database search
                 db.session.add(search_query_obj)
                 db.session.flush()  # Get ID without committing
                 
@@ -653,11 +650,10 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                     # Extract database from result if available, otherwise use the first one
                     result_database = result.get('Database', selected_databases[0])
                     
-                    result_obj = SearchResult(
-                        query_id=search_query_obj.id,
-                        database=result_database,
-                        result_data=result
-                    )
+                    result_obj = SearchResult()
+                    result_obj.query_id = search_query_obj.id
+                    result_obj.database = result_database
+                    result_obj.result_data = result
                     db.session.add(result_obj)
                 
                 db.session.commit()
