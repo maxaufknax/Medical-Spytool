@@ -127,9 +127,12 @@ def search():
     databases = ["PubMed", "Deutsche Nationalbibliothek"]
     
     # Fetch persons for autocomplete
-    with app.app_context():
+    try:
         persons_list = db.session.query(Person).all()
         persons = [person.to_dict() for person in persons_list]
+    except Exception as e:
+        app.logger.error(f"Error fetching persons for search page: {str(e)}")
+        persons = []  # Provide empty list as fallback
     
     if request.method == 'POST':
         # Get the search mode
