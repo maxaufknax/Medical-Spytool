@@ -22,12 +22,6 @@
                            value="{{ settings.pubmed_api_key }}" placeholder="Enter your PubMed API key (optional)">
                     <div class="form-text">Using an API key increases rate limits for PubMed requests.</div>
                 </div>
-                <div class="mb-3">
-                    <label for="openaiApiKey" class="form-label">OpenAI API Key</label>
-                    <input type="text" class="form-control" id="openaiApiKey" name="openai_api_key" 
-                           value="{{ settings.openai_api_key|default('') }}" placeholder="Enter your OpenAI API key for KI-Funktionen">
-                    <div class="form-text">Wird für die KI-gestützte Suche und Analyse benötigt.</div>
-                </div>
             </div>
 
             <!-- Output Settings -->

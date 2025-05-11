@@ -17,16 +17,12 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import pandas as pd
 from io import BytesIO
 
-# OpenAI API-Schlüssel aus der Umgebung
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-
 # Import custom modules
 from backend.config import load_settings, save_settings
 from backend.connectors import get_connector_for_database
 from backend.search import search_database, parse_date_range
 from backend.utils import generate_filename, export_to_csv, export_to_excel, log_message, get_log_messages, clear_log_messages
 from backend.models import db, SearchQuery, SearchResult, Person, Setting, LogEntry
-from backend.ai_integration import get_ai_integration
 
 # Configure logging
 logging.basicConfig(
@@ -175,42 +171,7 @@ def search():
         publication_type = request.form.get('publication_type', '')
         
         # Handle different search modes
-        if search_mode == 'ai':
-            # KI-basierte Suche
-            if request.is_json:
-                # Wenn die Anfrage im JSON-Format ist (API-Aufruf)
-                query_text = request.json.get('query', '')
-                
-                # KI verwenden, um strukturierte Parameter zu extrahieren
-                ai_integration = get_ai_integration()
-                result = ai_integration.process_query(query_text)
-                
-                if result.get('success', False) and 'parameters' in result:
-                    params = result['parameters']
-                    
-                    # Parameter aus KI-Analyse extrahieren
-                    search_query = params.get('search_term', '')
-                    person_name = params.get('person_name', '')
-                    additional_terms = params.get('additional_terms', '')
-                    date_range = params.get('date_range', '')
-                    
-                    # Datenbank bestimmen
-                    db_name = params.get('database', '')
-                    if db_name and db_name.lower() in ['pubmed', 'deutsche nationalbibliothek']:
-                        selected_databases = [db_name]
-                    
-                    # Sprache übernehmen
-                    language = params.get('language', '')
-                else:
-                    # Wenn die KI-Analyse fehlschlägt, verwenden wir den gesamten Text als Suchbegriff
-                    search_query = query_text
-                    person_name = ""
-            else:
-                # Formular-Submission
-                search_query = request.form.get('search_query', '')
-                person_name = ""
-                
-        elif search_mode == 'simple':
+        if search_mode == 'simple':
             # Simple search mode
             search_query = request.form.get('search_query', '')
             person_name = ''
@@ -840,20 +801,10 @@ def settings():
             'output_path': request.form.get('output_path', './output'),
             'person_list_path': request.form.get('person_list_path', './person_lists'),
             'pubmed_api_key': request.form.get('pubmed_api_key', ''),
-            'openai_api_key': request.form.get('openai_api_key', ''),
             'unique_filenames': request.form.get('unique_filenames') == 'on',
             'output_columns': request.form.getlist('output_columns'),
             'default_database': request.form.get('default_database', 'PubMed')
         }
-        
-        # Wenn ein OpenAI API-Schlüssel gesetzt wurde, aktualisieren wir die Umgebungsvariable
-        openai_api_key = updated_settings.get('openai_api_key')
-        if openai_api_key:
-            os.environ['OPENAI_API_KEY'] = openai_api_key
-            # KI-Integration neu initialisieren
-            from backend.ai_integration import get_ai_integration
-            ai_integration = get_ai_integration()
-            ai_integration.__init__()  # Neu initialisieren mit dem neuen Schlüssel
         
         # Save settings to session and database
         session['settings'] = updated_settings
@@ -1203,272 +1154,6 @@ def api_manage_persons():
             return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
     
     return jsonify({"success": False, "message": "Invalid action"}), 400
-
-# KI-bezogene Routen
-@app.route('/ai/process_query', methods=['POST'])
-def ai_process_query():
-    """
-    Verarbeitet eine natürlichsprachliche Anfrage mit KI und gibt strukturierte Suchparameter zurück
-    """
-    if not request.is_json:
-        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
-    
-    query_text = request.json.get('query', '')
-    if not query_text:
-        return jsonify({"success": False, "error": "Keine Suchanfrage angegeben"}), 400
-    
-    # KI-Integration abrufen und Anfrage verarbeiten
-    ai_integration = get_ai_integration()
-    result = ai_integration.process_query(query_text)
-    
-    if not result.get('success', False):
-        log_message(f"KI-Verarbeitung fehlgeschlagen: {result.get('error', 'Unbekannter Fehler')}", level="ERROR")
-    
-    return jsonify(result)
-
-@app.route('/ai/analyze_results', methods=['POST'])
-def ai_analyze_results():
-    """
-    Analysiert Suchergebnisse mit Hilfe der KI und gibt eine Zusammenfassung zurück
-    """
-    if not request.is_json:
-        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
-    
-    results = request.json.get('results', [])
-    query = request.json.get('query', '')
-    
-    if not results:
-        return jsonify({"success": False, "error": "Keine Suchergebnisse zur Analyse angegeben"}), 400
-    
-    # KI-Integration abrufen und Ergebnisse analysieren
-    ai_integration = get_ai_integration()
-    analysis = ai_integration.analyze_results(results, query)
-    
-    if not analysis.get('success', False):
-        log_message(f"KI-Analyse fehlgeschlagen: {analysis.get('error', 'Unbekannter Fehler')}", level="ERROR")
-    
-    return jsonify(analysis)
-
-@app.route('/ai/execute_search', methods=['POST'])
-def ai_execute_search():
-    """
-    Führt eine Suche mit den KI-generierten Parametern durch
-    """
-    if not request.is_json:
-        return jsonify({"success": False, "error": "Anfrage muss im JSON-Format sein"}), 400
-    
-    # Die Anfrage des Nutzers abrufen
-    query_text = request.json.get('query', '')
-    if not query_text:
-        return jsonify({"success": False, "error": "Keine Suchanfrage angegeben"}), 400
-    
-    # KI-Integration abrufen und Anfrage analysieren
-    ai_integration = get_ai_integration()
-    result = ai_integration.process_query(query_text)
-    
-    if not result.get('success', False) or 'parameters' not in result:
-        log_message(f"KI-Anfrageverarbeitung fehlgeschlagen: {result.get('error', 'Unbekannter Fehler')}", level="ERROR")
-        return jsonify({"success": False, "error": result.get('error', 'Fehler bei der KI-Verarbeitung')})
-    
-    # Parameter aus der KI-Analyse extrahieren
-    params = result['parameters']
-    search_term = params.get('search_term', '')
-    person_name = params.get('person_name', '')
-    additional_terms = params.get('additional_terms', '')
-    date_range = params.get('date_range', '')
-    db_name = params.get('database', '')
-    language = params.get('language', '')
-    
-    # Fehlermeldung, wenn kein Suchbegriff gefunden wurde
-    if not search_term and not person_name:
-        return jsonify({
-            "success": False, 
-            "error": "Konnte keinen Suchbegriff oder Namen aus der Anfrage extrahieren"
-        })
-    
-    # Zeitraum parsen (könnte ein natürlichsprachlicher Ausdruck sein)
-    start_date = ''
-    end_date = ''
-    if date_range:
-        # Einfache Verarbeitung typischer Formate
-        if '-' in date_range:
-            try:
-                parts = date_range.split('-')
-                if len(parts) == 2:
-                    start_date = parts[0].strip()
-                    end_date = parts[1].strip()
-            except:
-                pass
-        # TODO: Weitere Verarbeitung natürlichsprachlicher Zeitangaben
-    
-    # Datenbank(en) festlegen
-    selected_databases = []
-    if db_name:
-        if 'pubmed' in db_name.lower():
-            selected_databases.append('PubMed')
-        elif 'deutsche' in db_name.lower() or 'national' in db_name.lower() or 'dnb' in db_name.lower():
-            selected_databases.append('Deutsche Nationalbibliothek')
-    
-    # Wenn keine spezifische Datenbank genannt wurde, alle durchsuchen
-    if not selected_databases:
-        selected_databases = ["PubMed", "Deutsche Nationalbibliothek"]
-    
-    # Start der Zeitmessung für Suchdauer
-    start_time = datetime.now()
-    
-    # Suche in jeder ausgewählten Datenbank durchführen
-    all_results = []
-    
-    try:
-        for db_name in selected_databases:
-            try:
-                # Connector für die Datenbank abrufen
-                connector = get_connector_for_database(db_name)
-                if not connector:
-                    log_message(f"Kein Connector für Datenbank {db_name} gefunden", level="WARNING")
-                    continue
-                
-                # Suche durchführen
-                db_results = []
-                if person_name:
-                    # Suche mit Personenname
-                    person_search_term = f"{person_name}"
-                    if search_term or additional_terms:
-                        person_search_term += f" AND ({search_term} {additional_terms})"
-                    
-                    # Parameter für die Suche vorbereiten
-                    search_params = {}
-                    if start_date:
-                        search_params['date_from'] = start_date
-                    if end_date:
-                        search_params['date_to'] = end_date
-                    if language:
-                        search_params['language'] = language
-                        
-                    # Suche durchführen mit korrekter Parameterstruktur
-                    db_results = connector.search(
-                        query=person_search_term,
-                        params=search_params
-                    )
-                else:
-                    # Normale Suche ohne Person
-                    full_query = search_term
-                    if additional_terms:
-                        full_query += f" {additional_terms}"
-                    
-                    # Parameter für die Suche vorbereiten
-                    search_params = {}
-                    if start_date:
-                        search_params['date_from'] = start_date
-                    if end_date:
-                        search_params['date_to'] = end_date
-                    if language:
-                        search_params['language'] = language
-                        
-                    # Suche durchführen mit korrekter Parameterstruktur
-                    db_results = connector.search(
-                        query=full_query,
-                        params=search_params
-                    )
-                
-                # Ergebnisse der aktuellen Datenbank hinzufügen
-                if 'results' in db_results and db_results['results']:
-                    all_results.extend(db_results['results'])
-            
-            except Exception as e:
-                log_message(f"Fehler bei der Suche in {db_name}: {str(e)}", level="ERROR")
-        
-        # Suchdauer berechnen
-        execution_time = (datetime.now() - start_time).total_seconds()
-        
-        # Ergebnisse in der Datenbank speichern (falls gewünscht)
-        search_id = None
-        if all_results:
-            try:
-                # Neue Suchanfrage in der Datenbank speichern
-                new_query = SearchQuery(
-                    query=query_text,
-                    databases=", ".join(selected_databases),
-                    result_count=len(all_results),
-                    execution_time=execution_time
-                )
-                db.session.add(new_query)
-                db.session.commit()
-                search_id = new_query.id
-                
-                # Ergebnisse in der Datenbank speichern
-                for result in all_results:
-                    search_result = SearchResult(
-                        query_id=search_id,
-                        title=result.get('title', ''),
-                        authors=result.get('authors', ''),
-                        year=result.get('year', ''),
-                        source=result.get('source', ''),
-                        url=result.get('url', ''),
-                        full_data=json.dumps(result, ensure_ascii=False)
-                    )
-                    db.session.add(search_result)
-                
-                db.session.commit()
-                log_message(f"KI-Suche gespeichert (ID: {search_id}) mit {len(all_results)} Ergebnissen")
-                
-            except Exception as e:
-                db.session.rollback()
-                log_message(f"Fehler beim Speichern der KI-Suchergebnisse: {str(e)}", level="ERROR")
-        
-        # Ergebnisse zurückgeben
-        return jsonify({
-            "success": True,
-            "results": all_results,
-            "query": query_text,
-            "execution_time": round(execution_time, 2),
-            "search_id": search_id,
-            "used_parameters": {
-                "search_term": search_term,
-                "person_name": person_name,
-                "additional_terms": additional_terms,
-                "date_range": date_range,
-                "selected_databases": selected_databases,
-                "language": language
-            }
-        })
-        
-    except Exception as e:
-        log_message(f"Fehler bei der KI-gestützten Suche: {str(e)}", level="ERROR")
-        return jsonify({"success": False, "error": f"Ein Fehler ist aufgetreten: {str(e)}"})
-
-@app.route('/ai/check_status', methods=['GET'])
-def ai_check_status():
-    """
-    Überprüft den Status der KI-Integration
-    """
-    ai_integration = get_ai_integration()
-    
-    # Hole den API-Schlüssel aus den Einstellungen oder Umgebungsvariablen
-    api_key = os.environ.get("OPENAI_API_KEY") or session.get('settings', {}).get('openai_api_key')
-    
-    return jsonify({
-        "is_configured": ai_integration.is_configured,
-        "api_key_available": api_key is not None and len(api_key) > 0
-    })
-
-@app.route('/ai_search')
-def ai_search_page():
-    """
-    Rendert die KI-Suche-Seite
-    """
-    # Überprüfe, ob die KI-Integration konfiguriert ist
-    ai_integration = get_ai_integration()
-    is_configured = ai_integration.is_configured
-    
-    # Datenbanken für die Suche
-    databases = ["PubMed", "Deutsche Nationalbibliothek"]
-    
-    return render_template(
-        'ai_search.html',
-        is_configured=is_configured,
-        databases=databases
-    )
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
