@@ -1336,11 +1336,19 @@ def ai_execute_search():
                     if search_term or additional_terms:
                         person_search_term += f" AND ({search_term} {additional_terms})"
                     
+                    # Parameter für die Suche vorbereiten
+                    search_params = {}
+                    if start_date:
+                        search_params['date_from'] = start_date
+                    if end_date:
+                        search_params['date_to'] = end_date
+                    if language:
+                        search_params['language'] = language
+                        
+                    # Suche durchführen mit korrekter Parameterstruktur
                     db_results = connector.search(
                         query=person_search_term,
-                        date_from=start_date or None,
-                        date_to=end_date or None,
-                        language=language or None
+                        params=search_params
                     )
                 else:
                     # Normale Suche ohne Person
@@ -1348,11 +1356,19 @@ def ai_execute_search():
                     if additional_terms:
                         full_query += f" {additional_terms}"
                     
+                    # Parameter für die Suche vorbereiten
+                    search_params = {}
+                    if start_date:
+                        search_params['date_from'] = start_date
+                    if end_date:
+                        search_params['date_to'] = end_date
+                    if language:
+                        search_params['language'] = language
+                        
+                    # Suche durchführen mit korrekter Parameterstruktur
                     db_results = connector.search(
                         query=full_query,
-                        date_from=start_date or None,
-                        date_to=end_date or None,
-                        language=language or None
+                        params=search_params
                     )
                 
                 # Ergebnisse der aktuellen Datenbank hinzufügen

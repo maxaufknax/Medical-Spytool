@@ -22,8 +22,36 @@ class AIIntegration:
     
     def __init__(self):
         """Initialisiert die KI-Integration"""
-        api_key = os.environ.get("OPENAI_API_KEY")  # Aktuelle Umgebungsvariable verwenden
-        self.is_configured = api_key is not None
+        self.update_api_key()
+        
+    def update_api_key(self):
+        """Aktualisiert den API-Schlüssel aus allen verfügbaren Quellen"""
+        from flask import session
+        
+        # Schlüssel aus verschiedenen Quellen versuchen
+        api_key = None
+        
+        # 1. Aus Umgebungsvariablen
+        env_key = os.environ.get("OPENAI_API_KEY")
+        if env_key and len(env_key.strip()) > 0:
+            api_key = env_key
+            logger.debug("API-Schlüssel aus Umgebungsvariable gefunden")
+        
+        # 2. Aus Session-Einstellungen (wenn nicht schon in Umgebungsvariablen gefunden)
+        if not api_key:
+            try:
+                settings = session.get('settings', {})
+                if settings and 'openai_api_key' in settings and settings['openai_api_key']:
+                    api_key = settings['openai_api_key']
+                    logger.debug("API-Schlüssel aus Session-Einstellungen gefunden")
+            except Exception as e:
+                # Session könnte nicht verfügbar sein, wenn außerhalb eines Anfrage-Kontexts
+                logger.debug(f"Konnte Session nicht lesen: {str(e)}")
+        
+        # Status aktualisieren
+        self.is_configured = api_key is not None and len(str(api_key).strip()) > 0
+        
+        # OpenAI-Client mit dem Schlüssel konfigurieren
         if self.is_configured:
             openai.api_key = api_key
             logger.info("KI-Integration wurde initialisiert")
@@ -40,37 +68,65 @@ class AIIntegration:
         Returns:
             Dict[str, Any]: Ein Dictionary mit extrahierten Suchparametern
         """
+        # Sicherstellen, dass der API-Schlüssel aktuell ist
+        self.update_api_key()
+        
         if not self.is_configured:
             logger.warning("KI-Integration ist nicht konfiguriert")
             return {
                 "success": False,
-                "error": "KI-Integration ist nicht konfiguriert. Bitte OPENAI_API_KEY setzen."
+                "error": "KI-Integration ist nicht konfiguriert. Bitte einen OpenAI API-Schlüssel in den Einstellungen setzen."
             }
         
         try:
-            # Systemprompt für die KI
+            # Ausführliche Anleitung als Systemprompt für die KI
             system_prompt = """
-            Du bist ein Assistent für ein medizinisches Suchsystem. Deine Aufgabe ist es, 
-            natürliche Sprachanfragen in strukturierte Suchparameter umzuwandeln.
-            Extrahiere folgende Informationen aus der Anfrage des Benutzers:
-            - search_term: Hauptsuchbegriff(e)
-            - person_name: Name einer Person, falls erwähnt
-            - additional_terms: Zusätzliche Suchbegriffe
-            - date_range: Falls ein Datumsbereich erwähnt wird (z.B. "letztes Jahr", "zwischen 2019 und 2022")
-            - database: Die zu durchsuchende Datenbank, falls explizit erwähnt ("PubMed" oder "Deutsche Nationalbibliothek")
-            - language: Bevorzugte Sprache der Ergebnisse, falls erwähnt
+            Du bist ein Assistent für ein medizinisches und wissenschaftliches Suchsystem. 
+            Deine Aufgabe ist es, natürliche Sprachanfragen präzise in strukturierte Suchparameter umzuwandeln.
             
-            Antworte NUR mit einem JSON-Objekt.
+            Extrahiere folgende Informationen aus der Anfrage des Benutzers:
+            
+            - search_term (String): Hauptsuchbegriff(e) für die Suche. Extrahiere die wichtigsten medizinischen oder 
+              wissenschaftlichen Begriffe. Bei mehreren Begriffen verbinde sie mit UND/AND-Logik.
+            
+            - person_name (String): Name des Autors oder der Person, nach der gesucht wird. 
+              Gib den vollständigen Namen an, wenn möglich mit Nachnamen zuerst.
+            
+            - additional_terms (String): Zusätzliche Suchbegriffe oder Einschränkungen, die den Hauptsuchbegriff ergänzen.
+              Diese sollten getrennt vom Hauptsuchbegriff sein.
+            
+            - date_range (String): Zeitraum für die Suche im Format "YYYY-YYYY" oder einen beschreibenden Text wie 
+              "letzten 5 Jahre", "seit 2020" oder "zwischen 2018 und 2022".
+            
+            - database (String): Die zu durchsuchende Datenbank, falls explizit erwähnt. Gültige Werte sind "PubMed" oder 
+              "Deutsche Nationalbibliothek" (auch "DNB"). Wenn keine genannt wird, lasse dieses Feld leer.
+            
+            - language (String): Die bevorzugte Sprache der Ergebnisse. Gib einen Sprachcode oder den vollen Namen 
+              der Sprache an (z.B. "Deutsch", "English").
+            
+            Wichtig:
+            - Behalte die Originalterminologie des Nutzers bei.
+            - Füge keine Informationen hinzu, die nicht in der Anfrage enthalten sind.
+            - Lasse Felder leer, wenn keine entsprechenden Informationen vorhanden sind.
+            - Antworte NUR mit einem validen JSON-Objekt, ohne zusätzlichen Text.
+            
+            Beispiele:
+            Anfrage: "Finde Publikationen von Dr. Maria Schmidt über Diabetes in den letzten 3 Jahren"
+            Antwort: {"search_term": "Diabetes", "person_name": "Maria Schmidt", "additional_terms": "", "date_range": "letzten 3 Jahre", "database": "", "language": ""}
+            
+            Anfrage: "Suche nach Artikeln über Herzinfarkt und Bluthochdruck in PubMed auf Englisch"
+            Antwort: {"search_term": "Herzinfarkt Bluthochdruck", "person_name": "", "additional_terms": "", "date_range": "", "database": "PubMed", "language": "English"}
             """
             
-            # Anfrage an OpenAI API
+            # Anfrage an OpenAI API mit verbessertem Response-Format
             response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": query_text}
                 ],
-                temperature=0.1
+                response_format={"type": "json_object"},  # Erzwingt JSON-Format
+                temperature=0.1  # Niedrige Temperatur für konsistente Ergebnisse
             )
             
             # Extrahiere die Antwort
@@ -118,11 +174,21 @@ class AIIntegration:
         Returns:
             Dict[str, Any]: Ein Dictionary mit der KI-Analyse
         """
+        # API-Schlüssel aktualisieren für den Fall, dass er in den Einstellungen geändert wurde
+        self.update_api_key()
+        
         if not self.is_configured:
             logger.warning("KI-Integration ist nicht konfiguriert")
             return {
                 "success": False,
-                "error": "KI-Integration ist nicht konfiguriert. Bitte OPENAI_API_KEY setzen."
+                "error": "KI-Integration ist nicht konfiguriert. Bitte einen OpenAI API-Schlüssel in den Einstellungen setzen."
+            }
+            
+        # Überprüfen, ob überhaupt Ergebnisse vorliegen
+        if not search_results or len(search_results) == 0:
+            return {
+                "success": False,
+                "error": "Keine Suchergebnisse zur Analyse vorhanden."
             }
         
         try:
@@ -132,29 +198,49 @@ class AIIntegration:
             # Konvertiere die Ergebnisse in einen lesbaren Text
             results_text = json.dumps(limited_results, indent=2, ensure_ascii=False)
             
-            # Systemprompt für die KI
+            # Ausführlicher Systemprompt für die KI
             system_prompt = """
-            Du bist ein Assistent für medizinische Literaturrecherche. Analysiere die folgenden
-            Suchergebnisse basierend auf der Anfrage des Benutzers. Gib eine Zusammenfassung der
-            wichtigsten Erkenntnisse, identifiziere Muster und hebe relevante Informationen hervor.
+            Du bist ein Experte für medizinische und wissenschaftliche Literaturrecherche.
+            Deine Aufgabe ist es, die folgenden Suchergebnisse basierend auf der Anfrage des Benutzers
+            gründlich zu analysieren und eine strukturierte, informative Zusammenfassung zu erstellen.
             
-            Strukturiere deine Antwort in folgende Abschnitte:
-            1. Zusammenfassung der Ergebnisse
-            2. Wichtigste Erkenntnisse
-            3. Identifizierte Muster oder Trends
-            4. Empfehlungen für weitere Recherchen
+            Analysiere dabei folgende Aspekte:
+            - Relevanz der Ergebnisse zur ursprünglichen Suchanfrage
+            - Wichtigste wissenschaftliche Erkenntnisse und Kernaussagen
+            - Häufig vorkommende Autoren, Institutionen oder Fachzeitschriften
+            - Zeitliche Entwicklung des Forschungsgebiets
+            - Übereinstimmungen und Widersprüche in den Ergebnissen
+            - Wissenslücken oder Bereiche für weitere Forschung
             
-            Halte deine Antwort knapp und fokussiert.
+            Strukturiere deine Antwort in folgende Abschnitte mit Überschriften:
+            1. Überblick
+               Kurze Zusammenfassung der Suchergebnisse im Kontext der Anfrage (etwa 2-3 Sätze).
+            
+            2. Haupterkenntnisse
+               Die 3-5 wichtigsten wissenschaftlichen Erkenntnisse oder Schlussfolgerungen.
+            
+            3. Muster und Trends
+               Identifizierte Muster, Trends oder Zusammenhänge in den Ergebnissen.
+            
+            4. Empfehlungen
+               Konkrete Vorschläge für weitere, verfeinerte Suchanfragen oder ergänzende Datenbanken.
+            
+            Wichtige Hinweise:
+            - Fokussiere dich auf die medizinischen/wissenschaftlichen Inhalte und nicht auf die Metadaten.
+            - Verzichte auf Spekulationen, wenn keine ausreichenden Informationen vorliegen.
+            - Verwende eine sachliche, wissenschaftliche Sprache.
+            - Halte die Analyse präzise und auf den Punkt (maximal 350 Wörter insgesamt).
+            - Sollten keine oder kaum relevante Ergebnisse vorliegen, gib konkrete Hinweise zur Verbesserung der Suchanfrage.
             """
             
-            # Anfrage an OpenAI API
+            # Anfrage an OpenAI API mit dem aktualisierten Prompt
             response = openai.chat.completions.create(
-                model="gpt-3.5-turbo-16k",  # Größeres Modell für längere Kontexte
+                model="gpt-4o",  # Verwende das neueste und beste Modell für hochwertige Analysen
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Benutzeranfrage: {user_query}\n\nSuchergebnisse:\n{results_text}"}
+                    {"role": "user", "content": f"Benutzeranfrage: {user_query}\n\nAnzahl der Suchergebnisse: {len(search_results)}\n\nSuchergebnisse:\n{results_text}"}
                 ],
-                temperature=0.7
+                temperature=0.4  # Niedrigere Temperatur für konsistentere, fokussiertere Ergebnisse
             )
             
             # Extrahiere die Antwort
