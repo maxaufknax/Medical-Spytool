@@ -574,7 +574,15 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                 log_message(f"Searching {selected_database} for: '{search_query}'")
                 
                 # Get appropriate connector for this database
-                connector = get_connector_for_database(selected_database, api_key=session['settings'].get('pubmed_api_key', ''))
+                api_key = session.get('settings', {}).get('pubmed_api_key', '')
+                connector = get_connector_for_database(selected_database, api_key=api_key)
+                
+                # Fehler abfangen, wenn kein Connector für diese Datenbank existiert
+                if connector is None:
+                    log_message(f"Kein Connector für Datenbank '{selected_database}' gefunden", level="ERROR")
+                    search_summary[selected_database] = 0
+                    flash(f"Fehler: Die Datenbank '{selected_database}' wird nicht unterstützt.", "danger")
+                    continue
                 
                 # Execute search
                 db_results = search_database(
@@ -597,7 +605,10 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                     log_message(f"No results found in {selected_database}")
                 
             except Exception as e:
-                log_message(f"Error searching {selected_database}: {str(e)}", level="ERROR")
+                search_summary[selected_database] = 0
+                error_msg = str(e)
+                log_message(f"Error searching {selected_database}: {error_msg}", level="ERROR")
+                flash(f"Fehler bei der Suche in {selected_database}: {error_msg}", "danger")
                 search_summary[selected_database] = f"Error: {str(e)}"
                 # Continue with other databases
         
