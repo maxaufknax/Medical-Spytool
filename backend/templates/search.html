@@ -74,20 +74,30 @@
                                     </h5>
                                     
                                     <div class="mb-4">
-                                        <div class="input-group input-group-lg shadow-sm">
-                                            <span class="input-group-text bg-white text-primary">
-                                                <i class="fas fa-search"></i>
-                                            </span>
-                                            <input type="text" class="form-control form-control-lg border" id="simpleSearchQuery" name="search_query" 
-                                                placeholder="z.B. Diabetes, COVID-19, Kardiovaskuläre Erkrankungen..."
-                                                autofocus>
-                                            <button type="submit" class="btn btn-primary px-4" id="simpleSearchButton">
-                                                <i class="fas fa-search me-1"></i> Suchen
-                                            </button>
-                                        </div>
-                                        <div class="form-text mt-2">
-                                            <i class="fas fa-lightbulb text-warning me-1"></i>
-                                            Tipp: Verwenden Sie Kommas, um mehrere Suchbegriffe zu trennen
+                                        <div class="card bg-white border-0 shadow-sm p-3">
+                                            <div class="card-body p-0">
+                                                <div class="input-group input-group-lg">
+                                                    <span class="input-group-text bg-primary text-white border-0">
+                                                        <i class="fas fa-search fa-lg"></i>
+                                                    </span>
+                                                    <input type="text" class="form-control form-control-lg border-0 shadow-none bg-light" 
+                                                        id="simpleSearchQuery" name="search_query" 
+                                                        placeholder="z.B. Diabetes, COVID-19, Kardiovaskuläre Erkrankungen..."
+                                                        autofocus>
+                                                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="simpleSearchButton">
+                                                        <i class="fas fa-search me-1"></i> Suchen
+                                                    </button>
+                                                </div>
+                                                <div class="d-flex align-items-center mt-3 bg-light p-2 rounded">
+                                                    <span class="badge bg-warning rounded-pill me-2">
+                                                        <i class="fas fa-lightbulb"></i>
+                                                    </span>
+                                                    <div class="form-text mb-0">
+                                                        <strong>Tipp:</strong> Verwenden Sie Kommas, um mehrere Suchbegriffe zu trennen. 
+                                                        Beispiel: <code>Diabetes, Insulin</code>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -95,25 +105,33 @@
                                         <i class="fas fa-database me-2"></i>Datenbanken auswählen
                                     </h5>
                                     
-                                    <div class="database-selection d-flex flex-wrap gap-2 mb-2">
+                                    <div class="database-selection d-flex flex-wrap gap-3 mb-3 p-3">
                                         {% for db in databases %}
                                         <div class="form-check">
                                             <input class="form-check-input database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
                                                 id="db-simple-{{ db }}" name="databases[]" 
                                                 {% if db == 'PubMed' %}checked{% endif %}>
-                                            <label class="form-check-label btn btn-outline-primary p-2 rounded-pill shadow-sm {% if db == 'PubMed' %}active{% endif %}" 
+                                            <label class="form-check-label btn p-3 rounded-3 shadow-sm {% if db == 'PubMed' %}active{% endif %}" 
                                                 for="db-simple-{{ db }}">
-                                                {% if db == 'PubMed' %}
-                                                    <i class="fas fa-check-circle me-1"></i>
-                                                {% endif %}
-                                                {{ db }}
+                                                <div class="d-flex align-items-center">
+                                                    {% if db == 'PubMed' %}
+                                                        <div class="database-icon bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                                            <i class="fas fa-check"></i>
+                                                        </div>
+                                                    {% else %}
+                                                        <div class="database-icon rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; border: 2px solid #dee2e6;">
+                                                            <i class="fas fa-database text-secondary"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                    <span class="ms-1">{{ db }}</span>
+                                                </div>
                                             </label>
                                         </div>
                                         {% endfor %}
                                     </div>
-                                    <div class="form-text mt-2">
-                                        <i class="fas fa-info-circle text-info me-1"></i>
-                                        Wählen Sie mindestens eine Datenbank für die Suche aus
+                                    <div class="form-text mt-2 bg-light p-2 rounded-3 border">
+                                        <i class="fas fa-info-circle text-primary me-1"></i>
+                                        <strong>Hinweis:</strong> Wählen Sie mindestens eine Datenbank für die Suche aus
                                     </div>
                                 </div>
                             </div>

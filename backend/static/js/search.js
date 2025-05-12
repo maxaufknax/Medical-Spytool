@@ -401,6 +401,52 @@ function addPerson() {
 }
 
 
+// Handle database selection UI
+function initializeDatabaseSelection() {
+    // Get all database checkboxes
+    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
+    
+    // Add click event to each checkbox's label
+    databaseCheckboxes.forEach(checkbox => {
+        const label = document.querySelector(`label[for="${checkbox.id}"]`);
+        
+        if (label) {
+            // Update styling when checkbox is clicked
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    label.classList.add('active');
+                    // Update icon
+                    const iconContainer = label.querySelector('.database-icon');
+                    if (iconContainer) {
+                        iconContainer.classList.add('bg-primary', 'text-white');
+                        iconContainer.classList.remove('border-2');
+                        iconContainer.innerHTML = '<i class="fas fa-check"></i>';
+                    }
+                } else {
+                    label.classList.remove('active');
+                    // Reset icon
+                    const iconContainer = label.querySelector('.database-icon');
+                    if (iconContainer) {
+                        iconContainer.classList.remove('bg-primary', 'text-white');
+                        iconContainer.classList.add('border-2');
+                        iconContainer.innerHTML = '<i class="fas fa-database text-secondary"></i>';
+                    }
+                }
+            });
+            
+            // Ensure initial state is correct
+            if (checkbox.checked) {
+                label.classList.add('active');
+                const iconContainer = label.querySelector('.database-icon');
+                if (iconContainer) {
+                    iconContainer.classList.add('bg-primary', 'text-white');
+                    iconContainer.classList.remove('border-2');
+                }
+            }
+        }
+    });
+}
+
 // Initialize search functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Debug persons data
@@ -411,6 +457,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize event listeners for the saved queries tab
     initializeSavedQueriesTab();
+    
+    // Initialize database selection UI
+    initializeDatabaseSelection();
+    
+    // Attach form submission handler
+    const searchForm = document.getElementById('searchForm');
+    if (searchForm) {
+        searchForm.addEventListener('submit', handleSearchSubmit);
+    }
 });
 
 // Initialize event listeners for saved queries tab
