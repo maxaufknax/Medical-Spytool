@@ -81,6 +81,67 @@
     z-index: 1;
 }
 
+/* Verbesserte Datenbankauswahl */
+.database-card {
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.database-card:hover {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+.database-icon-container {
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+}
+
+.database-card.selected .database-icon-container {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+    color: white;
+    border-color: transparent;
+}
+
+.database-status {
+    transition: all 0.2s ease;
+}
+
+.db-selected-icon {
+    display: none;
+}
+
+.db-unselected-icon {
+    display: inline-block;
+}
+
+.database-card.selected .db-selected-icon {
+    display: inline-block;
+}
+
+.database-card.selected .db-unselected-icon {
+    display: none;
+}
+
+.form-check-input:checked ~ .form-check-label .database-icon-container {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+    color: white;
+    border-color: transparent;
+}
+
+.form-check-input:focus ~ .form-check-label .database-icon-container {
+    box-shadow: 0 0 0 0.25rem rgba(44, 107, 160, 0.25);
+}
+
+/* Ausblenden des originalen Checkbox-Stils */
+.database-card .form-check-input {
+    opacity: 0;
+    position: absolute;
+}
+
 /* Improved card styling */
 .card {
     border-radius: 0.5rem;
