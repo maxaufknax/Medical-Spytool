@@ -330,39 +330,52 @@
                                             <!-- Datenbankauswahl -->
                                             <div class="card bg-light border-0">
                                                 <div class="card-body p-4">
-                                                    <h6 class="card-title text-primary mb-3">
-                                                        <i class="fas fa-database me-2"></i>Datenbanken auswählen
-                                                    </h6>
-                                                    
-                                                    <div class="row database-selection mb-2 p-2">
-                                                        {% for db in databases %}
-                                                        <div class="col-md-6 col-lg-4 mb-2">
-                                                            <div class="card h-100 database-card" data-database="{{ db }}">
-                                                                <div class="card-body p-2">
-                                                                    <div class="form-check form-switch mb-0 d-flex align-items-center">
-                                                                        <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                            id="db-advanced-{{ db }}" name="databases[]" 
-                                                                            {% if db == 'PubMed' %}checked{% endif %}>
-                                                                        <label class="form-check-label w-100 ms-2" for="db-advanced-{{ db }}">
-                                                                            <div class="database-icon-container d-flex align-items-center justify-content-between p-2 px-3 rounded">
-                                                                                <div class="database-name">
-                                                                                    <i class="fas fa-database me-2"></i>
-                                                                                    <span class="database-label">{{ db }}</span>
-                                                                                </div>
-                                                                                <div class="database-status">
-                                                                                    <i class="fas fa-check-circle text-success db-selected-icon"></i>
-                                                                                    <i class="fas fa-times-circle text-muted db-unselected-icon"></i>
-                                                                                </div>
-                                                                            </div>
-                                                                        </label>
+                                                    <div class="databases-container">
+                                                        <div class="databases-header">
+                                                            <div class="databases-title">
+                                                                <span class="icon"><i class="fas fa-server"></i></span>
+                                                                Verfügbare Datenbanken
+                                                            </div>
+                                                            <button type="button" class="databases-select-all" id="selectAllDatabasesAdvanced">
+                                                                <i class="fas fa-check-double"></i> Alle auswählen
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div class="database-cards-grid">
+                                                            {% for db in databases %}
+                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
+                                                                <input class="database-checkbox" type="checkbox" value="{{ db }}" 
+                                                                    id="db-advanced-{{ db }}" name="databases[]" 
+                                                                    {% if db == 'PubMed' %}checked{% endif %}>
+                                                                <div class="database-status-indicator">
+                                                                    <i class="fas fa-check"></i>
+                                                                </div>
+                                                                <div class="database-card-inner">
+                                                                    <div class="database-icon">
+                                                                        <i class="fas fa-database"></i>
+                                                                    </div>
+                                                                    <div class="database-content">
+                                                                        <div class="database-name">{{ db }}</div>
+                                                                        <p class="database-description">
+                                                                            {% if db == 'PubMed' %}
+                                                                                Medizinische Fachliteratur (Medline)
+                                                                            {% elif db == 'Deutsche Nationalbibliothek' %}
+                                                                                Deutsche Publikationen und Dissertationen
+                                                                            {% elif db == 'Scopus' %}
+                                                                                Interdisziplinäre Forschungsliteratur
+                                                                            {% elif db == 'Web of Science' %}
+                                                                                Hochrangige wissenschaftliche Zeitschriften
+                                                                            {% else %}
+                                                                                Wissenschaftliche Publikationen
+                                                                            {% endif %}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                            {% endfor %}
                                                         </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                    
-                                                    <div class="alert alert-light border mb-0">
+                                                        
+                                                        <div class="alert alert-light border mb-0">
                                                         <div class="d-flex">
                                                             <div class="me-3">
                                                                 <i class="fas fa-info-circle text-primary"></i>
@@ -918,39 +931,55 @@
                                         <div class="col-md-6">
                                             <div class="card h-100 bg-light border-0">
                                                 <div class="card-body">
-                                                    <h6 class="card-title text-primary mb-3">
-                                                        <i class="fas fa-server me-2"></i>Datenbanken auswählen
-                                                    </h6>
-                                                    <div class="row database-selection mb-2 p-2">
-                                                        {% for db in databases %}
-                                                        <div class="col-md-6 col-lg-6 mb-3">
-                                                            <div class="card h-100 database-card" data-database="{{ db }}">
-                                                                <div class="card-body p-2">
-                                                                    <div class="form-check form-switch mb-0 d-flex align-items-center">
-                                                                        <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                            id="db-person-{{ db }}" name="databases[]" 
-                                                                            {% if db == 'PubMed' %}checked{% endif %}>
-                                                                        <label class="form-check-label w-100 ms-2" for="db-person-{{ db }}">
-                                                                            <div class="database-icon-container d-flex align-items-center justify-content-between p-2 px-3 rounded">
-                                                                                <div class="database-name">
-                                                                                    <i class="fas fa-database me-2"></i>
-                                                                                    <span class="database-label">{{ db }}</span>
-                                                                                </div>
-                                                                                <div class="database-status">
-                                                                                    <i class="fas fa-check-circle text-success db-selected-icon"></i>
-                                                                                    <i class="fas fa-times-circle text-muted db-unselected-icon"></i>
-                                                                                </div>
-                                                                            </div>
-                                                                        </label>
+                                                    <div class="databases-container">
+                                                        <div class="databases-header">
+                                                            <div class="databases-title">
+                                                                <span class="icon"><i class="fas fa-server"></i></span>
+                                                                Verfügbare Datenbanken
+                                                            </div>
+                                                            <button type="button" class="databases-select-all" id="selectAllDatabasesPerson">
+                                                                <i class="fas fa-check-double"></i> Alle auswählen
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div class="database-cards-grid">
+                                                            {% for db in databases %}
+                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
+                                                                <input class="database-checkbox" type="checkbox" value="{{ db }}" 
+                                                                    id="db-person-{{ db }}" name="databases[]" 
+                                                                    {% if db == 'PubMed' %}checked{% endif %}>
+                                                                <div class="database-status-indicator">
+                                                                    <i class="fas fa-check"></i>
+                                                                </div>
+                                                                <div class="database-card-inner">
+                                                                    <div class="database-icon">
+                                                                        <i class="fas fa-database"></i>
+                                                                    </div>
+                                                                    <div class="database-content">
+                                                                        <div class="database-name">{{ db }}</div>
+                                                                        <p class="database-description">
+                                                                            {% if db == 'PubMed' %}
+                                                                                Medizinische Fachliteratur (Medline)
+                                                                            {% elif db == 'Deutsche Nationalbibliothek' %}
+                                                                                Deutsche Publikationen und Dissertationen
+                                                                            {% elif db == 'Scopus' %}
+                                                                                Interdisziplinäre Forschungsliteratur
+                                                                            {% elif db == 'Web of Science' %}
+                                                                                Hochrangige wissenschaftliche Zeitschriften
+                                                                            {% else %}
+                                                                                Wissenschaftliche Publikationen
+                                                                            {% endif %}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                            {% endfor %}
                                                         </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                    <div class="form-text">
-                                                        <i class="fas fa-info-circle text-info me-1"></i>
-                                                        Durchsuchen Sie mehrere Datenbanken gleichzeitig
+                                                        
+                                                        <div class="databases-help">
+                                                            <i class="fas fa-info-circle"></i>
+                                                            Wählen Sie eine oder mehrere Datenbanken für die personenbezogene Suche aus.
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1296,17 +1325,29 @@
                 });
             });
             
-            // "Alle auswählen"-Button
-            const selectAllButton = document.getElementById('selectAllDatabases');
-            if (selectAllButton) {
-                selectAllButton.addEventListener('click', function() {
-                    const checkboxes = document.querySelectorAll('.database-checkbox');
-                    checkboxes.forEach(checkbox => {
-                        checkbox.checked = true;
+            // "Alle auswählen"-Buttons für alle Suchmodi
+            document.querySelectorAll('#selectAllDatabases, #selectAllDatabasesAdvanced, #selectAllDatabasesPerson').forEach(selectAllButton => {
+                if (selectAllButton) {
+                    selectAllButton.addEventListener('click', function() {
+                        // Finde alle Checkboxen im aktuellen Tab
+                        const activeTab = document.querySelector('.tab-pane.active');
+                        const checkboxes = activeTab ? 
+                            activeTab.querySelectorAll('.database-checkbox') : 
+                            document.querySelectorAll('.database-checkbox');
+                            
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = true;
+                            
+                            // Löse ein Change-Event aus
+                            const changeEvent = new Event('change', { bubbles: true });
+                            checkbox.dispatchEvent(changeEvent);
+                        });
+                        
+                        // Aktualisiere den visuellen Status
+                        updateDatabaseCardState();
                     });
-                    updateDatabaseCardState();
-                });
-            }
+                }
+            });
         };
         
         // Führe die Datenbankauswahl-Initialisierung aus für alle Tabs
