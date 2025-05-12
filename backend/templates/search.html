@@ -915,7 +915,7 @@
                                                     </h6>
                                                     <div class="row database-selection mb-2 p-2">
                                                         {% for db in databases %}
-                                                        <div class="col-md-6 col-lg-6 mb-2">
+                                                        <div class="col-md-6 col-lg-6 mb-3">
                                                             <div class="card h-100 database-card" data-database="{{ db }}">
                                                                 <div class="card-body p-2">
                                                                     <div class="form-check form-switch mb-0 d-flex align-items-center">
@@ -925,7 +925,8 @@
                                                                         <label class="form-check-label w-100 ms-2" for="db-person-{{ db }}">
                                                                             <div class="database-icon-container d-flex align-items-center justify-content-between p-2 px-3 rounded">
                                                                                 <div class="database-name">
-                                                                                    <i class="fas fa-database me-2"></i>{{ db }}
+                                                                                    <i class="fas fa-database me-2"></i>
+                                                                                    <span class="database-label">{{ db }}</span>
                                                                                 </div>
                                                                                 <div class="database-status">
                                                                                     <i class="fas fa-check-circle text-success db-selected-icon"></i>

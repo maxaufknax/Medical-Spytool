@@ -16,7 +16,7 @@
     border: 1px solid rgba(0,0,0,0.05);
 }
 
-/* Dark Mode Anpassungen */
+/* Dark Mode Anpassungen - Überarbeitet und erweitert */
 [data-bs-theme="dark"] .search-options-container {
     background-color: rgba(33, 37, 41, 0.5);
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -25,6 +25,10 @@
 [data-bs-theme="dark"] .card {
     background-color: var(--card-bg);
     border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .card-body {
+    color: var(--text-color);
 }
 
 [data-bs-theme="dark"] .form-control,
@@ -46,6 +50,12 @@
     color: #78c5ff;
 }
 
+[data-bs-theme="dark"] .alert-light {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
 [data-bs-theme="dark"] .nav-link {
     color: rgba(255, 255, 255, 0.8);
 }
@@ -59,10 +69,68 @@
     color: var(--nav-active-text);
 }
 
-/* Dark Mode anpassungen für Database-Cards */
+/* Dark Mode Anpassungen für Database-Cards */
+[data-bs-theme="dark"] .database-card {
+    border-color: #495057;
+    background-color: transparent;
+}
+
 [data-bs-theme="dark"] .database-icon-container {
+    background-color: #2b3035;
+    border-color: #495057;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .database-card.selected .database-icon-container {
+    background: linear-gradient(135deg, #1c4b70 0%, #3583b2 100%);
+    color: white;
+    border-color: #1c4b70;
+}
+
+[data-bs-theme="dark"] .db-unselected-icon {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .form-check-input:focus ~ .form-check-label .database-icon-container {
+    box-shadow: 0 0 0 0.25rem rgba(73, 160, 217, 0.25);
+}
+
+/* Dark Mode für Text und Badges */
+[data-bs-theme="dark"] .text-muted {
+    color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .text-dark {
+    color: #f8f9fa !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-light {
+    background-color: #343a40 !important;
+    color: #f8f9fa !important;
+}
+
+/* Dark Mode für Buttons */
+[data-bs-theme="dark"] .btn-light {
     background-color: #343a40;
     border-color: #495057;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .btn-light:hover {
+    background-color: #2b3035;
+    border-color: #6c757d;
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary {
+    color: #5dade2;
+    border-color: #5dade2;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary:hover {
+    background-color: #4d90c4;
+    border-color: #4d90c4;
+    color: white;
 }
 
 /* Additional Dark Mode Anpassungen für Suchfilter und Tabellen */
@@ -234,6 +302,7 @@
     border: 1px solid #e9ecef;
     overflow: hidden;
     cursor: pointer;
+    height: 100%;
 }
 
 .database-card:hover {
@@ -245,6 +314,21 @@
     transition: all 0.3s ease;
     background-color: #f8f9fa;
     border: 1px solid #e9ecef;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.database-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 85%;
+    font-weight: 500;
 }
 
 .database-card.selected .database-icon-container {
@@ -255,6 +339,8 @@
 
 .database-status {
     transition: all 0.2s ease;
+    flex-shrink: 0;
+    margin-left: 8px;
 }
 
 .db-selected-icon {
@@ -287,6 +373,18 @@
 .database-card .form-check-input {
     opacity: 0;
     position: absolute;
+}
+
+/* Responsive Anpassungen für Datenbankauswahl */
+@media (max-width: 576px) {
+    .database-card .card-body {
+        padding: 8px;
+    }
+    
+    .database-icon-container {
+        padding: 6px 10px;
+        min-height: 38px;
+    }
 }
 
 /* Improved card styling */
