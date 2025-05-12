@@ -776,6 +776,12 @@ def results():
     if 'current_query_id' in session:
         query_id = session.get('current_query_id')
         try:
+            # Lade die Suchanfrage aus der Datenbank
+            query = db.session.query(SearchQuery).get(query_id)
+            if not query:
+                flash("Die angeforderte Suchanfrage wurde nicht gefunden.", "warning")
+                return redirect(url_for('search'))
+            
             # Lade alle Ergebnisse für diese Query aus der Datenbank
             results_from_db = db.session.query(SearchResult).filter_by(query_id=query_id).all()
             
@@ -786,8 +792,25 @@ def results():
             # sondern laden sie bei Bedarf aus der DB
             # Das vermeidet die Session-Cookie-Größenbeschränkung
             
+            # Hole Suchzusammenfassung und Fehler aus der Session, falls vorhanden
+            search_summary = session.get('search_summary', {})
+            search_errors = session.get('search_errors', [])
+            
+            # Ermittle, welche Datenbanken durchsucht wurden
+            searched_databases = query.database.split(', ') if query.database else []
+            
             log_message(f"Loaded {len(results)} results from database for query ID: {query_id}")
-            return render_template('results.html', results=results, query_id=query_id)
+            
+            return render_template(
+                'results.html', 
+                results=results, 
+                query_id=query_id,
+                query=query,
+                search_summary=search_summary,
+                search_errors=search_errors,
+                databases=searched_databases,
+                total_results=len(results)
+            )
         except Exception as e:
             log_message(f"Error loading results from database: {str(e)}", level="ERROR")
             flash(f"Fehler beim Laden der Ergebnisse aus der Datenbank: {str(e)}", "danger")
