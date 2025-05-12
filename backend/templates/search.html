@@ -105,58 +105,18 @@
                                                     </div>
                                                 </div>
                                                 
-                                                <div class="mt-3 mb-3">
-                                                    <div class="card border-0 bg-light p-3 rounded-3">
-                                                        <div class="card-body p-0">
-                                                            <h6 class="mb-3 text-primary">
-                                                                <i class="fas fa-bolt me-2"></i>Schnelle Themeneinstiege
-                                                            </h6>
-                                                            <div class="popular-searches">
-                                                                <div class="row">
-                                                                    <div class="col-md-6 mb-2">
-                                                                        <button type="button" class="btn btn-light border w-100 text-start sample-search position-relative">
-                                                                            <i class="fas fa-heart text-danger me-2"></i>
-                                                                            <strong>Kardiovaskuläre Erkrankungen</strong>
-                                                                            <span class="position-absolute top-50 end-0 translate-middle-y me-2 text-muted">
-                                                                                <i class="fas fa-chevron-right"></i>
-                                                                            </span>
-                                                                        </button>
-                                                                    </div>
-                                                                    <div class="col-md-6 mb-2">
-                                                                        <button type="button" class="btn btn-light border w-100 text-start sample-search position-relative">
-                                                                            <i class="fas fa-virus text-warning me-2"></i>
-                                                                            <strong>COVID-19</strong>
-                                                                            <span class="position-absolute top-50 end-0 translate-middle-y me-2 text-muted">
-                                                                                <i class="fas fa-chevron-right"></i>
-                                                                            </span>
-                                                                        </button>
-                                                                    </div>
-                                                                    <div class="col-md-6 mb-2">
-                                                                        <button type="button" class="btn btn-light border w-100 text-start sample-search position-relative">
-                                                                            <i class="fas fa-syringe text-primary me-2"></i>
-                                                                            <strong>Diabetes</strong>
-                                                                            <span class="position-absolute top-50 end-0 translate-middle-y me-2 text-muted">
-                                                                                <i class="fas fa-chevron-right"></i>
-                                                                            </span>
-                                                                        </button>
-                                                                    </div>
-                                                                    <div class="col-md-6 mb-2">
-                                                                        <button type="button" class="btn btn-light border w-100 text-start sample-search position-relative">
-                                                                            <i class="fas fa-microscope text-success me-2"></i>
-                                                                            <strong>Onkologie</strong>
-                                                                            <span class="position-absolute top-50 end-0 translate-middle-y me-2 text-muted">
-                                                                                <i class="fas fa-chevron-right"></i>
-                                                                            </span>
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="text-end mt-2">
-                                                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" 
-                                                                            id="addCustomSampleButton" data-bs-toggle="modal" data-bs-target="#customSampleModal">
-                                                                        <i class="fas fa-plus-circle me-1"></i>Eigenes Thema hinzufügen
-                                                                    </button>
-                                                                </div>
-                                                            </div>
+                                                <div class="d-flex align-items-center mt-3 bg-light p-3 rounded-3 border">
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="text-primary me-2">
+                                                            <i class="fas fa-search"></i>
+                                                        </span>
+                                                        <div>
+                                                            <div class="fw-bold">Suchtipps:</div>
+                                                            <ul class="mb-0 ps-3 small">
+                                                                <li>Geben Sie klare, spezifische Begriffe ein</li>
+                                                                <li>Verwenden Sie medizinische Fachbegriffe für präzisere Ergebnisse</li>
+                                                                <li>Trennen Sie mehrere Begriffe mit Kommas</li>
+                                                            </ul>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -182,36 +142,34 @@
                                                 </div>
                                             </div>
                                             
-                                            <div class="database-selection d-flex flex-wrap gap-3 mb-2 p-2">
+                                            <div class="row database-selection mb-2 p-2">
                                                 {% for db in databases %}
-                                                <div class="form-check" data-bs-toggle="tooltip" title="Klicken Sie, um {{ db }} für die Suche auszuwählen">
-                                                    <input class="form-check-input database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
-                                                        id="db-simple-{{ db }}" name="databases[]" 
-                                                        {% if db == 'PubMed' %}checked{% endif %}>
-                                                    <label class="form-check-label btn p-3 rounded-3 shadow-sm {% if db == 'PubMed' %}active{% endif %}" 
-                                                        for="db-simple-{{ db }}">
-                                                        <div class="d-flex align-items-center">
-                                                            {% if db == 'PubMed' %}
-                                                                <div class="database-icon bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                                                                    <i class="fas fa-check"></i>
-                                                                </div>
-                                                            {% else %}
-                                                                <div class="database-icon rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; border: 2px solid #dee2e6;">
-                                                                    <i class="fas fa-database text-secondary"></i>
-                                                                </div>
-                                                            {% endif %}
-                                                            <span class="ms-1">{{ db }}</span>
+                                                <div class="col-md-6 col-lg-4 mb-2">
+                                                    <div class="card h-100">
+                                                        <div class="card-body p-2">
+                                                            <div class="form-check form-switch mb-0">
+                                                                <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
+                                                                    id="db-simple-{{ db }}" name="databases[]" 
+                                                                    {% if db == 'PubMed' %}checked{% endif %}>
+                                                                <label class="form-check-label d-flex align-items-center" for="db-simple-{{ db }}">
+                                                                    <div class="database-icon rounded-pill {% if db == 'PubMed' %}bg-primary text-white{% else %}bg-light text-dark border{% endif %} p-1 px-2 me-2">
+                                                                        <i class="fas fa-database me-1 small"></i>{{ db }}
+                                                                    </div>
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                    </label>
+                                                    </div>
                                                 </div>
                                                 {% endfor %}
                                             </div>
+                                            
+                                            <div class="alert alert-info small mb-0">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Wählen Sie mindestens eine Datenbank aus. Die Suche wird parallel in allen ausgewählten Datenbanken durchgeführt.
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="form-text mt-2 bg-light p-2 rounded-3 border">
-                                        <i class="fas fa-info-circle text-primary me-1"></i>
-                                        <strong>Hinweis:</strong> Wählen Sie mindestens eine Datenbank für die Suche aus
-                                    </div>
+
 
                                     <!-- Großer primärer Suchbutton -->
                                     <div class="d-grid gap-2 mt-4">
@@ -1192,49 +1150,4 @@
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endblock %}
 
-<!-- Modal für eigenes Thema hinzufügen -->
-<div class="modal fade" id="customSampleModal" tabindex="-1" aria-labelledby="customSampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="customSampleModalLabel">
-                    <i class="fas fa-plus-circle me-2 text-primary"></i>Eigenes Thema hinzufügen
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Fügen Sie hier ein eigenes Thema oder einen Suchbegriff hinzu, der für Sie wichtig ist.
-                    Dieser wird dann in Ihrer Liste der Schnelleinstiege angezeigt.
-                </div>
-                
-                <div class="mb-3">
-                    <label for="customSampleName" class="form-label">Themenname</label>
-                    <input type="text" class="form-control" id="customSampleName" placeholder="z.B. Neurologie, Bioethik..." required>
-                    <div class="form-text">Geben Sie einen prägnanten Namen für Ihr Thema ein.</div>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="customSampleIcon" class="form-label">Icon auswählen</label>
-                    <select class="form-select" id="customSampleIcon">
-                        <option value="fas fa-brain text-info">🧠 Gehirn</option>
-                        <option value="fas fa-dna text-success">🧬 DNA</option>
-                        <option value="fas fa-lungs text-danger">🫁 Lunge</option>
-                        <option value="fas fa-prescription text-primary">💊 Rezept</option>
-                        <option value="fas fa-stethoscope text-secondary">🩺 Stethoskop</option>
-                        <option value="fas fa-pills text-warning">💊 Medikamente</option>
-                        <option value="fas fa-user-md text-info">👨‍⚕️ Arzt</option>
-                        <option value="fas fa-heartbeat text-danger">❤️ Herzschlag</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                <button type="button" class="btn btn-primary" id="saveCustomSample">
-                    <i class="fas fa-save me-1"></i>Speichern
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+

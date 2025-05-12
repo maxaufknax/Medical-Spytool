@@ -540,26 +540,15 @@ function initializeQuickSearch() {
             databaseCheckboxes.forEach(checkbox => {
                 checkbox.checked = !allChecked;
                 
-                // Auch die Labels aktualisieren
-                const label = document.querySelector(`label[for="${checkbox.id}"]`);
-                if (label) {
+                // Auch das Datenbankicon-Styling aktualisieren
+                const dbIcon = checkbox.closest('.card').querySelector('.database-icon');
+                if (dbIcon) {
                     if (!allChecked) {
-                        label.classList.add('active');
-                        // Icon aktualisieren
-                        const icon = label.querySelector('.database-icon');
-                        if (icon) {
-                            icon.className = 'database-icon bg-primary text-white rounded-circle p-2 me-2 d-flex align-items-center justify-content-center';
-                            icon.innerHTML = '<i class="fas fa-check"></i>';
-                        }
+                        dbIcon.classList.remove('bg-light', 'text-dark', 'border');
+                        dbIcon.classList.add('bg-primary', 'text-white');
                     } else {
-                        label.classList.remove('active');
-                        // Icon zurücksetzen
-                        const icon = label.querySelector('.database-icon');
-                        if (icon) {
-                            icon.className = 'database-icon rounded-circle p-2 me-2 d-flex align-items-center justify-content-center';
-                            icon.style = 'width: 36px; height: 36px; border: 2px solid #dee2e6;';
-                            icon.innerHTML = '<i class="fas fa-database text-secondary"></i>';
-                        }
+                        dbIcon.classList.remove('bg-primary', 'text-white');
+                        dbIcon.classList.add('bg-light', 'text-dark', 'border');
                     }
                 }
             });
@@ -571,161 +560,27 @@ function initializeQuickSearch() {
         });
     }
     
-    // Beispiel-Suchbegriffe zum Klicken
-    const sampleSearchButtons = document.querySelectorAll('.sample-search');
-    sampleSearchButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            if (searchInput) {
-                // Den Text ohne das Icon extrahieren
-                const strongElement = this.querySelector('strong');
-                if (strongElement) {
-                    searchInput.value = strongElement.textContent.trim();
+}
+
+// Funktion zur Initialisierung der Datenbank-Checkboxen
+function initializeDatabaseCheckboxes() {
+    // Hinzufügen von Event-Listenern zu allen Datenbank-Checkboxen
+    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
+    databaseCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            // Styling der Datenbank-Icons aktualisieren
+            const dbIcon = this.closest('.card').querySelector('.database-icon');
+            if (dbIcon) {
+                if (this.checked) {
+                    dbIcon.classList.remove('bg-light', 'text-dark', 'border');
+                    dbIcon.classList.add('bg-primary', 'text-white');
                 } else {
-                    searchInput.value = this.textContent.trim();
-                }
-                
-                searchInput.focus();
-                if (clearSearchButton) {
-                    clearSearchButton.style.display = 'block';
+                    dbIcon.classList.remove('bg-primary', 'text-white');
+                    dbIcon.classList.add('bg-light', 'text-dark', 'border');
                 }
             }
         });
     });
-    
-    // Modal für eigenes Thema
-    initializeCustomSampleModal();
-}
-
-// Funktion zum Initialisieren des Custom Sample Modals
-function initializeCustomSampleModal() {
-    const saveCustomSampleButton = document.getElementById('saveCustomSample');
-    if (saveCustomSampleButton) {
-        saveCustomSampleButton.addEventListener('click', function() {
-            const nameInput = document.getElementById('customSampleName');
-            const iconSelect = document.getElementById('customSampleIcon');
-            
-            if (!nameInput || !iconSelect) return;
-            
-            const name = nameInput.value.trim();
-            const iconClass = iconSelect.value;
-            
-            if (!name) {
-                showToast('Fehler', 'Bitte geben Sie einen Namen für das Thema ein.', 'error');
-                return;
-            }
-            
-            // Neuen Button erstellen und zur Liste hinzufügen
-            addCustomSampleButton(name, iconClass);
-            
-            // Modal schließen und Feld zurücksetzen
-            const modal = bootstrap.Modal.getInstance(document.getElementById('customSampleModal'));
-            if (modal) {
-                modal.hide();
-            }
-            nameInput.value = '';
-            
-            showToast('Erfolg', 'Eigenes Thema wurde hinzugefügt.', 'success');
-        });
-    }
-}
-
-// Funktion zum Hinzufügen eines benutzerdefinierten Themas
-function addCustomSampleButton(name, iconClass) {
-    const container = document.querySelector('.popular-searches .row');
-    if (!container) return;
-    
-    // Extrahiere die Ikonklasse und Farbklasse
-    const [iconName, colorClass] = iconClass.split(' ');
-    
-    // Neue Spalte erstellen
-    const column = document.createElement('div');
-    column.className = 'col-md-6 mb-2';
-    
-    // Button-HTML
-    column.innerHTML = `
-        <button type="button" class="btn btn-light border w-100 text-start sample-search position-relative">
-            <i class="${iconClass} me-2"></i>
-            <strong>${name}</strong>
-            <span class="position-absolute top-50 end-0 translate-middle-y me-2 text-muted">
-                <i class="fas fa-chevron-right"></i>
-            </span>
-        </button>
-    `;
-    
-    // Event-Listener für den neuen Button hinzufügen
-    const button = column.querySelector('.sample-search');
-    const searchInput = document.getElementById('simpleSearchQuery');
-    const clearSearchButton = document.getElementById('clearSearchButton');
-    
-    if (button && searchInput) {
-        button.addEventListener('click', function() {
-            searchInput.value = name;
-            searchInput.focus();
-            if (clearSearchButton) {
-                clearSearchButton.style.display = 'block';
-            }
-        });
-    }
-    
-    // Zum Container hinzufügen
-    container.appendChild(column);
-    
-    // In localStorage speichern, damit die benutzerdefinierten Themen bei Neuladen erhalten bleiben
-    saveCustomSamplesToLocalStorage();
-}
-
-// Funktionen zum Speichern und Laden von benutzerdefinierten Themen
-function saveCustomSamplesToLocalStorage() {
-    try {
-        const container = document.querySelector('.popular-searches .row');
-        if (!container) return;
-        
-        // Alle benutzerdefinierten Themen finden (alle außer den vordefinierten)
-        const customSamples = [];
-        
-        // Die vordefinierten Themen IDs (0-basiert)
-        const predefinedCount = 4; // Die ersten 4 sind vordefiniert
-        
-        const allSamples = container.querySelectorAll('.col-md-6');
-        for (let i = predefinedCount; i < allSamples.length; i++) {
-            const button = allSamples[i].querySelector('.sample-search');
-            if (button) {
-                const strongElement = button.querySelector('strong');
-                const iconElement = button.querySelector('i:not(.fa-chevron-right)');
-                
-                if (strongElement && iconElement) {
-                    const name = strongElement.textContent.trim();
-                    const iconClass = iconElement.className;
-                    
-                    customSamples.push({
-                        name: name,
-                        iconClass: iconClass
-                    });
-                }
-            }
-        }
-        
-        // In localStorage speichern
-        localStorage.setItem('medicalspy_custom_samples', JSON.stringify(customSamples));
-    } catch (error) {
-        console.error('Error saving custom samples to localStorage:', error);
-    }
-}
-
-function loadCustomSamplesFromLocalStorage() {
-    try {
-        const savedSamples = localStorage.getItem('medicalspy_custom_samples');
-        if (!savedSamples) return;
-        
-        const customSamples = JSON.parse(savedSamples);
-        
-        // Jedes gespeicherte Thema hinzufügen
-        customSamples.forEach(sample => {
-            addCustomSampleButton(sample.name, sample.iconClass);
-        });
-    } catch (error) {
-        console.error('Error loading custom samples from localStorage:', error);
-    }
 }
 
 // Initialize search functionality
@@ -737,9 +592,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize quick search
         initializeQuickSearch();
         
-        // Gespeicherte benutzerdefinierte Themen laden
-        loadCustomSamplesFromLocalStorage();
-        
         // Initialize person search fields
         initializePersonSearch();
         
@@ -749,17 +601,32 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize database selection UI
         initializeDatabaseSelection();
         
+        // Initialisiere die Datenbank-Checkboxen
+        initializeDatabaseCheckboxes();
+        
         // Tooltips initialisieren
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
+        try {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        } catch (tooltipError) {
+            console.warn('Could not initialize tooltips:', tooltipError);
+        }
         
         // Attach form submission handler
         const searchForm = document.getElementById('searchForm');
         if (searchForm) {
             searchForm.addEventListener('submit', handleSearchSubmit);
             console.log('Successfully attached search form submit handler');
+            
+            // Focus auf das Suchfeld setzen
+            const searchInput = document.getElementById('simpleSearchQuery');
+            if (searchInput) {
+                setTimeout(() => {
+                    searchInput.focus();
+                }, 200);
+            }
         } else {
             console.warn('Search form element not found');
         }
