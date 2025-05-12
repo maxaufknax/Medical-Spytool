@@ -1,22 +1,147 @@
 <!DOCTYPE html>
-<html lang="de" data-bs-theme="dark">
+<html lang="de" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MedicalSpy - Wissenschaftliches Publikations-Suchwerkzeug{% endblock %}</title>
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     <!-- Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #2c6ba0;
+            --secondary-color: #6c757d;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --info-color: #49a0d9;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --body-bg: #f5f7fa;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --header-gradient: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+        }
+        
+        body {
+            background-color: var(--body-bg);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        
+        .bg-gradient-primary {
+            background: var(--header-gradient);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e5586;
+            border-color: #1e5586;
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        
+        .nav-pills .nav-link.active {
+            background-color: var(--primary-color);
+        }
+        
+        .border-primary {
+            border-color: var(--primary-color) !important;
+        }
+        
+        .card {
+            box-shadow: var(--card-shadow);
+            border-radius: 0.5rem;
+            border: none;
+        }
+        
+        .card-header {
+            border-radius: 0.5rem 0.5rem 0 0 !important;
+        }
+        
+        .card-header.bg-primary {
+            background: var(--header-gradient) !important;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+        }
+        
+        .alert-info {
+            background-color: rgba(73, 160, 217, 0.15);
+            border-color: rgba(73, 160, 217, 0.3);
+            color: #2c6ba0;
+        }
+        
+        .border-left-info {
+            border-left: 4px solid var(--info-color) !important;
+        }
+        
+        .badge.bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        
+        .page-header {
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            background: var(--header-gradient);
+            color: white;
+            border-radius: 0.5rem;
+        }
+        
+        .btn {
+            border-radius: 0.35rem;
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            color: #fff !important;
+        }
+        
+        .navbar-toggler {
+            border: none;
+        }
+        
+        .tab-content {
+            padding-top: 1rem;
+        }
+        
+        .input-group-text {
+            background-color: #f8f9fa;
+        }
+    </style>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-gradient-primary mb-4 shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-microscope me-2"></i>MedicalSpy
@@ -25,39 +150,39 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('index') }}">
                             <i class="fas fa-home me-1"></i> Startseite
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'search' %}active{% endif %}" href="{{ url_for('search') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'search' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('search') }}">
                             <i class="fas fa-search me-1"></i> Suche
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'results' %}active{% endif %}" href="{{ url_for('results') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'results' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('results') }}">
                             <i class="fas fa-list me-1"></i> Ergebnisse
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'analysis' %}active{% endif %}" href="{{ url_for('analysis') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'analysis' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('analysis') }}">
                             <i class="fas fa-chart-bar me-1"></i> Analyse
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'persons' %}active{% endif %}" href="{{ url_for('persons') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'persons' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('persons') }}">
                             <i class="fas fa-users me-1"></i> Personen
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'settings' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('settings') }}">
                             <i class="fas fa-cog me-1"></i> Einstellungen
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'log' %}active{% endif %}" href="{{ url_for('log') }}">
+                    <li class="nav-item mx-1">
+                        <a class="nav-link {% if request.endpoint == 'log' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('log') }}">
                             <i class="fas fa-clipboard-list me-1"></i> Protokoll
                         </a>
                     </li>
@@ -71,7 +196,16 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                    {% set alert_class = category if category in ['success', 'danger', 'warning', 'info'] else 'info' %}
+                    {% set icon_class = {
+                        'success': 'fas fa-check-circle',
+                        'danger': 'fas fa-exclamation-triangle',
+                        'warning': 'fas fa-exclamation-circle',
+                        'info': 'fas fa-info-circle'
+                    } %}
+                    <div class="alert alert-{{ alert_class }} alert-dismissible fade show shadow-sm border-{{ alert_class }}" role="alert">
+                        <i class="{{ icon_class.get(alert_class, 'fas fa-info-circle') }} me-2"></i>
+                        <strong>{{ {'success': 'Erfolg!', 'danger': 'Fehler!', 'warning': 'Achtung!', 'info': 'Information:'}.get(alert_class, '') }}</strong> 
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
@@ -81,21 +215,23 @@
     </div>
 
     <!-- Main Content -->
-    <main class="container">
+    <main class="container mb-5">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white mt-5 py-4">
+    <footer class="bg-gradient-primary text-white mt-5 py-4 shadow-sm">
         <div class="container">
-            <div class="row">
+            <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h5>MedicalSpy</h5>
-                    <p class="text-muted">Ein webbasiertes Suchwerkzeug für wissenschaftliche Publikationen</p>
+                    <h5 class="mb-1"><i class="fas fa-microscope me-2"></i>MedicalSpy</h5>
+                    <p class="text-white-50 mb-0">Ein leistungsstarkes Suchwerkzeug für medizinische und wissenschaftliche Publikationen</p>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="mb-0">Version 3.0</p>
-                    <p class="text-muted">&copy; {{ current_year }} MedicalSpy</p>
+                    <div class="mb-1">
+                        <span class="badge bg-white text-primary px-3 py-2 rounded-pill">Version 3.0</span>
+                    </div>
+                    <p class="text-white-50 mb-0">&copy; {{ current_year }} MedicalSpy Team</p>
                 </div>
             </div>
         </div>
