@@ -508,37 +508,64 @@
                                 
                                 <!-- Step 4: Database-specific Filters -->
                                 <div class="tab-pane fade" id="step4-content">
-                                    <div class="card border-primary mb-3">
-                                        <div class="card-header bg-primary text-white">
-                                            <i class="fas fa-database me-2"></i> Datenbankspezifische Filter
+                                    <div class="card shadow-sm border-0 mb-3">
+                                        <div class="card-header bg-gradient-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-database me-2"></i> Datenbankspezifische Filter
+                                                <span class="badge bg-white text-primary fs-6 float-end">Schritt 4 von 4</span>
+                                            </h5>
                                         </div>
-                                        <div class="card-body">
-                                            <!-- PubMed-specific filters -->
-                                            <div id="pubmed-specific-filters" class="mb-4 p-3 border rounded shadow-sm">
-                                                <h6 class="mb-3 d-flex align-items-center">
-                                                    <span class="badge bg-primary me-2">PubMed</span> Spezifische Filter
-                                                </h6>
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" id="pubmedFullTextFilter" name="full_text_only">
-                                                            <label class="form-check-label" for="pubmedFullTextFilter">
-                                                                Nur Volltext-Artikel
-                                                            </label>
-                                                        </div>
-                                                        <div class="form-text text-muted">Nur Artikel mit verfügbarem Volltext anzeigen.</div>
+                                        <div class="card-body p-4">
+                                            <div class="alert alert-light border border-info mb-4 shadow-sm">
+                                                <div class="d-flex">
+                                                    <div class="me-3">
+                                                        <i class="fas fa-cogs fa-2x text-info"></i>
                                                     </div>
-                                                    <div class="col-md-6">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" id="pubmedFreeAccessFilter" name="free_access_only">
-                                                            <label class="form-check-label" for="pubmedFreeAccessFilter">
-                                                                Nur frei zugängliche Artikel
-                                                            </label>
-                                                        </div>
-                                                        <div class="form-text text-muted">Nur kostenlos verfügbare Artikel anzeigen.</div>
+                                                    <div>
+                                                        <h6 class="mb-1">Optimierung nach Datenbanken</h6>
+                                                        <p class="mb-0">Diese erweiterten Filter ermöglichen Ihnen datenbankspezifische Einschränkungen, um genau die Ressourcen zu finden, die Sie benötigen.</p>
                                                     </div>
                                                 </div>
                                             </div>
+                                            
+                                            <div class="row g-4">
+                                                <!-- PubMed-specific filters -->
+                                                <div class="col-lg-6">
+                                                    <div class="card border-0 h-100 shadow-sm">
+                                                        <div class="card-header bg-light text-primary">
+                                                            <h6 class="mb-0 d-flex align-items-center">
+                                                                <i class="fas fa-microscope me-2"></i>
+                                                                PubMed-spezifische Filter
+                                                            </h6>
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div class="mb-3">
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input" type="checkbox" id="pubmedFullTextFilter" name="full_text_only">
+                                                                    <label class="form-check-label fw-bold" for="pubmedFullTextFilter">
+                                                                        Nur Volltext-Artikel
+                                                                    </label>
+                                                                </div>
+                                                                <div class="form-text ms-4">Zeigt nur Artikel an, deren vollständiger Text verfügbar ist</div>
+                                                            </div>
+                                                            
+                                                            <div class="mb-3">
+                                                                <div class="form-check form-switch">
+                                                                    <input class="form-check-input" type="checkbox" id="pubmedFreeAccessFilter" name="free_access_only">
+                                                                    <label class="form-check-label fw-bold" for="pubmedFreeAccessFilter">
+                                                                        Nur frei zugängliche Artikel
+                                                                    </label>
+                                                                </div>
+                                                                <div class="form-text ms-4">Beschränkt die Suche auf kostenlos verfügbare Publikationen</div>
+                                                            </div>
+                                                            
+                                                            <div class="alert alert-light small border p-2 mb-0">
+                                                                <i class="fas fa-info-circle text-primary me-1"></i>
+                                                                PubMed ist eine umfassende Datenbank für biomedizinische und lebenswissenschaftliche Literatur der United States National Library of Medicine (NLM).
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             
                                             <!-- DNB-specific filters -->
                                             <div id="dnb-specific-filters" class="mb-4 p-3 border rounded shadow-sm">
