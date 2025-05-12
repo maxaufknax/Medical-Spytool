@@ -500,24 +500,70 @@ function initializeDatabaseSelection() {
     });
 }
 
+// Funktionen für die verbesserte Schnellsuche
+function initializeQuickSearch() {
+    // Funktion zum Löschen des Suchfelds
+    const clearSearchButton = document.getElementById('clearSearchButton');
+    const searchInput = document.getElementById('simpleSearchQuery');
+    
+    if (clearSearchButton && searchInput) {
+        clearSearchButton.addEventListener('click', function() {
+            searchInput.value = '';
+            searchInput.focus();
+        });
+        
+        // Das X nur anzeigen, wenn Text im Feld ist
+        searchInput.addEventListener('input', function() {
+            clearSearchButton.style.display = this.value.trim() !== '' ? 'block' : 'none';
+        });
+        
+        // Initial Zustand setzen
+        clearSearchButton.style.display = searchInput.value.trim() !== '' ? 'block' : 'none';
+    }
+    
+    // Beispiel-Suchbegriffe zum Klicken
+    const sampleSearchButtons = document.querySelectorAll('.sample-search');
+    sampleSearchButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            if (searchInput) {
+                searchInput.value = this.textContent;
+                searchInput.focus();
+                if (clearSearchButton) {
+                    clearSearchButton.style.display = 'block';
+                }
+            }
+        });
+    });
+}
+
 // Initialize search functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // Debug persons data
-    console.log('Loaded persons:', allPersons);
+    // Debug persons data - schützen, falls allPersons noch nicht definiert ist
+    console.log('Loaded persons:', allPersons || []);
 
-    // Initialize person search fields
-    initializePersonSearch();
-    
-    // Initialize event listeners for the saved queries tab
-    initializeSavedQueriesTab();
-    
-    // Initialize database selection UI
-    initializeDatabaseSelection();
-    
-    // Attach form submission handler
-    const searchForm = document.getElementById('searchForm');
-    if (searchForm) {
-        searchForm.addEventListener('submit', handleSearchSubmit);
+    try {
+        // Initialize quick search
+        initializeQuickSearch();
+        
+        // Initialize person search fields
+        initializePersonSearch();
+        
+        // Initialize event listeners for the saved queries tab
+        initializeSavedQueriesTab();
+        
+        // Initialize database selection UI
+        initializeDatabaseSelection();
+        
+        // Attach form submission handler
+        const searchForm = document.getElementById('searchForm');
+        if (searchForm) {
+            searchForm.addEventListener('submit', handleSearchSubmit);
+            console.log('Successfully attached search form submit handler');
+        } else {
+            console.warn('Search form element not found');
+        }
+    } catch (error) {
+        console.error('Error initializing search functionality:', error);
     }
 });
 
@@ -744,20 +790,13 @@ function updateDatabaseSpecificFilters() {
     }
 }
 
-// Initialize the search page
+// Initialize the search page - Combined with the main initialization above
+// Diese zweite DOMContentLoaded-Listener-Funktion wurde entfernt, da sie redundant ist
+// und möglicherweise zu Konflikten führt. Die Funktionalität wurde in den obigen
+// DOMContentLoaded-Listener integriert.
+
+// Funktionalität für die Suche-Tabs
 document.addEventListener('DOMContentLoaded', function() {
-    // Debug persons data from server
-    debugPersons();
-
-    // Note: We no longer call loadAllPersons() here because the persons are 
-    // already loaded from the server in the window.allPersons variable
-
-    // Initialize event listeners for search form
-    const searchForm = document.getElementById('searchForm');
-    if (searchForm) {
-        searchForm.addEventListener('submit', handleSearchSubmit);
-    }
-
     // Search mode tabs
     const searchModeTabs = document.querySelectorAll('#searchModeTabs .nav-link');
     searchModeTabs.forEach(tab => {
