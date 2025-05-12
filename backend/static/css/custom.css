@@ -16,6 +16,71 @@
     border: 1px solid rgba(0,0,0,0.05);
 }
 
+/* Verbesserte Such-Tabs Darstellung */
+#searchModeTabs {
+    gap: 10px;
+    background-color: rgba(240, 242, 245, 0.8) !important;
+    border-radius: 12px !important;
+    padding: 8px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+#searchModeTabs .nav-item {
+    margin: 0 !important;
+}
+
+#searchModeTabs .nav-link {
+    border-radius: 10px !important;
+    padding: 12px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+    color: #566a7f;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+}
+
+#searchModeTabs .nav-link::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(44, 107, 160, 0.1), transparent);
+    transition: width 0.3s ease;
+    z-index: 0;
+}
+
+#searchModeTabs .nav-link:hover::before {
+    width: 100%;
+}
+
+#searchModeTabs .nav-link:hover {
+    transform: translateY(-2px);
+    background-color: #f8f9fa;
+    color: #2c6ba0;
+    border-color: rgba(44, 107, 160, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+#searchModeTabs .nav-link.active {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(44, 107, 160, 0.3);
+    transform: translateY(-2px);
+}
+
+#searchModeTabs .nav-link i {
+    font-size: 1.1rem;
+    margin-right: 6px;
+    position: relative;
+    z-index: 1;
+}
+
 /* Improved card styling */
 .card {
     border-radius: 0.5rem;

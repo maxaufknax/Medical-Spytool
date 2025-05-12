@@ -23,25 +23,33 @@
             
             <!-- Search Mode Tabs -->
             <div class="px-3 pt-3">
-                <ul class="nav nav-pills nav-fill mb-3 bg-light p-2 rounded-3" id="searchModeTabs">
-                    <li class="nav-item mx-1">
-                        <a class="nav-link active rounded-pill" id="simple-search-tab" data-bs-toggle="tab" href="#simple-search" role="tab">
-                            <i class="fas fa-search me-1"></i> <strong>Schnellsuche</strong>
+                <ul class="nav nav-pills nav-fill mb-3" id="searchModeTabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="simple-search-tab" data-bs-toggle="tab" href="#simple-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="fas fa-search me-2"></i> <strong>Schnellsuche</strong>
+                            </div>
                         </a>
                     </li>
-                    <li class="nav-item mx-1">
-                        <a class="nav-link rounded-pill" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
-                            <i class="fas fa-users me-1"></i> <strong>Personenbezogene Suche</strong>
+                    <li class="nav-item">
+                        <a class="nav-link" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="fas fa-users me-2"></i> <strong>Personenbezogene Suche</strong>
+                            </div>
                         </a>
                     </li>
-                    <li class="nav-item mx-1">
-                        <a class="nav-link rounded-pill" id="advanced-search-tab" data-bs-toggle="tab" href="#advanced-search" role="tab">
-                            <i class="fas fa-database me-1"></i> <strong>Erweiterte Datenbanksuche</strong>
+                    <li class="nav-item">
+                        <a class="nav-link" id="advanced-search-tab" data-bs-toggle="tab" href="#advanced-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="fas fa-database me-2"></i> <strong>Erweiterte Datenbanksuche</strong>
+                            </div>
                         </a>
                     </li>
-                    <li class="nav-item mx-1">
-                        <a class="nav-link rounded-pill" id="saved-queries-tab" data-bs-toggle="tab" href="#saved-queries" role="tab">
-                            <i class="fas fa-save me-1"></i> <strong>Gespeicherte Suchen</strong>
+                    <li class="nav-item">
+                        <a class="nav-link" id="saved-queries-tab" data-bs-toggle="tab" href="#saved-queries" role="tab">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <i class="fas fa-save me-2"></i> <strong>Gespeicherte Suchen</strong>
+                            </div>
                         </a>
                     </li>
                 </ul>
@@ -1148,6 +1156,80 @@
     window.allPersons = {{ persons | tojson | safe }};
 </script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
+<script>
+    // Verbesserte Tab-Interaktion mit Animation
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchModeTabs = document.querySelectorAll('#searchModeTabs .nav-link');
+        searchModeTabs.forEach(function(tab) {
+            tab.addEventListener('click', function(e) {
+                const tabId = this.id;
+                
+                // Bestimme den Suchmodus basierend auf dem angeklickten Tab
+                if (tabId === 'simple-search-tab') {
+                    document.getElementById('searchMode').value = 'simple';
+                } else if (tabId === 'person-search-tab') {
+                    document.getElementById('searchMode').value = 'person';
+                } else if (tabId === 'advanced-search-tab') {
+                    document.getElementById('searchMode').value = 'advanced';
+                }
+                
+                // Animation für den Tab-Wechsel
+                const allTabs = document.querySelectorAll('#searchModeTabs .nav-link');
+                allTabs.forEach(t => {
+                    if (t === this) {
+                        t.style.transform = "translateY(-5px)";
+                        setTimeout(() => {
+                            t.style.transform = "translateY(-2px)";
+                        }, 300);
+                    } else {
+                        t.style.transform = "translateY(0)";
+                    }
+                });
+            });
+            
+            // Hover-Effekt
+            tab.addEventListener('mouseenter', function() {
+                if (!this.classList.contains('active')) {
+                    this.style.transform = "translateY(-2px)";
+                }
+            });
+            
+            tab.addEventListener('mouseleave', function() {
+                if (!this.classList.contains('active')) {
+                    this.style.transform = "translateY(0)";
+                }
+            });
+        });
+        
+        // Setze anfänglichen Transform-Stil für aktiven Tab
+        const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
+        if (activeTab) {
+            activeTab.style.transform = "translateY(-2px)";
+        }
+        
+        // Clear Search Button
+        const clearSearchButton = document.getElementById('clearSearchButton');
+        if (clearSearchButton) {
+            clearSearchButton.addEventListener('click', function() {
+                document.getElementById('simpleSearchQuery').value = '';
+                document.getElementById('simpleSearchQuery').focus();
+            });
+        }
+        
+        // Select all databases button
+        const selectAllButton = document.getElementById('selectAllDatabases');
+        if (selectAllButton) {
+            selectAllButton.addEventListener('click', function() {
+                const checkboxes = document.querySelectorAll('.database-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = true;
+                });
+            });
+        }
+    });
+    
+    console.log("Loaded persons:", {{ persons|tojson|safe }});
+</script>
 {% endblock %}
 
 
