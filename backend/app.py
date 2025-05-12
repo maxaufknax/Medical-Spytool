@@ -44,13 +44,22 @@ database_url = os.environ.get('DATABASE_URL')
 logger.info("Establishing database connection...")
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['TIMEOUT'] = 300  # Timeout auf 5 Minuten erhöhen
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,  # Prüft die Verbindung vor Verwendung
+    'pool_recycle': 280,    # Verbindung nach 280 Sekunden erneuern
+    'pool_timeout': 30,     # Timeout für Pool-Verbindungen
+    'max_overflow': 5,      # Erlaubt 5 zusätzliche Verbindungen außerhalb des Pools
+}
 db.init_app(app)
 
 # Create database tables if they don't exist
-with app.app_context():
-    db.create_all()
-    logger.info("Database tables created (if they didn't exist already)")
+try:
+    with app.app_context():
+        db.create_all()
+        logger.info("Database tables created (if they didn't exist already)")
+except Exception as e:
+    logger.error(f"Fehler beim Erstellen der Datenbanktabellen: {str(e)}")
+    logger.error("Die Anwendung wird dennoch fortgesetzt, aber Datenbankoperationen könnten fehlschlagen.")
 
 # Initialize session variables if not present
 @app.before_request
@@ -59,18 +68,36 @@ def before_request():
         session['search_results'] = []
     if 'saved_queries' not in session:
         # Load saved queries from database
-        with app.app_context():
-            queries = db.session.query(SearchQuery).all()
-            session['saved_queries'] = [query.to_dict() for query in queries]
+        try:
+            with app.app_context():
+                queries = db.session.query(SearchQuery).all()
+                session['saved_queries'] = [query.to_dict() for query in queries]
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der gespeicherten Suchanfragen: {str(e)}")
+            session['saved_queries'] = []
     if 'settings' not in session:
         # Load settings from database
-        with app.app_context():
-            session['settings'] = Setting.get_settings_dict()
+        try:
+            with app.app_context():
+                session['settings'] = Setting.get_settings_dict()
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Einstellungen: {str(e)}")
+            session['settings'] = {
+                'output_path': './output',
+                'person_list_path': './person_lists',
+                'unique_filenames': True,
+                'output_columns': [],
+                'default_database': 'PubMed'
+            }
     if 'persons' not in session:
         # Load persons from database
-        with app.app_context():
-            persons = Person.query.all()
-            session['persons'] = [person.to_dict() for person in persons]
+        try:
+            with app.app_context():
+                persons = Person.query.all()
+                session['persons'] = [person.to_dict() for person in persons]
+        except Exception as e:
+            logger.error(f"Fehler beim Laden der Personen: {str(e)}")
+            session['persons'] = []
 
 # Add context processor to provide current year to all templates
 @app.context_processor
