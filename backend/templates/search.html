@@ -127,90 +127,159 @@
                         
                         <!-- Advanced Database Search Tab -->
                         <div class="tab-pane fade" id="advanced-search" role="tabpanel">
-                            <div class="alert alert-info border-left-info mb-3">
-                                <i class="fas fa-info-circle me-2"></i> 
-                                Die <strong>Erweiterte Datenbanksuche</strong> bietet umfassende Konfigurationsmöglichkeiten für präzise Suchanfragen mit detaillierten Filtern für alle verfügbaren Datenbanken.
+                            <div class="alert alert-info border-left-info mb-4 shadow-sm">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="fas fa-database fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="alert-heading text-primary mb-1">Erweiterte Datenbanksuche</h5>
+                                        <p class="mb-0">Erstellen Sie hochpräzise Suchanfragen mit umfangreichen Filtermöglichkeiten und datenbankspezifischen Optionen. Ideal für wissenschaftliche Recherchen mit detaillierten Anforderungen.</p>
+                                    </div>
+                                </div>
                             </div>
                             
-                            <ul class="nav nav-pills mb-4" id="advancedSearchTabs">
-                                <li class="nav-item">
-                                    <a class="nav-link active" id="step1-tab" data-bs-toggle="pill" href="#step1-content">
-                                        <span class="badge bg-primary rounded-circle me-1">1</span> Basissuche
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="step2-tab" data-bs-toggle="pill" href="#step2-content">
-                                        <span class="badge bg-primary rounded-circle me-1">2</span> Personenfilter
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="step3-tab" data-bs-toggle="pill" href="#step3-content">
-                                        <span class="badge bg-primary rounded-circle me-1">3</span> Erweiterte Filter
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" id="step4-tab" data-bs-toggle="pill" href="#step4-content">
-                                        <span class="badge bg-primary rounded-circle me-1">4</span> Datenbankspezifisch
-                                    </a>
-                                </li>
-                            </ul>
+                            <div class="card mb-4 shadow-sm border-0 bg-light">
+                                <div class="card-body p-3">
+                                    <div class="progress mb-3" style="height: 5px;">
+                                        <div class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" id="advancedSearchProgress"></div>
+                                    </div>
+                                    
+                                    <ul class="nav nav-pills nav-justified mb-4" id="advancedSearchTabs">
+                                        <li class="nav-item mx-1">
+                                            <a class="nav-link active rounded-pill shadow-sm d-flex flex-column align-items-center p-3" id="step1-tab" data-bs-toggle="pill" href="#step1-content">
+                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-1" style="width: 36px; height: 36px;">
+                                                    <span>1</span>
+                                                </div>
+                                                <span class="d-none d-md-block">Basissuche</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item mx-1">
+                                            <a class="nav-link rounded-pill shadow-sm d-flex flex-column align-items-center p-3" id="step2-tab" data-bs-toggle="pill" href="#step2-content">
+                                                <div class="rounded-circle bg-white text-primary border border-primary d-flex align-items-center justify-content-center mb-1" style="width: 36px; height: 36px;">
+                                                    <span>2</span>
+                                                </div>
+                                                <span class="d-none d-md-block">Personenfilter</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item mx-1">
+                                            <a class="nav-link rounded-pill shadow-sm d-flex flex-column align-items-center p-3" id="step3-tab" data-bs-toggle="pill" href="#step3-content">
+                                                <div class="rounded-circle bg-white text-primary border border-primary d-flex align-items-center justify-content-center mb-1" style="width: 36px; height: 36px;">
+                                                    <span>3</span>
+                                                </div>
+                                                <span class="d-none d-md-block">Erweiterte Filter</span>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item mx-1">
+                                            <a class="nav-link rounded-pill shadow-sm d-flex flex-column align-items-center p-3" id="step4-tab" data-bs-toggle="pill" href="#step4-content">
+                                                <div class="rounded-circle bg-white text-primary border border-primary d-flex align-items-center justify-content-center mb-1" style="width: 36px; height: 36px;">
+                                                    <span>4</span>
+                                                </div>
+                                                <span class="d-none d-md-block">Datenbankspezifisch</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                             
                             <div class="tab-content mb-4" id="advancedSearchTabContent">
                                 <!-- Step 1: Basic Query -->
                                 <div class="tab-pane fade show active" id="step1-content">
-                                    <div class="card border-primary mb-3">
-                                        <div class="card-header bg-primary text-white">
-                                            <i class="fas fa-search me-2"></i> Basissuche konfigurieren
+                                    <div class="card shadow-sm border-0 mb-3">
+                                        <div class="card-header bg-gradient-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-search me-2"></i> Basissuche konfigurieren
+                                                <span class="badge bg-white text-primary fs-6 float-end">Schritt 1 von 4</span>
+                                            </h5>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="mb-4">
-                                                <label for="advancedSearchQuery" class="form-label fw-bold">Hauptsuchbegriff</label>
-                                                <div class="input-group input-group-lg shadow-sm">
-                                                    <span class="input-group-text bg-light">
-                                                        <i class="fas fa-keyboard"></i>
-                                                    </span>
-                                                    <input type="text" class="form-control" id="advancedSearchQuery" name="search_query" 
-                                                           placeholder="z.B. Herzinsuffizienz, Leukämie, Hirntumore...">
-                                                </div>
-                                                <div class="form-text text-muted">Geben Sie den primären Suchbegriff ein. Mehrere Begriffe mit Komma trennen.</div>
-                                            </div>
-                                            
-                                            <div class="mb-4">
-                                                <label for="advancedAdditionalTerms" class="form-label fw-bold">Zusätzliche Suchbegriffe</label>
-                                                <div class="input-group shadow-sm">
-                                                    <span class="input-group-text bg-light">
-                                                        <i class="fas fa-plus-circle"></i>
-                                                    </span>
-                                                    <input type="text" class="form-control" id="advancedAdditionalTerms" 
-                                                           name="additional_terms" placeholder="Zusätzliche Begriffe zur Eingrenzung">
-                                                </div>
-                                                <div class="form-text text-muted">Diese Begriffe werden mit UND verknüpft, um die Suche einzuschränken.</div>
-                                            </div>
-                                            
-                                            <div class="mb-3">
-                                                <label class="form-label fw-bold">Datenbanken auswählen</label>
-                                                <div class="database-selection d-flex flex-wrap gap-2 mb-2">
-                                                    {% for db in databases %}
-                                                    <div class="form-check">
-                                                        <input class="form-check-input database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
-                                                            id="db-advanced-{{ db }}" name="databases[]" 
-                                                            {% if db == 'PubMed' %}checked{% endif %}>
-                                                        <label class="form-check-label btn btn-outline-primary p-2 rounded-3 {% if db == 'PubMed' %}active{% endif %}" 
-                                                               for="db-advanced-{{ db }}">
-                                                            {% if db == 'PubMed' %}
-                                                                <i class="fas fa-check-circle me-1"></i>
-                                                            {% endif %}
-                                                            {{ db }}
-                                                        </label>
+                                        <div class="card-body p-4">
+                                            <!-- Hauptsuchbereich -->
+                                            <div class="card bg-light mb-4 border-0">
+                                                <div class="card-body p-4">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-keyboard me-2"></i>Hauptsuchbegriffe definieren
+                                                    </h6>
+                                                    
+                                                    <div class="mb-4">
+                                                        <label for="advancedSearchQuery" class="form-label">Hauptsuchbegriffe</label>
+                                                        <div class="input-group input-group-lg shadow-sm">
+                                                            <span class="input-group-text bg-white text-primary">
+                                                                <i class="fas fa-search"></i>
+                                                            </span>
+                                                            <input type="text" class="form-control border" id="advancedSearchQuery" name="search_query" 
+                                                                   placeholder="z.B. Herzinsuffizienz, Leukämie, Hirntumore...">
+                                                        </div>
+                                                        <div class="form-text mt-2">
+                                                            <i class="fas fa-info-circle text-info me-1"></i>
+                                                            Dies sind die primären Suchbegriffe. Mehrere Begriffe werden automatisch mit ODER verknüpft.
+                                                        </div>
                                                     </div>
-                                                    {% endfor %}
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="advancedAdditionalTerms" class="form-label">Zusätzliche eingrenzende Begriffe (optional)</label>
+                                                        <div class="input-group shadow-sm">
+                                                            <span class="input-group-text bg-white text-primary">
+                                                                <i class="fas fa-plus-circle"></i>
+                                                            </span>
+                                                            <input type="text" class="form-control border" id="advancedAdditionalTerms" 
+                                                                   name="additional_terms" placeholder="z.B. Therapie, Diagnose, Prognose...">
+                                                        </div>
+                                                        <div class="form-text mt-2">
+                                                            <i class="fas fa-lightbulb text-warning me-1"></i>
+                                                            Diese Begriffe werden mit UND verknüpft und helfen, irrelevante Ergebnisse auszuschließen.
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div class="form-text text-muted">Wählen Sie mindestens eine Datenbank aus. Mehrere Datenbanken werden parallel durchsucht.</div>
+                                            </div>
+                                            
+                                            <!-- Datenbankauswahl -->
+                                            <div class="card bg-light border-0">
+                                                <div class="card-body p-4">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-database me-2"></i>Datenbanken auswählen
+                                                    </h6>
+                                                    
+                                                    <div class="database-selection d-flex flex-wrap gap-2 mb-3">
+                                                        {% for db in databases %}
+                                                        <div class="form-check">
+                                                            <input class="form-check-input database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
+                                                                id="db-advanced-{{ db }}" name="databases[]" 
+                                                                {% if db == 'PubMed' %}checked{% endif %}>
+                                                            <label class="form-check-label btn btn-outline-primary p-2 rounded-pill shadow-sm {% if db == 'PubMed' %}active{% endif %}" 
+                                                                   for="db-advanced-{{ db }}">
+                                                                {% if db == 'PubMed' %}
+                                                                    <i class="fas fa-check-circle me-1"></i>
+                                                                {% endif %}
+                                                                {{ db }}
+                                                            </label>
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                    
+                                                    <div class="alert alert-light border mb-0">
+                                                        <div class="d-flex">
+                                                            <div class="me-3">
+                                                                <i class="fas fa-info-circle text-primary"></i>
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-1">Hinweise zur Datenbankauswahl</h6>
+                                                                <ul class="mb-0 ps-3 small">
+                                                                    <li><strong>PubMed</strong>: Biomedizinische Literatur, klinische Studien, medizinische Journals</li>
+                                                                    <li><strong>DNB</strong>: Deutsche Veröffentlichungen, akademische Publikationen, Bücher</li>
+                                                                    <li>Die Suche in mehreren Datenbanken kann einige Sekunden länger dauern</li>
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="card-footer d-flex justify-content-between">
-                                            <span></span>
-                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step2-tab').click()">
+                                        
+                                        <div class="card-footer d-flex justify-content-between p-3">
+                                            <button type="button" class="btn btn-outline-secondary" disabled>
+                                                <i class="fas fa-arrow-left me-1"></i> Zurück
+                                            </button>
+                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step2-tab').click(); document.getElementById('advancedSearchProgress').style.width='50%'">
                                                 Weiter zu Personenfilter <i class="fas fa-arrow-right ms-1"></i>
                                             </button>
                                         </div>
@@ -219,52 +288,110 @@
                                 
                                 <!-- Step 2: Person Filters -->
                                 <div class="tab-pane fade" id="step2-content">
-                                    <div class="card border-primary mb-3">
-                                        <div class="card-header bg-primary text-white">
-                                            <i class="fas fa-users me-2"></i> Personenbezogene Filter (Optional)
+                                    <div class="card shadow-sm border-0 mb-3">
+                                        <div class="card-header bg-gradient-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-users me-2"></i> Personenbezogene Filter (Optional)
+                                                <span class="badge bg-white text-primary fs-6 float-end">Schritt 2 von 4</span>
+                                            </h5>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="alert alert-light border mb-3">
-                                                <i class="fas fa-info-circle me-2 text-primary"></i>
-                                                Hier können Sie bestimmte Autor:innen auswählen, um die Suche auf deren Publikationen einzuschränken.
-                                            </div>
-                                            
-                                            <div id="advancedSelectedPersonsContainer" class="mb-3">
-                                                <!-- Selected persons will be displayed here as tags -->
-                                                <div class="alert alert-light border shadow-sm" id="advancedNoPersonsSelectedAlert">
-                                                    <i class="fas fa-user-circle me-2 text-muted"></i>
-                                                    Keine Personen ausgewählt. Die Suche wird ohne Personenfilter durchgeführt.
+                                        <div class="card-body p-4">
+                                            <div class="alert alert-light border border-info mb-4 shadow-sm">
+                                                <div class="d-flex">
+                                                    <div class="me-3">
+                                                        <i class="fas fa-info-circle fa-2x text-info"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-1">Zur Information</h6>
+                                                        <p class="mb-0">Diese Filter sind optional. Sie können bestimmte Autor:innen auswählen, um die Suche auf deren Publikationen einzuschränken, oder diesen Schritt überspringen.</p>
+                                                    </div>
                                                 </div>
                                             </div>
                                             
-                                            <div class="input-group mb-2 shadow-sm">
-                                                <span class="input-group-text bg-light">
-                                                    <i class="fas fa-search"></i>
-                                                </span>
-                                                <input type="text" class="form-control" id="advancedPersonSearchInput" 
-                                                       placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off">
-                                                <button class="btn btn-outline-primary" type="button" id="advancedPersonSearchButton">
-                                                    Suchen
-                                                </button>
-                                                <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
-                                                    <i class="fas fa-plus-circle me-1"></i> Neu
-                                                </button>
+                                            <div class="card bg-light border-0 mb-4">
+                                                <div class="card-body p-4">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-user-circle me-2"></i>Ausgewählte Personen
+                                                    </h6>
+                                                    
+                                                    <div id="advancedSelectedPersonsContainer" class="mb-3">
+                                                        <!-- Selected persons will be displayed here as tags -->
+                                                        <div class="alert alert-light border shadow-sm d-flex align-items-center" id="advancedNoPersonsSelectedAlert">
+                                                            <i class="fas fa-user-circle fa-lg me-3 text-muted"></i>
+                                                            <div>
+                                                                <span>Keine Personen ausgewählt.</span><br>
+                                                                <small class="text-muted">Die Suche wird ohne Personenfilter durchgeführt. Wählen Sie unten Personen aus, wenn Sie die Suche einschränken möchten.</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-search me-2"></i>Personen suchen
+                                                    </h6>
+                                                    
+                                                    <div class="input-group shadow-sm mb-3">
+                                                        <span class="input-group-text bg-white text-primary">
+                                                            <i class="fas fa-user-edit"></i>
+                                                        </span>
+                                                        <input type="text" class="form-control border" id="advancedPersonSearchInput" 
+                                                               placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off">
+                                                        <button class="btn btn-primary" type="button" id="advancedPersonSearchButton">
+                                                            <i class="fas fa-search me-1"></i> Suchen
+                                                        </button>
+                                                        <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                                                            <i class="fas fa-plus-circle me-1"></i> Neu
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <!-- Dropdown for person results with improved styling -->
+                                                    <div id="advancedPersonSearchResults" class="dropdown-menu w-100 shadow-lg border-0 rounded-3" 
+                                                         style="display: none; max-height: 300px; overflow-y: auto;">
+                                                        <!-- Results will be populated via JavaScript -->
+                                                    </div>
+                                                    
+                                                    <div class="form-text">
+                                                        <i class="fas fa-lightbulb text-warning me-1"></i>
+                                                        Tipp: Wenn Sie die gesuchte Person nicht finden, können Sie über "Neu" einen neuen Personeneintrag erstellen.
+                                                    </div>
+                                                    
+                                                    <!-- Hidden input to store selected person IDs -->
+                                                    <input type="hidden" id="advancedSelectedPersonIds" name="advanced_selected_person_ids">
+                                                </div>
                                             </div>
                                             
-                                            <!-- Dropdown for person results -->
-                                            <div id="advancedPersonSearchResults" class="dropdown-menu w-100 shadow" 
-                                                 style="display: none; max-height: 200px; overflow-y: auto;">
-                                                <!-- Results will be populated via JavaScript -->
+                                            <div class="card bg-light border-0">
+                                                <div class="card-body p-3">
+                                                    <h6 class="text-primary mb-3"><i class="fas fa-info-circle me-2"></i>Wie funktioniert die Personensuche?</h6>
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="d-flex">
+                                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 24px; height: 24px; flex-shrink: 0;">
+                                                                    <span>1</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p class="mb-0 small">Wählen Sie eine oder mehrere Personen aus der Datenbank aus oder erstellen Sie neue Einträge.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <div class="d-flex">
+                                                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 24px; height: 24px; flex-shrink: 0;">
+                                                                    <span>2</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p class="mb-0 small">Die Suchmaschine findet Publikationen, bei denen die ausgewählten Personen als Autoren oder Co-Autoren auftreten.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            
-                                            <!-- Hidden input to store selected person IDs -->
-                                            <input type="hidden" id="advancedSelectedPersonIds" name="advanced_selected_person_ids">
                                         </div>
-                                        <div class="card-footer d-flex justify-content-between">
-                                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('step1-tab').click()">
+                                        <div class="card-footer d-flex justify-content-between p-3">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('step1-tab').click(); document.getElementById('advancedSearchProgress').style.width='25%'">
                                                 <i class="fas fa-arrow-left me-1"></i> Zurück
                                             </button>
-                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step3-tab').click()">
+                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step3-tab').click(); document.getElementById('advancedSearchProgress').style.width='75%'">
                                                 Weiter zu erweiterten Filtern <i class="fas fa-arrow-right ms-1"></i>
                                             </button>
                                         </div>
@@ -273,64 +400,106 @@
                                 
                                 <!-- Step 3: Advanced Filters -->
                                 <div class="tab-pane fade" id="step3-content">
-                                    <div class="card border-primary mb-3">
-                                        <div class="card-header bg-primary text-white">
-                                            <i class="fas fa-filter me-2"></i> Erweiterte Filter
+                                    <div class="card shadow-sm border-0 mb-3">
+                                        <div class="card-header bg-gradient-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-sliders-h me-2"></i> Erweiterte Filteroptionen
+                                                <span class="badge bg-white text-primary fs-6 float-end">Schritt 3 von 4</span>
+                                            </h5>
                                         </div>
-                                        <div class="card-body">
-                                            <div class="row mb-4">
-                                                <div class="col-md-6">
-                                                    <label for="advancedStartDate" class="form-label fw-bold">Veröffentlicht nach</label>
-                                                    <div class="input-group shadow-sm">
-                                                        <span class="input-group-text bg-light">
-                                                            <i class="fas fa-calendar-alt"></i>
-                                                        </span>
-                                                        <input type="date" class="form-control date-picker" id="advancedStartDate" name="start_date">
+                                        <div class="card-body p-4">
+                                            <div class="alert alert-light border border-info mb-4 shadow-sm">
+                                                <div class="d-flex">
+                                                    <div class="me-3">
+                                                        <i class="fas fa-filter fa-2x text-info"></i>
                                                     </div>
-                                                    <div class="form-text text-muted">Zeitliche Eingrenzung (Startdatum).</div>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label for="advancedEndDate" class="form-label fw-bold">Veröffentlicht vor</label>
-                                                    <div class="input-group shadow-sm">
-                                                        <span class="input-group-text bg-light">
-                                                            <i class="fas fa-calendar-alt"></i>
-                                                        </span>
-                                                        <input type="date" class="form-control date-picker" id="advancedEndDate" name="end_date">
+                                                    <div>
+                                                        <h6 class="mb-1">Feinabstimmung Ihrer Suche</h6>
+                                                        <p class="mb-0">Verwenden Sie diese Filter, um Ihre Suche auf bestimmte Zeiträume, Sprachen und Publikationstypen einzuschränken. Alle Filter sind optional.</p>
                                                     </div>
-                                                    <div class="form-text text-muted">Zeitliche Eingrenzung (Enddatum).</div>
                                                 </div>
                                             </div>
                                             
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label for="advancedLanguage" class="form-label fw-bold">Sprache</label>
-                                                    <select class="form-select shadow-sm" id="advancedLanguage" name="language">
-                                                        <option value="">Alle Sprachen</option>
-                                                        <option value="eng">Englisch</option>
-                                                        <option value="ger">Deutsch</option>
-                                                        <option value="fre">Französisch</option>
-                                                        <option value="spa">Spanisch</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">Filtert Ergebnisse nach Sprache.</div>
+                                            <!-- Zeitlicher Rahmen -->
+                                            <div class="card bg-light border-0 mb-4">
+                                                <div class="card-body p-4">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-calendar-alt me-2"></i>Zeitlichen Rahmen festlegen
+                                                    </h6>
+                                                    
+                                                    <div class="row g-4">
+                                                        <div class="col-md-6">
+                                                            <label for="advancedStartDate" class="form-label">Veröffentlicht nach</label>
+                                                            <div class="input-group shadow-sm">
+                                                                <span class="input-group-text bg-white text-primary">
+                                                                    <i class="fas fa-calendar-alt"></i>
+                                                                </span>
+                                                                <input type="date" class="form-control border date-picker" id="advancedStartDate" name="start_date">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="advancedEndDate" class="form-label">Veröffentlicht vor</label>
+                                                            <div class="input-group shadow-sm">
+                                                                <span class="input-group-text bg-white text-primary">
+                                                                    <i class="fas fa-calendar-alt"></i>
+                                                                </span>
+                                                                <input type="date" class="form-control border date-picker" id="advancedEndDate" name="end_date">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="form-text mt-2">
+                                                        <i class="fas fa-lightbulb text-warning me-1"></i>
+                                                        Tipp: Für die Suche innerhalb eines bestimmten Jahres können Sie das Start- und Enddatum entsprechend setzen (z.B. 01.01.2023 und 31.12.2023).
+                                                    </div>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <label for="advancedPublicationType" class="form-label fw-bold">Publikationstyp</label>
-                                                    <select class="form-select shadow-sm" id="advancedPublicationType" name="publication_type">
-                                                        <option value="">Alle Typen</option>
-                                                        <option value="journal">Journal-Artikel</option>
-                                                        <option value="review">Review</option>
-                                                        <option value="book">Buch</option>
-                                                        <option value="conference">Konferenzbeitrag</option>
-                                                    </select>
-                                                    <div class="form-text text-muted">Filtert nach Art der Publikation.</div>
+                                            </div>
+                                            
+                                            <!-- Inhaltliche Filter -->
+                                            <div class="card bg-light border-0 mb-4">
+                                                <div class="card-body p-4">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-tags me-2"></i>Inhaltliche Filter
+                                                    </h6>
+                                                    
+                                                    <div class="row g-4">
+                                                        <div class="col-md-6">
+                                                            <label for="advancedLanguage" class="form-label">Sprache</label>
+                                                            <select class="form-select shadow-sm border" id="advancedLanguage" name="language">
+                                                                <option value="">Alle Sprachen</option>
+                                                                <option value="eng">Englisch</option>
+                                                                <option value="ger">Deutsch</option>
+                                                                <option value="fre">Französisch</option>
+                                                                <option value="spa">Spanisch</option>
+                                                            </select>
+                                                            <div class="form-text mt-2">
+                                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                                Limitiert die Suche auf Publikationen in der ausgewählten Sprache
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="advancedPublicationType" class="form-label">Publikationstyp</label>
+                                                            <select class="form-select shadow-sm border" id="advancedPublicationType" name="publication_type">
+                                                                <option value="">Alle Typen</option>
+                                                                <option value="journal">Journal-Artikel</option>
+                                                                <option value="review">Review</option>
+                                                                <option value="book">Buch</option>
+                                                                <option value="conference">Konferenzbeitrag</option>
+                                                            </select>
+                                                            <div class="form-text mt-2">
+                                                                <i class="fas fa-info-circle text-info me-1"></i>
+                                                                Beschränkt die Suche auf spezifische Publikationsarten
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="card-footer d-flex justify-content-between">
-                                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('step2-tab').click()">
+                                        <div class="card-footer d-flex justify-content-between p-3">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('step2-tab').click(); document.getElementById('advancedSearchProgress').style.width='50%'">
                                                 <i class="fas fa-arrow-left me-1"></i> Zurück
                                             </button>
-                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step4-tab').click()">
+                                            <button type="button" class="btn btn-primary" onclick="document.getElementById('step4-tab').click(); document.getElementById('advancedSearchProgress').style.width='100%'">
                                                 Weiter zu datenbankspezifischen Filtern <i class="fas fa-arrow-right ms-1"></i>
                                             </button>
                                         </div>
