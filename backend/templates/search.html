@@ -84,9 +84,6 @@
                                                         id="simpleSearchQuery" name="search_query" 
                                                         placeholder="z.B. Diabetes, COVID-19, Kardiovaskuläre Erkrankungen..."
                                                         autofocus>
-                                                    <button type="submit" class="btn btn-primary px-4 fw-bold" id="simpleSearchButton">
-                                                        <i class="fas fa-search me-1"></i> Suchen
-                                                    </button>
                                                 </div>
                                                 <div class="d-flex align-items-center mt-3 bg-light p-2 rounded">
                                                     <span class="badge bg-warning rounded-pill me-2">
@@ -133,10 +130,29 @@
                                         <i class="fas fa-info-circle text-primary me-1"></i>
                                         <strong>Hinweis:</strong> Wählen Sie mindestens eine Datenbank für die Suche aus
                                     </div>
+
+                                    <!-- Großer primärer Suchbutton -->
+                                    <div class="d-grid gap-2 mt-4">
+                                        <button type="submit" class="btn btn-primary btn-lg py-3 shadow" id="simpleSearchButton">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <span class="search-icon-container bg-white text-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                                    <i class="fas fa-search fa-lg"></i>
+                                                </span>
+                                                <span class="fs-5 fw-bold">Suche starten</span>
+                                            </div>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-end mt-3">
+                            <div class="d-flex justify-content-center mt-4">
+                                <div class="option-separator position-relative my-2 w-100">
+                                    <hr class="text-muted">
+                                    <span class="position-absolute top-0 start-50 translate-middle bg-white px-3 text-muted">oder</span>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-center mt-3 mb-2">
                                 <button type="button" class="btn btn-outline-primary" data-bs-toggle="tab" href="#advanced-search" role="tab">
                                     <i class="fas fa-sliders-h me-1"></i> Erweiterte Suchoptionen nutzen
                                 </button>
