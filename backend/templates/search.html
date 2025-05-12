@@ -109,7 +109,7 @@
                                         <div class="card bg-white border-0 shadow-sm p-3">
                                             <div class="card-body p-0">
                                                 <div class="input-group input-group-lg">
-                                                    <span class="input-group-text bg-primary text-white border-0">
+                                                    <span class="input-group-text bg-primary text-white border-0 rounded-start-pill">
                                                         <i class="fas fa-search fa-lg"></i>
                                                     </span>
                                                     <input type="text" class="form-control form-control-lg border-0 shadow-none bg-light" 
@@ -119,21 +119,25 @@
                                                         aria-describedby="searchQueryHelpBlock"
                                                         autocomplete="off"
                                                         autofocus>
-                                                    <button type="button" class="btn btn-outline-secondary border-0" id="clearSearchButton" 
+                                                    <button type="button" class="btn btn-outline-secondary border-0 bg-light rounded-end-pill" id="clearSearchButton" 
                                                         title="Suchfeld zurücksetzen">
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </div>
 
-                                                <div class="d-flex align-items-center mt-3 bg-light p-3 rounded-3 border">
-                                                    <span class="badge bg-warning rounded-pill me-2">
-                                                        <i class="fas fa-lightbulb"></i>
-                                                    </span>
+                                                <div class="d-flex align-items-start mt-3 bg-light p-4 rounded-3 border">
+                                                    <div class="search-icon-container rounded-circle me-3 mt-1 flex-shrink-0">
+                                                        <i class="fas fa-lightbulb text-warning"></i>
+                                                    </div>
                                                     <div id="searchQueryHelpBlock" class="form-text mb-0">
-                                                        <strong>Tipps zur Suche:</strong><br>
-                                                        • Verwenden Sie Kommas, um mehrere Suchbegriffe zu trennen. Beispiel: <code>Diabetes, Insulin</code><br>
-                                                        • Die Suche muss mindestens 2 Zeichen enthalten<br>
-                                                        • Wählen Sie unten mindestens eine Datenbank für die Suche aus
+                                                        <h6 class="mb-2 fw-bold text-primary">Tipps zur Suche:</h6>
+                                                        <ul class="mb-0 ps-3">
+                                                            <li class="mb-2">Verwenden Sie Kommas, um mehrere Suchbegriffe zu trennen<br>
+                                                                <span class="text-muted small fst-italic">Beispiel: <code>Diabetes, Insulin</code></span>
+                                                            </li>
+                                                            <li class="mb-2">Die Suche muss mindestens 2 Zeichen enthalten</li>
+                                                            <li>Wählen Sie unten mindestens eine Datenbank für die Suche aus</li>
+                                                        </ul>
                                                     </div>
                                                 </div>
                                                 
@@ -160,16 +164,18 @@
                                         <i class="fas fa-database me-2"></i>Datenbanken auswählen
                                     </h5>
                                     
-                                    <div class="card bg-white shadow-sm border-0 mb-3">
-                                        <div class="card-body">
+                                    <div class="card bg-white shadow-sm border-0 mb-4">
+                                        <div class="card-body p-4">
                                             <div class="databases-container">
-                                                <div class="databases-header">
-                                                    <div class="databases-title">
-                                                        <span class="icon"><i class="fas fa-server"></i></span>
-                                                        Verfügbare Datenbanken
+                                                <div class="databases-header d-flex align-items-center justify-content-between mb-3">
+                                                    <div class="databases-title d-flex align-items-center">
+                                                        <span class="icon me-2 d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 32px; height: 32px;">
+                                                            <i class="fas fa-server"></i>
+                                                        </span>
+                                                        <h6 class="mb-0 fw-bold">Verfügbare Datenbanken</h6>
                                                     </div>
-                                                    <button type="button" class="databases-select-all" id="selectAllDatabases">
-                                                        <i class="fas fa-check-double"></i> Alle auswählen
+                                                    <button type="button" class="databases-select-all btn btn-sm btn-outline-primary rounded-pill px-3" id="selectAllDatabases">
+                                                        <i class="fas fa-check-double me-1"></i> Alle auswählen
                                                     </button>
                                                 </div>
                                                 
@@ -218,14 +224,17 @@
 
                                     <!-- Großer primärer Suchbutton -->
                                     <div class="d-grid gap-2 mt-4">
-                                        <button type="submit" class="btn btn-primary btn-lg py-3 shadow" id="simpleSearchButton">
+                                        <button type="submit" class="btn btn-primary btn-lg py-3 shadow-lg search-button rounded-pill" id="simpleSearchButton">
                                             <div class="d-flex align-items-center justify-content-center">
-                                                <span class="search-icon-container bg-white text-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                                <span class="search-icon-container bg-white text-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
                                                     <i class="fas fa-search fa-lg"></i>
                                                 </span>
                                                 <span class="fs-5 fw-bold">Suche starten</span>
                                             </div>
                                         </button>
+                                        <div class="text-center mt-2 text-secondary small">
+                                            <i class="fas fa-info-circle me-1"></i> Die ausgewählten Datenbanken werden parallel durchsucht
+                                        </div>
                                     </div>
                                 </div>
                             </div>
