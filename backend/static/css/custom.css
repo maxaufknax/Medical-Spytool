@@ -16,6 +16,153 @@
     border: 1px solid rgba(0,0,0,0.05);
 }
 
+/* Dark Mode Anpassungen */
+[data-bs-theme="dark"] .search-options-container {
+    background-color: rgba(33, 37, 41, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-color);
+}
+
+[data-bs-theme="dark"] .input-group-text {
+    background-color: var(--light-color);
+    border-color: var(--input-border);
+    color: var(--text-color);
+}
+
+[data-bs-theme="dark"] .alert-info {
+    background-color: rgba(73, 160, 217, 0.15);
+    border-color: rgba(73, 160, 217, 0.3);
+    color: #78c5ff;
+}
+
+[data-bs-theme="dark"] .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+[data-bs-theme="dark"] .nav-link:hover {
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .navbar-dark .nav-link.active {
+    background-color: var(--nav-active-bg);
+    color: var(--nav-active-text);
+}
+
+/* Dark Mode anpassungen für Database-Cards */
+[data-bs-theme="dark"] .database-icon-container {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+/* Additional Dark Mode Anpassungen für Suchfilter und Tabellen */
+[data-bs-theme="dark"] .table {
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
+}
+
+[data-bs-theme="dark"] .table-hover > tbody > tr:hover > * {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+}
+
+[data-bs-theme="dark"] .card-header.bg-light {
+    background-color: #2b3035 !important;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary {
+    color: #5dade2;
+    border-color: #5dade2;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary:hover {
+    background-color: #4d90c4;
+    border-color: #4d90c4;
+    color: white;
+}
+
+[data-bs-theme="dark"] #searchModeTabs {
+    background-color: rgba(43, 48, 53, 0.8) !important;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link {
+    background-color: #212529;
+    color: #adb5bd;
+    border-color: transparent;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link:hover {
+    background-color: #343a40;
+    color: #f8f9fa;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link.active {
+    background: linear-gradient(135deg, #1c4b70 0%, #3583b2 100%);
+    color: white;
+}
+
+/* Dark Mode Anpassungen für Badges und Karten */
+[data-bs-theme="dark"] .bg-white {
+    background-color: #212529 !important;
+}
+
+[data-bs-theme="dark"] .text-dark {
+    color: #f8f9fa !important;
+}
+
+[data-bs-theme="dark"] .bg-light {
+    background-color: #343a40 !important;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #adb5bd !important;
+}
+
+[data-bs-theme="dark"] .border {
+    border-color: #495057 !important;
+}
+
+/* Dark Mode für Popups und Modals */
+[data-bs-theme="dark"] .modal-content {
+    background-color: var(--modal-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-footer {
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+    background-color: var(--dropdown-bg);
+    border-color: var(--border-color);
+}
+
+[data-bs-theme="dark"] .dropdown-item {
+    color: var(--text-color);
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover {
+    background-color: var(--dropdown-hover);
+}
+
 /* Verbesserte Such-Tabs Darstellung */
 #searchModeTabs {
     gap: 10px;

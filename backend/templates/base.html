@@ -10,8 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Globale Charts-Sammlung für Dark Mode Anpassungen
+        window.charts = [];
+    </script>
     
     <style>
+        /* Light Mode Variablen (Standard) */
         :root {
             --primary-color: #2c6ba0;
             --secondary-color: #6c757d;
@@ -23,13 +28,119 @@
             --light-color: #f8f9fa;
             --dark-color: #212529;
             --body-bg: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #343a40;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --input-bg: #ffffff;
+            --input-border: #ced4da;
             --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             --header-gradient: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+            --nav-active-bg: #ffffff;
+            --nav-active-text: var(--primary-color);
+            --toggle-bg: #ffffff;
+            --dropdown-bg: #ffffff;
+            --dropdown-hover: #f8f9fa;
+            --modal-bg: #ffffff;
+            --alert-bg-light: rgba(73, 160, 217, 0.15);
+        }
+        
+        /* Dark Mode Variablen */
+        [data-bs-theme="dark"] {
+            --primary-color: #4d90c4;
+            --secondary-color: #6c757d;
+            --accent-color: #5dade2;
+            --success-color: #2ecc71;
+            --info-color: #6dacd7;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #2b3035;
+            --dark-color: #f8f9fa;
+            --body-bg: #1b1f22;
+            --card-bg: #2b3035;
+            --text-color: #f8f9fa;
+            --text-muted: #adb5bd;
+            --border-color: #495057;
+            --input-bg: #2b3035;
+            --input-border: #495057;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --header-gradient: linear-gradient(135deg, #1c4b70 0%, #3583b2 100%);
+            --nav-active-bg: #000000;
+            --nav-active-text: #ffffff;
+            --toggle-bg: #2b3035;
+            --dropdown-bg: #343a40;
+            --dropdown-hover: #2b3035;
+            --modal-bg: #2b3035;
+            --alert-bg-light: rgba(73, 160, 217, 0.05);
         }
         
         body {
             background-color: var(--body-bg);
+            color: var(--text-color);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Dark Mode Toggle Switch Styling */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            margin-left: 15px;
+        }
+        
+        .theme-switch {
+            display: inline-block;
+            position: relative;
+            width: 50px;
+            height: 25px;
+        }
+        
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--toggle-bg);
+            transition: .4s;
+            border-radius: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 19px;
+            width: 19px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--primary-color);
+            transition: .4s;
+            border-radius: 50%;
+            z-index: 2;
+        }
+        
+        .slider .icon {
+            font-size: 10px;
+            color: var(--text-color);
+            z-index: 1;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(25px);
+        }
+        
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--primary-color);
         }
         
         .bg-primary {
@@ -186,6 +297,17 @@
                             <i class="fas fa-clipboard-list me-1"></i> Protokoll
                         </a>
                     </li>
+                    <!-- Dark Mode Umschalter -->
+                    <li class="nav-item theme-switch-wrapper">
+                        <span class="me-2 text-white" id="theme-icon"><i class="fas fa-sun"></i></span>
+                        <label class="theme-switch" for="theme-toggle">
+                            <input type="checkbox" id="theme-toggle">
+                            <span class="slider round">
+                                <span class="icon" id="sun-icon">☀️</span>
+                                <span class="icon" id="moon-icon">🌙</span>
+                            </span>
+                        </label>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -247,6 +369,117 @@
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function(tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            
+            // Dark Mode Funktionalität
+            const themeToggle = document.getElementById('theme-toggle');
+            const htmlElement = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            
+            // Prüfe gespeicherte Benutzereinstellung oder bevorzugtes System-Farbschema
+            const savedTheme = localStorage.getItem('medicalspy-theme');
+            const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // Setze anfänglichen Zustand
+            if (savedTheme === 'dark' || (savedTheme === null && prefersDarkMode)) {
+                htmlElement.setAttribute('data-bs-theme', 'dark');
+                themeToggle.checked = true;
+                updateThemeIcon(true);
+            } else {
+                htmlElement.setAttribute('data-bs-theme', 'light');
+                themeToggle.checked = false;
+                updateThemeIcon(false);
+            }
+            
+            // Event-Listener für den Theme-Toggle
+            themeToggle.addEventListener('change', function() {
+                const isDarkMode = this.checked;
+                
+                // Update HTML data-attribute
+                htmlElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
+                
+                // Speichere Einstellung
+                localStorage.setItem('medicalspy-theme', isDarkMode ? 'dark' : 'light');
+                
+                // Update the theme icon
+                updateThemeIcon(isDarkMode);
+            });
+            
+            function updateThemeIcon(isDarkMode) {
+                if (isDarkMode) {
+                    themeIcon.innerHTML = '<i class="fas fa-moon"></i>';
+                } else {
+                    themeIcon.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+                
+                // Chart.js Anpassungen für Dark Mode
+                updateChartTheme(isDarkMode);
+            }
+            
+            // Hilfsfunktion für Chart.js Dark Mode Anpassungen
+            function updateChartTheme(isDarkMode) {
+                // Erstelle Standardoptionen für Charts basierend auf dem aktuellen Theme
+                if (window.Chart) {
+                    Chart.defaults.color = isDarkMode ? '#f8f9fa' : '#343a40';
+                    Chart.defaults.borderColor = isDarkMode ? '#495057' : '#dee2e6';
+                    
+                    // Setze globale Chart-Optionen
+                    const chartOptions = {
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: isDarkMode ? '#f8f9fa' : '#343a40'
+                                }
+                            },
+                            tooltip: {
+                                bodyColor: isDarkMode ? '#f8f9fa' : '#343a40',
+                                backgroundColor: isDarkMode ? '#343a40' : '#ffffff',
+                                borderColor: isDarkMode ? '#495057' : '#dee2e6'
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: isDarkMode ? '#adb5bd' : '#6c757d'
+                                }
+                            },
+                            y: {
+                                grid: {
+                                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                                },
+                                ticks: {
+                                    color: isDarkMode ? '#adb5bd' : '#6c757d'
+                                }
+                            }
+                        }
+                    };
+                    
+                    // Aktualisiere vorhandene Charts
+                    if (window.charts && window.charts.length) {
+                        window.charts.forEach(chart => {
+                            // Tiefer Merge der Optionen
+                            Object.assign(chart.options.plugins.legend, chartOptions.plugins.legend);
+                            Object.assign(chart.options.plugins.tooltip, chartOptions.plugins.tooltip);
+                            if (chart.options.scales.x) Object.assign(chart.options.scales.x, chartOptions.scales.x);
+                            if (chart.options.scales.y) Object.assign(chart.options.scales.y, chartOptions.scales.y);
+                            chart.update();
+                        });
+                    }
+                }
+            }
+            
+            // System-Theme-Änderung
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                // Nur anwenden, wenn keine benutzerdefinierte Einstellung vorhanden ist
+                if (!localStorage.getItem('medicalspy-theme')) {
+                    const newTheme = e.matches ? 'dark' : 'light';
+                    htmlElement.setAttribute('data-bs-theme', newTheme);
+                    themeToggle.checked = e.matches;
+                    updateThemeIcon(e.matches);
+                }
             });
         });
     </script>
