@@ -297,102 +297,234 @@
 }
 
 /* Verbesserte Datenbankauswahl */
+/* Moderne Datenbankauswahl - Komplettes Redesign */
+.databases-container {
+    margin-bottom: 1.5rem;
+}
+
+.databases-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.databases-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.databases-title .icon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(73, 160, 217, 0.1);
+    color: var(--primary-color);
+    border-radius: 50%;
+    margin-right: 0.75rem;
+}
+
+.databases-select-all {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.875rem;
+    border-radius: 20px;
+    background-color: rgba(73, 160, 217, 0.1);
+    color: var(--primary-color);
+    border: none;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.databases-select-all:hover {
+    background-color: rgba(73, 160, 217, 0.2);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.databases-select-all i {
+    margin-right: 0.4rem;
+}
+
+.database-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
 .database-card {
+    position: relative;
+    height: 100%;
+    border-radius: 12px;
+    border: 2px solid transparent;
     transition: all 0.3s ease;
-    border: 1px solid #e9ecef;
     overflow: hidden;
     cursor: pointer;
-    height: 100%;
+    background-color: var(--bg-light);
 }
 
 .database-card:hover {
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
-.database-icon-container {
-    transition: all 0.3s ease;
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    min-height: 44px;
+.database-card.selected {
+    border-color: var(--primary-color);
+    background-color: rgba(73, 160, 217, 0.05);
+}
+
+.database-card-inner {
+    padding: 1rem;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px;
-    border-radius: 6px;
-    width: 100%;
+    height: 100%;
+}
+
+.database-checkbox {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    margin: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    z-index: 2;
+    opacity: 0;
+}
+
+.database-icon {
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    margin-right: 1rem;
+    font-size: 1.25rem;
+    background: linear-gradient(135deg, rgba(73, 160, 217, 0.2) 0%, rgba(73, 160, 217, 0.7) 100%);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.database-card.selected .database-icon {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+    box-shadow: 0 4px 10px rgba(73, 160, 217, 0.3);
+}
+
+.database-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .database-name {
-    display: flex;
-    align-items: center;
-    width: 85%;
-    font-weight: 500;
-}
-
-.database-label {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 100%;
-    line-height: 1.2;
-    display: inline-block;
+    color: var(--text-color);
 }
 
-.database-card.selected .database-icon-container {
-    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
-    color: white;
-    border-color: transparent;
+.database-description {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0;
 }
 
-.database-status {
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-    margin-left: 8px;
-}
-
-.db-selected-icon {
-    display: none;
-}
-
-.db-unselected-icon {
-    display: inline-block;
-}
-
-.database-card.selected .db-selected-icon {
-    display: inline-block;
-}
-
-.database-card.selected .db-unselected-icon {
-    display: none;
-}
-
-.form-check-input:checked ~ .form-check-label .database-icon-container {
-    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
-    color: white;
-    border-color: transparent;
-}
-
-.form-check-input:focus ~ .form-check-label .database-icon-container {
-    box-shadow: 0 0 0 0.25rem rgba(44, 107, 160, 0.25);
-}
-
-/* Ausblenden des originalen Checkbox-Stils */
-.database-card .form-check-input {
-    opacity: 0;
+.database-status-indicator {
     position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background-color: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    border: 2px solid #e9ecef;
+    transition: all 0.2s ease;
 }
 
-/* Responsive Anpassungen für Datenbankauswahl */
+.database-card.selected .database-status-indicator {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.database-status-indicator .fa-check {
+    color: white;
+    font-size: 0.7rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.database-card.selected .database-status-indicator .fa-check {
+    opacity: 1;
+}
+
+.databases-help {
+    background-color: rgba(73, 160, 217, 0.1);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    color: var(--primary-color);
+    font-size: 0.875rem;
+}
+
+.databases-help i {
+    margin-right: 0.5rem;
+}
+
+/* Responsive Anpassungen */
+@media (max-width: 768px) {
+    .database-cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+}
+
 @media (max-width: 576px) {
-    .database-card .card-body {
-        padding: 8px;
+    .database-cards-grid {
+        grid-template-columns: 1fr;
     }
     
-    .database-icon-container {
-        padding: 6px 10px;
-        min-height: 38px;
+    .databases-header {
+        flex-direction: column;
+        align-items: flex-start;
     }
+    
+    .databases-select-all {
+        margin-top: 0.5rem;
+    }
+}
+
+/* Dark Mode Anpassungen */
+[data-bs-theme="dark"] .database-card {
+    background-color: var(--card-bg);
+}
+
+[data-bs-theme="dark"] .database-card.selected {
+    background-color: rgba(73, 160, 217, 0.15);
+    border-color: #4d90c4;
+}
+
+[data-bs-theme="dark"] .database-status-indicator {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .databases-select-all {
+    background-color: rgba(73, 160, 217, 0.2);
+    color: #78c5ff;
+}
+
+[data-bs-theme="dark"] .databases-help {
+    background-color: rgba(73, 160, 217, 0.15);
 }
 
 /* Improved card styling */

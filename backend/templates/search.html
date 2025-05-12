@@ -138,49 +138,55 @@
                                     
                                     <div class="card bg-white shadow-sm border-0 mb-3">
                                         <div class="card-body">
-                                            <div class="d-flex align-items-center mb-3">
-                                                <div class="d-flex flex-column">
-                                                    <h6 class="mb-1">Verfügbare Datenbanken</h6>
-                                                    <p class="text-muted mb-0 small">Wählen Sie eine oder mehrere Datenbanken für Ihre Suche aus.</p>
-                                                </div>
-                                                <div class="ms-auto">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="selectAllDatabases">
-                                                        <i class="fas fa-check-double me-1"></i>Alle auswählen
+                                            <div class="databases-container">
+                                                <div class="databases-header">
+                                                    <div class="databases-title">
+                                                        <span class="icon"><i class="fas fa-server"></i></span>
+                                                        Verfügbare Datenbanken
+                                                    </div>
+                                                    <button type="button" class="databases-select-all" id="selectAllDatabases">
+                                                        <i class="fas fa-check-double"></i> Alle auswählen
                                                     </button>
                                                 </div>
-                                            </div>
-                                            
-                                            <div class="row database-selection mb-2 p-2">
-                                                {% for db in databases %}
-                                                <div class="col-md-6 col-lg-4 mb-2">
-                                                    <div class="card h-100 database-card" data-database="{{ db }}">
-                                                        <div class="card-body p-2">
-                                                            <div class="form-check form-switch mb-0 d-flex align-items-center">
-                                                                <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                    id="db-simple-{{ db }}" name="databases[]" 
-                                                                    {% if db == 'PubMed' %}checked{% endif %}>
-                                                                <label class="form-check-label w-100 ms-2" for="db-simple-{{ db }}">
-                                                                    <div class="database-icon-container d-flex align-items-center justify-content-between p-2 px-3 rounded">
-                                                                        <div class="database-name">
-                                                                            <i class="fas fa-database me-2"></i>
-                                                                            <span class="database-label">{{ db }}</span>
-                                                                        </div>
-                                                                        <div class="database-status">
-                                                                            <i class="fas fa-check-circle text-success db-selected-icon"></i>
-                                                                            <i class="fas fa-times-circle text-muted db-unselected-icon"></i>
-                                                                        </div>
-                                                                    </div>
-                                                                </label>
+                                                
+                                                <div class="database-cards-grid">
+                                                    {% for db in databases %}
+                                                    <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
+                                                        <input class="database-checkbox" type="checkbox" value="{{ db }}" 
+                                                            id="db-simple-{{ db }}" name="databases[]" 
+                                                            {% if db == 'PubMed' %}checked{% endif %}>
+                                                        <div class="database-status-indicator">
+                                                            <i class="fas fa-check"></i>
+                                                        </div>
+                                                        <div class="database-card-inner">
+                                                            <div class="database-icon">
+                                                                <i class="fas fa-database"></i>
+                                                            </div>
+                                                            <div class="database-content">
+                                                                <div class="database-name">{{ db }}</div>
+                                                                <p class="database-description">
+                                                                    {% if db == 'PubMed' %}
+                                                                        Medizinische Fachliteratur (Medline)
+                                                                    {% elif db == 'Deutsche Nationalbibliothek' %}
+                                                                        Deutsche Publikationen und Dissertationen
+                                                                    {% elif db == 'Scopus' %}
+                                                                        Interdisziplinäre Forschungsliteratur
+                                                                    {% elif db == 'Web of Science' %}
+                                                                        Hochrangige wissenschaftliche Zeitschriften
+                                                                    {% else %}
+                                                                        Wissenschaftliche Publikationen
+                                                                    {% endif %}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    {% endfor %}
                                                 </div>
-                                                {% endfor %}
-                                            </div>
-                                            
-                                            <div class="alert alert-info small mb-0">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                Wählen Sie mindestens eine Datenbank aus. Die Suche wird parallel in allen ausgewählten Datenbanken durchgeführt.
+                                                
+                                                <div class="databases-help">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    Wählen Sie eine oder mehrere Datenbanken für Ihre Suche aus. Die Suche wird parallel in allen ausgewählten Datenbanken durchgeführt.
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
