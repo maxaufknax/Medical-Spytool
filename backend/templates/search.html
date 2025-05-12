@@ -1191,3 +1191,50 @@
 </script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endblock %}
+
+<!-- Modal für eigenes Thema hinzufügen -->
+<div class="modal fade" id="customSampleModal" tabindex="-1" aria-labelledby="customSampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customSampleModalLabel">
+                    <i class="fas fa-plus-circle me-2 text-primary"></i>Eigenes Thema hinzufügen
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Fügen Sie hier ein eigenes Thema oder einen Suchbegriff hinzu, der für Sie wichtig ist.
+                    Dieser wird dann in Ihrer Liste der Schnelleinstiege angezeigt.
+                </div>
+                
+                <div class="mb-3">
+                    <label for="customSampleName" class="form-label">Themenname</label>
+                    <input type="text" class="form-control" id="customSampleName" placeholder="z.B. Neurologie, Bioethik..." required>
+                    <div class="form-text">Geben Sie einen prägnanten Namen für Ihr Thema ein.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="customSampleIcon" class="form-label">Icon auswählen</label>
+                    <select class="form-select" id="customSampleIcon">
+                        <option value="fas fa-brain text-info">🧠 Gehirn</option>
+                        <option value="fas fa-dna text-success">🧬 DNA</option>
+                        <option value="fas fa-lungs text-danger">🫁 Lunge</option>
+                        <option value="fas fa-prescription text-primary">💊 Rezept</option>
+                        <option value="fas fa-stethoscope text-secondary">🩺 Stethoskop</option>
+                        <option value="fas fa-pills text-warning">💊 Medikamente</option>
+                        <option value="fas fa-user-md text-info">👨‍⚕️ Arzt</option>
+                        <option value="fas fa-heartbeat text-danger">❤️ Herzschlag</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-primary" id="saveCustomSample">
+                    <i class="fas fa-save me-1"></i>Speichern
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
