@@ -599,14 +599,27 @@ def perform_single_search(search_query, selected_database, person_name, addition
 def perform_multi_database_search(search_query, selected_databases, person_name, additional_terms, date_range, start_date, end_date):
     """Helper function to perform a search across multiple databases"""
     try:
+        # Validiere die Eingabeparameter
         if not selected_databases:
             flash("Bitte wählen Sie mindestens eine Datenbank aus.", "warning")
             log_message("Search attempted with no databases selected")
             return redirect(url_for('search'))
             
+        if not search_query and not person_name:
+            flash("Bitte geben Sie einen Suchbegriff ein oder wählen Sie eine Person aus.", "warning")
+            log_message("Search attempted with no query or person")
+            return redirect(url_for('search'))
+            
+        # Überprüfe Suchanfragenlänge
+        if search_query and len(search_query.strip()) < 2:
+            flash("Der Suchbegriff muss mindestens 2 Zeichen enthalten.", "warning")
+            log_message(f"Search attempted with too short query: '{search_query}'")
+            return redirect(url_for('search'))
+            
         all_results = []
         search_summary = {}
         total_results = 0
+        search_errors = []
         
         # Iterate through each selected database
         for selected_database in selected_databases:
@@ -619,9 +632,26 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                 
                 # Fehler abfangen, wenn kein Connector für diese Datenbank existiert
                 if connector is None:
-                    log_message(f"Kein Connector für Datenbank '{selected_database}' gefunden", level="ERROR")
+                    error_msg = f"Kein Connector für Datenbank '{selected_database}' gefunden"
+                    log_message(error_msg, level="ERROR")
                     search_summary[selected_database] = 0
+                    search_errors.append({
+                        'database': selected_database,
+                        'error': error_msg
+                    })
                     flash(f"Fehler: Die Datenbank '{selected_database}' wird nicht unterstützt.", "danger")
+                    continue
+                
+                # Überprüfen, ob die API-Verbindung konfiguriert ist
+                if selected_database in ['PubMed', 'Scopus', 'Web of Science'] and not api_key:
+                    error_msg = f"Für die Suche in {selected_database} wird ein API-Schlüssel benötigt. Bitte konfigurieren Sie diesen in den Einstellungen."
+                    log_message(error_msg, level="WARNING")
+                    search_summary[selected_database] = 0
+                    search_errors.append({
+                        'database': selected_database,
+                        'error': error_msg
+                    })
+                    flash(error_msg, "warning")
                     continue
                 
                 # Execute search
@@ -648,6 +678,10 @@ def perform_multi_database_search(search_query, selected_databases, person_name,
                 search_summary[selected_database] = 0
                 error_msg = str(e)
                 log_message(f"Error searching {selected_database}: {error_msg}", level="ERROR")
+                search_errors.append({
+                    'database': selected_database,
+                    'error': error_msg
+                })
                 flash(f"Fehler bei der Suche in {selected_database}: {error_msg}", "danger")
                 search_summary[selected_database] = f"Error: {str(e)}"
                 # Continue with other databases

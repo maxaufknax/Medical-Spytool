@@ -80,6 +80,15 @@ function handleSearchSubmit(event) {
     const searchModeField = document.getElementById('searchMode');
     if (searchModeField) {
         const tabId = activeTab.id;
+        
+        // Validiere, dass mindestens eine Datenbank ausgewählt wurde (für alle Tabs relevant)
+        const selectedDatabases = Array.from(document.querySelectorAll('.database-checkbox:checked')).map(cb => cb.value);
+        if (selectedDatabases.length === 0) {
+            event.preventDefault();
+            showToast('Fehler', 'Bitte wählen Sie mindestens eine Datenbank für die Suche aus.', 'error');
+            return false;
+        }
+        
         if (tabId === 'simple-search-tab') {
             searchModeField.value = 'simple';
 
@@ -90,6 +99,14 @@ function handleSearchSubmit(event) {
                 showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein.', 'error');
                 return false;
             }
+            
+            // Überprüfe, ob der Suchbegriff mindestens 2 Zeichen enthält
+            if (simpleQuery.length < 2) {
+                event.preventDefault();
+                showToast('Fehler', 'Der Suchbegriff muss mindestens 2 Zeichen enthalten.', 'error');
+                return false;
+            }
+            
         } else if (tabId === 'advanced-search-tab') {
             searchModeField.value = 'advanced';
 
@@ -102,6 +119,14 @@ function handleSearchSubmit(event) {
                 showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein oder wählen Sie mindestens eine Person aus.', 'error');
                 return false;
             }
+            
+            // Überprüfe, ob der Suchbegriff (falls vorhanden) mindestens 2 Zeichen enthält
+            if (advancedQuery && advancedQuery.length < 2) {
+                event.preventDefault();
+                showToast('Fehler', 'Der Suchbegriff muss mindestens 2 Zeichen enthalten.', 'error');
+                return false;
+            }
+            
         } else if (tabId === 'person-search-tab') {
             searchModeField.value = 'person';
 
