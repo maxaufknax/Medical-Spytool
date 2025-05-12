@@ -338,7 +338,7 @@ def search():
                     search_query_obj = SearchQuery()
                     search_query_obj.name = f"Person search in {databases_str}: {person_names_str[:50]}{'...' if len(person_names_str) > 50 else ''}"
                     search_query_obj.query = ""  # No direct query for person search
-                    search_query_obj.database = databases_str  # Store multiple databases
+                    search_query_obj.database = databases_str
                     search_query_obj.additional_terms = additional_terms
                     search_query_obj.start_date = start_date
                     search_query_obj.end_date = end_date
