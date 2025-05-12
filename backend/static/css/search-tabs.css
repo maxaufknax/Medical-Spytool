@@ -1,0 +1,128 @@
+/* Such-Tab-Navigation Styling */
+#searchModeTabs .nav-link {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+#searchModeTabs .nav-link:not(.active) {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+#searchModeTabs .nav-link:not(.active):hover {
+    background-color: #e9ecef;
+    transform: translateY(-3px);
+}
+
+#searchModeTabs .nav-link.active {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(73, 160, 217, 0.3);
+}
+
+.search-mode-icon {
+    width: 28px;
+    height: 28px;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+#searchModeTabs .nav-link.active .search-mode-icon {
+    background-color: #fff;
+    color: var(--primary-color);
+}
+
+#searchModeTabs .nav-link:not(.active) .search-mode-icon {
+    background-color: rgba(73, 160, 217, 0.1);
+    color: var(--primary-color);
+}
+
+/* Verbesserte Formular-Elemente */
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(73, 160, 217, 0.25);
+    border-color: rgba(73, 160, 217, 0.5);
+}
+
+/* Verbesserte Card-Header Styling */
+.card-header.bg-gradient-primary {
+    background: linear-gradient(135deg, #2c6ba0 0%, #49a0d9 100%);
+}
+
+/* Dark Mode Anpassungen für die Tabs */
+[data-bs-theme="dark"] #searchModeTabs .nav-link:not(.active) {
+    background-color: #343a40;
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link:not(.active):hover {
+    background-color: #495057;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link:not(.active) .search-mode-icon {
+    background-color: rgba(73, 160, 217, 0.2);
+    color: #78c5ff;
+}
+
+[data-bs-theme="dark"] #searchModeTabs .nav-link.active .search-mode-icon {
+    color: #2c6ba0;
+}
+
+/* Verbesserte Suchformular Layout */
+.page-header {
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.search-button {
+    transition: all 0.25s ease;
+}
+
+.search-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(73, 160, 217, 0.25);
+}
+
+.search-icon-container {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    color: var(--primary-color);
+    transition: all 0.25s ease;
+}
+
+.search-button:hover .search-icon-container {
+    transform: rotate(15deg);
+}
+
+/* Verbesserte Datepicker und Selects */
+.date-picker-container {
+    position: relative;
+}
+
+.date-picker-container .input-group-text {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.custom-date-input {
+    border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* Verbesserte Alert-Meldungen */
+.alert {
+    border-radius: 0.75rem;
+}
+
+.alert-light {
+    background-color: #f8f9fa;
+    border-color: #e9ecef;
+}

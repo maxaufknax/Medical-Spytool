@@ -3,52 +3,76 @@
 {% block title %}MedicalSpy - Suche{% endblock %}
 
 {% block content %}
-<div class="page-header shadow-sm px-4 py-4 mb-4 text-center">
-    <h1 class="display-5 fw-bold">
-        <i class="fas fa-search me-2"></i>
-        Wissenschaftliche Publikationen suchen
-    </h1>
-    <p class="lead text-white-50 mb-0">
-        Durchsuchen Sie medizinische und wissenschaftliche Publikationen in verschiedenen Datenbanken
-    </p>
+<div class="page-header shadow-sm px-4 py-5 mb-4 text-center bg-gradient-primary">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h1 class="display-5 fw-bold text-white mb-3">
+                    <i class="fas fa-search me-2"></i>
+                    Wissenschaftliche Publikationen suchen
+                </h1>
+                <p class="lead text-white-50 mb-3">
+                    Durchsuchen Sie medizinische und wissenschaftliche Publikationen in verschiedenen Datenbanken
+                </p>
+                <div class="d-flex justify-content-center">
+                    <span class="badge bg-white text-primary rounded-pill px-4 py-2 shadow-sm">
+                        <i class="fas fa-database me-2"></i>Mehrere Datenbanken in einer Suche
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row">
-    <!-- Main Search Form -->
-    <div class="col-lg-8">
-        <div class="card mb-4 shadow-sm">
-            <div class="card-header bg-gradient-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Suchformular</h5>
-            </div>
+<div class="container mb-5">
+    <div class="row justify-content-center">
+        <!-- Main Search Form -->
+        <div class="col-lg-10">
+            <div class="card mb-4 shadow">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Suchformular</h5>
+                </div>
             
-            <!-- Search Mode Tabs -->
-            <div class="px-3 pt-3">
-                <ul class="nav nav-pills nav-fill mb-3" id="searchModeTabs">
+            <!-- Search Mode Tabs - Verbessert -->
+            <div class="px-4 pt-4">
+                <ul class="nav nav-pills nav-fill mb-4 gap-2" id="searchModeTabs">
                     <li class="nav-item">
-                        <a class="nav-link active" id="simple-search-tab" data-bs-toggle="tab" href="#simple-search" role="tab">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-search me-2"></i> <strong>Schnellsuche</strong>
+                        <a class="nav-link active shadow-sm rounded-pill" id="simple-search-tab" data-bs-toggle="tab" href="#simple-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center py-1">
+                                <div class="search-mode-icon me-2 rounded-circle bg-white text-primary d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <strong>Schnellsuche</strong>
                             </div>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-users me-2"></i> <strong>Personenbezogene Suche</strong>
+                        <a class="nav-link shadow-sm rounded-pill" id="person-search-tab" data-bs-toggle="tab" href="#person-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center py-1">
+                                <div class="search-mode-icon me-2 rounded-circle bg-white text-primary d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <strong>Personenbezogene Suche</strong>
                             </div>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="advanced-search-tab" data-bs-toggle="tab" href="#advanced-search" role="tab">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-database me-2"></i> <strong>Erweiterte Datenbanksuche</strong>
+                        <a class="nav-link shadow-sm rounded-pill" id="advanced-search-tab" data-bs-toggle="tab" href="#advanced-search" role="tab">
+                            <div class="d-flex align-items-center justify-content-center py-1">
+                                <div class="search-mode-icon me-2 rounded-circle bg-white text-primary d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <strong>Erweiterte Suche</strong>
                             </div>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" id="saved-queries-tab" data-bs-toggle="tab" href="#saved-queries" role="tab">
-                            <div class="d-flex align-items-center justify-content-center">
-                                <i class="fas fa-save me-2"></i> <strong>Gespeicherte Suchen</strong>
+                        <a class="nav-link shadow-sm rounded-pill" id="saved-queries-tab" data-bs-toggle="tab" href="#saved-queries" role="tab">
+                            <div class="d-flex align-items-center justify-content-center py-1">
+                                <div class="search-mode-icon me-2 rounded-circle bg-white text-primary d-flex align-items-center justify-content-center">
+                                    <i class="fas fa-save"></i>
+                                </div>
+                                <strong>Gespeicherte Suchen</strong>
                             </div>
                         </a>
                     </li>
