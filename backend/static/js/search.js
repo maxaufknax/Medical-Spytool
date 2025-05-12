@@ -27,11 +27,39 @@ function setLoadingState(isLoading, buttonId = 'simpleSearchButton') {
         if (isLoading) {
             searchForm.classList.add('loading');
             searchButton.disabled = true;
-            searchButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Suche...';
+            
+            // Für die neuen Buttons mit komplexerer Struktur
+            if (searchButton.querySelector('.fs-5')) {
+                // Aktualisiere nur den Text innerhalb des span.fs-5
+                const textSpan = searchButton.querySelector('.fs-5');
+                if (textSpan) {
+                    textSpan.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Suche läuft...';
+                }
+            } else {
+                // Fallback für einfache Buttons ohne diese Struktur
+                searchButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Suche...';
+            }
         } else {
             searchForm.classList.remove('loading');
             searchButton.disabled = false;
-            searchButton.innerHTML = '<i class="fas fa-search me-1"></i> Suchen';
+            
+            // Texte wiederherstellen je nach Button-ID
+            if (searchButton.querySelector('.fs-5')) {
+                const textSpan = searchButton.querySelector('.fs-5');
+                if (textSpan) {
+                    if (buttonId === 'simpleSearchButton') {
+                        textSpan.innerHTML = 'Suche starten';
+                    } else if (buttonId === 'advancedSearchSubmitButton') {
+                        textSpan.innerHTML = 'Erweiterte Suche starten';
+                    } else if (buttonId === 'personSearchSubmitButton') {
+                        textSpan.innerHTML = 'Personenbasierte Suche starten';
+                    } else {
+                        textSpan.innerHTML = 'Suchen';
+                    }
+                }
+            } else {
+                searchButton.innerHTML = '<i class="fas fa-search me-1"></i> Suchen';
+            }
         }
     }
 }
@@ -90,7 +118,7 @@ function handleSearchSubmit(event) {
     // Set loading state based on active tab
     const buttonMap = {
         'simple-search-tab': 'simpleSearchButton',
-        'advanced-search-tab': 'advancedSearchButton',
+        'advanced-search-tab': 'advancedSearchSubmitButton',
         'person-search-tab': 'personSearchSubmitButton'
     };
     setLoadingState(true, buttonMap[activeTab.id]);
