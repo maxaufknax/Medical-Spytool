@@ -324,11 +324,19 @@
 }
 
 .database-name {
+    display: flex;
+    align-items: center;
+    width: 85%;
+    font-weight: 500;
+}
+
+.database-label {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 85%;
-    font-weight: 500;
+    max-width: 100%;
+    line-height: 1.2;
+    display: inline-block;
 }
 
 .database-card.selected .database-icon-container {
