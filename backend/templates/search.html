@@ -913,19 +913,29 @@
                                                     <h6 class="card-title text-primary mb-3">
                                                         <i class="fas fa-server me-2"></i>Datenbanken auswählen
                                                     </h6>
-                                                    <div class="database-selection d-flex flex-wrap gap-2 mb-2">
+                                                    <div class="row database-selection mb-2 p-2">
                                                         {% for db in databases %}
-                                                        <div class="form-check">
-                                                            <input class="form-check-input database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
-                                                                id="db-person-{{ db }}" name="databases[]" 
-                                                                {% if db == 'PubMed' %}checked{% endif %}>
-                                                            <label class="form-check-label btn btn-outline-primary p-2 rounded-pill shadow-sm {% if db == 'PubMed' %}active{% endif %}" 
-                                                                for="db-person-{{ db }}">
-                                                                {% if db == 'PubMed' %}
-                                                                    <i class="fas fa-check-circle me-1"></i>
-                                                                {% endif %}
-                                                                {{ db }}
-                                                            </label>
+                                                        <div class="col-md-6 col-lg-6 mb-2">
+                                                            <div class="card h-100 database-card" data-database="{{ db }}">
+                                                                <div class="card-body p-2">
+                                                                    <div class="form-check form-switch mb-0 d-flex align-items-center">
+                                                                        <input class="form-check-input database-checkbox" type="checkbox" value="{{ db }}" 
+                                                                            id="db-person-{{ db }}" name="databases[]" 
+                                                                            {% if db == 'PubMed' %}checked{% endif %}>
+                                                                        <label class="form-check-label w-100 ms-2" for="db-person-{{ db }}">
+                                                                            <div class="database-icon-container d-flex align-items-center justify-content-between p-2 px-3 rounded">
+                                                                                <div class="database-name">
+                                                                                    <i class="fas fa-database me-2"></i>{{ db }}
+                                                                                </div>
+                                                                                <div class="database-status">
+                                                                                    <i class="fas fa-check-circle text-success db-selected-icon"></i>
+                                                                                    <i class="fas fa-times-circle text-muted db-unselected-icon"></i>
+                                                                                </div>
+                                                                            </div>
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         {% endfor %}
                                                     </div>
@@ -1290,8 +1300,25 @@
             }
         };
         
-        // Führe die Datenbankauswahl-Initialisierung aus
+        // Führe die Datenbankauswahl-Initialisierung aus für alle Tabs
         setupDatabaseSelection();
+        
+        // Stellen Sie sicher, dass wir die Datenbankkarten bei Tab-Wechsel aktualisieren
+        document.querySelectorAll('#searchModeTabs .nav-link').forEach(function(tab) {
+            tab.addEventListener('shown.bs.tab', function() {
+                // Nach Tab-Wechsel die Datenbankauswahl aktualisieren
+                setTimeout(function() {
+                    document.querySelectorAll('.database-card').forEach(card => {
+                        const checkbox = card.querySelector('.database-checkbox');
+                        if (checkbox && checkbox.checked) {
+                            card.classList.add('selected');
+                        } else {
+                            card.classList.remove('selected');
+                        }
+                    });
+                }, 50);
+            });
+        });
     });
     
     console.log("Loaded persons:", {{ persons|tojson|safe }});
