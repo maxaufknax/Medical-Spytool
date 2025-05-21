@@ -1,0 +1,156 @@
+# English translations for Medical Spytool.
+# Copyright (C) 2025 Medical Spytool Team
+# This file is distributed under the same license as the Medical Spytool project.
+msgid ""
+msgstr ""
+"Project-Id-Version: Medical Spytool 3.0\n"
+"Report-Msgid-Bugs-To: admin@medical-spytool.org\n"
+"POT-Creation-Date: 2025-05-15 15:00+0200\n"
+"PO-Revision-Date: 2025-05-15 15:00+0200\n"
+"Last-Translator: Medical Spytool Team <admin@medical-spytool.org>\n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# Authentication
+msgid "Login"
+msgstr "Login"
+
+msgid "Logout"
+msgstr "Logout"
+
+msgid "Register"
+msgstr "Register"
+
+msgid "Username"
+msgstr "Username"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Email"
+msgstr "Email"
+
+msgid "Forgot password?"
+msgstr "Forgot password?"
+
+msgid "Reset password"
+msgstr "Reset password"
+
+msgid "Remember me"
+msgstr "Remember me"
+
+msgid "Please log in to access this page."
+msgstr "Please log in to access this page."
+
+# Search
+msgid "Search"
+msgstr "Search"
+
+msgid "Advanced search"
+msgstr "Advanced search"
+
+msgid "Search term"
+msgstr "Search term"
+
+msgid "Author"
+msgstr "Author"
+
+msgid "Year"
+msgstr "Year"
+
+msgid "Database"
+msgstr "Database"
+
+msgid "Results"
+msgstr "Results"
+
+msgid "No results found."
+msgstr "No results found."
+
+# Export
+msgid "Export"
+msgstr "Export"
+
+msgid "Export format"
+msgstr "Export format"
+
+msgid "CSV"
+msgstr "CSV"
+
+msgid "Excel"
+msgstr "Excel"
+
+msgid "BibTeX"
+msgstr "BibTeX"
+
+# Analysis
+msgid "Analysis"
+msgstr "Analysis"
+
+msgid "Visualize"
+msgstr "Visualize"
+
+msgid "Publication year distribution"
+msgstr "Publication year distribution"
+
+msgid "Database distribution"
+msgstr "Database distribution"
+
+msgid "Top authors"
+msgstr "Top authors"
+
+# General UI
+msgid "Scientific Publication Search Tool"
+msgstr "Scientific Publication Search Tool"
+
+msgid "Home"
+msgstr "Home"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "Profile"
+msgstr "Profile"
+
+msgid "My Profile"
+msgstr "My Profile"
+
+msgid "Persons"
+msgstr "Persons"
+
+msgid "Log"
+msgstr "Log"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Cancel"
+msgstr "Cancel"
+
+msgid "Delete"
+msgstr "Delete"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "View"
+msgstr "View"
+
+msgid "Help"
+msgstr "Help"
+
+msgid "About"
+msgstr "About"
+
+msgid "Language"
+msgstr "Language"
+
+msgid "German"
+msgstr "German"
+
+msgid "English"
+msgstr "English"

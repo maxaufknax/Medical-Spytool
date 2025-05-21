@@ -1,17 +1,72 @@
 {% extends "base.html" %}
 
-{% block title %}MedicalSpy - Search Results{% endblock %}
+{% block title %}MedicalSpy - Suchergebnisse{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-list me-2"></i>Search Results</h1>
+    <h1><i class="fas fa-list me-2"></i>Suchergebnisse</h1>
     <div class="btn-group">
-        <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
-            <i class="fas fa-search me-1"></i>New Search
+        <a href="{{ url_for('search.index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-search me-1"></i>Neue Suche
         </a>
-        <a href="{{ url_for('analysis') }}" class="btn btn-outline-success">
-            <i class="fas fa-chart-bar me-1"></i>Analyze Results
+        <a href="{{ url_for('analysis.index') }}" class="btn btn-outline-success">
+            <i class="fas fa-chart-bar me-1"></i>Ergebnisse analysieren
         </a>
+    </div>
+</div>
+
+<!-- Show search summary information -->
+<div class="card mb-4 border-info">
+    <div class="card-header bg-info bg-opacity-25">
+        <h5 class="mb-0 text-info"><i class="fas fa-info-circle me-2"></i>Suchinformationen</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-2">
+                    <strong>Suchbegriff:</strong> {{ query.search_text if query and query.search_text else "Keine Angabe" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Datenbanken:</strong> 
+                    {% if query and query.database %}
+                        {% for db in query.database.split(',') %}
+                        <span class="badge {% if db == 'PubMed' %}badge-pubmed{% elif db == 'Deutsche Nationalbibliothek' %}badge-dnb{% else %}bg-secondary{% endif %}">
+                            {{ db }}
+                        </span>
+                        {% endfor %}
+                    {% else %}
+                        Keine Angabe
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-2">
+                    <strong>Suchmodus:</strong> {{ query.search_mode if query and query.search_mode else "Einfache Suche" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Gesamtergebnisse:</strong> {{ results|length if results else 0 }}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-2">
+                    <strong>Zeitraum:</strong> 
+                    {% if query and query.start_date and query.end_date %}
+                        {{ query.start_date.strftime('%d.%m.%Y') if query.start_date else "" }} - 
+                        {{ query.end_date.strftime('%d.%m.%Y') if query.end_date else "" }}
+                    {% elif query and query.start_date %}
+                        Ab {{ query.start_date.strftime('%d.%m.%Y') }}
+                    {% elif query and query.end_date %}
+                        Bis {{ query.end_date.strftime('%d.%m.%Y') }}
+                    {% else %}
+                        Unbegrenzt
+                    {% endif %}
+                </div>
+                <div class="mb-2">
+                    <strong>Gesucht am:</strong> 
+                    {{ query.timestamp.strftime('%d.%m.%Y %H:%M') if query and query.timestamp else "Unbekannt" }}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -212,11 +267,11 @@
         
         {% if search_errors and search_errors|length > 0 %}
             <p>Ihre Suche ergab keine Ergebnisse. Dies könnte an den aufgetretenen Fehlern liegen.</p>
-            <a href="{{ url_for('search') }}" class="btn btn-primary">
+            <a href="{{ url_for('search.index') }}" class="btn btn-primary">
                 <i class="fas fa-search me-1"></i>Neue Suche
             </a>
         {% elif query %}
-            <p>Ihre Suche "{{ query.query }}" ergab keine Ergebnisse.</p>
+            <p>Ihre Suche "{{ query.search_text }}" ergab keine Ergebnisse.</p>
             <div class="mt-3">
                 <h6>Vorschläge:</h6>
                 <ul class="list-unstyled">
@@ -226,12 +281,12 @@
                     <li>• Überprüfen Sie die eingestellten Suchfilter</li>
                 </ul>
             </div>
-            <a href="{{ url_for('search') }}" class="btn btn-primary mt-3">
+            <a href="{{ url_for('search.index') }}" class="btn btn-primary mt-3">
                 <i class="fas fa-search me-1"></i>Neue Suche
             </a>
         {% else %}
             <p>Keine Suchergebnisse verfügbar. Bitte führen Sie zuerst eine Suche durch.</p>
-            <a href="{{ url_for('search') }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('search.index') }}" class="btn btn-primary btn-lg">
                 <i class="fas fa-search me-2"></i>Zur Suche
             </a>
         {% endif %}
@@ -242,4 +297,70 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/results.js') }}"></script>
+
+<!-- Export Configuration Modal -->
+<div class="modal fade" id="exportConfigModal" tabindex="-1" aria-labelledby="exportConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="exportConfigModalLabel">
+                    <i class="fas fa-file-export me-2"></i>Export-Konfiguration
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="exportConfigForm" action="{{ url_for('export.export_results') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="search_id" value="{{ query.id if query else '' }}">
+                    <input type="hidden" id="exportFormat" name="format" value="csv">
+                    
+                    <h6 class="fw-bold mb-3">Spalten auswählen:</h6>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all-columns">
+                                <label class="form-check-label fw-bold" for="select-all-columns">
+                                    Alle Spalten auswählen
+                                </label>
+                            </div>
+                        </div>
+                        
+                        {% set all_possible_columns = [
+                            "Name", "Titel", "Creator", "Erscheinungsjahr", "Identifier", 
+                            "URL", "Autoren", "Veröffentlichungsjahr", "Zitationsanzahl",
+                            "PubMed URL", "DOI URL", "PubMed-ID", "DOI", "Publikationstypen",
+                            "Datenbank", "Veröffentlichungsmonat"
+                        ] %}
+                        
+                        {% for column in all_possible_columns %}
+                        <div class="col-md-4 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input column-checkbox" type="checkbox" 
+                                       id="column_{{ column|replace(' ', '_')|lower }}" 
+                                       name="export_columns" value="{{ column }}"
+                                       {% if column in ["Titel", "Autoren", "Veröffentlichungsjahr", "Datenbank"] %}checked{% endif %}>
+                                <label class="form-check-label" for="column_{{ column|replace(' ', '_')|lower }}">
+                                    {{ column }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                <button type="button" class="btn btn-success" id="exportCsvBtn">
+                    <i class="fas fa-file-csv me-1"></i>Als CSV exportieren
+                </button>
+                <button type="button" class="btn btn-primary" id="exportExcelBtn">
+                    <i class="fas fa-file-excel me-1"></i>Als Excel exportieren
+                </button>
+                <button type="button" class="btn btn-info" id="exportBibtexBtn">
+                    <i class="fas fa-quote-right me-1"></i>Als BibTeX exportieren
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

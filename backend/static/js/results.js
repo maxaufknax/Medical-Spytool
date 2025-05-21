@@ -7,28 +7,51 @@
 function filterResults() {
     const filterInput = document.getElementById('resultFilter');
     const tableRows = document.querySelectorAll('#resultsTable tbody tr');
+    const cardItems = document.querySelectorAll('#cardView .result-card');
     
-    if (!filterInput || !tableRows.length) return;
+    if (!filterInput) return;
     
     const filterText = filterInput.value.toLowerCase();
     
-    tableRows.forEach(row => {
-        let rowText = '';
-        row.querySelectorAll('td').forEach(cell => {
-            rowText += cell.textContent + ' ';
+    // Filter table rows
+    if (tableRows.length) {
+        tableRows.forEach(row => {
+            let rowText = '';
+            row.querySelectorAll('td').forEach(cell => {
+                rowText += cell.textContent + ' ';
+            });
+            
+            rowText = rowText.toLowerCase();
+            
+            if (rowText.includes(filterText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         });
         
-        rowText = rowText.toLowerCase();
-        
-        if (rowText.includes(filterText)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
+        // Update count of visible results
+        updateVisibleResultsCount(tableRows);
+    }
     
-    // Update count of visible results
-    updateVisibleResultsCount(tableRows);
+    // Filter card items
+    if (cardItems.length) {
+        cardItems.forEach(card => {
+            let cardText = card.textContent.toLowerCase();
+            
+            if (cardText.includes(filterText)) {
+                card.closest('.col-lg-6').style.display = '';
+            } else {
+                card.closest('.col-lg-6').style.display = 'none';
+            }
+        });
+        
+        // If in card view, update count based on visible cards
+        if (document.getElementById('cardView') && !document.getElementById('cardView').classList.contains('d-none')) {
+            const visibleCards = Array.from(cardItems).filter(card => card.closest('.col-lg-6').style.display !== 'none');
+            document.getElementById('resultCount').textContent = `${visibleCards.length} von ${cardItems.length}`;
+        }
+    }
 }
 
 // Update the count of visible results
@@ -48,24 +71,36 @@ function updateVisibleResultsCount(tableRows) {
 
 // Export results
 function exportResults(format) {
-    // Create form
-    const form = document.createElement('form');
-    form.method = 'post';
-    form.action = '/api/export_results';
+    // Set the export format
+    document.getElementById('exportFormat').value = format;
     
-    // Add format input
-    const formatInput = document.createElement('input');
-    formatInput.type = 'hidden';
-    formatInput.name = 'format';
-    formatInput.value = format;
-    form.appendChild(formatInput);
+    // Validate if at least one column is selected
+    const checkedColumns = document.querySelectorAll('.column-checkbox:checked');
+    if (checkedColumns.length === 0) {
+        // Show alert if no columns selected
+        alert('Bitte wählen Sie mindestens eine Spalte für den Export aus.');
+        return;
+    }
     
-    // Add the form to the document and submit it
-    document.body.appendChild(form);
-    form.submit();
-    
-    // Clean up
-    document.body.removeChild(form);
+    // Show loading state
+    const exportBtn = document.querySelector(`#export${format.charAt(0).toUpperCase() + format.slice(1)}Btn`);
+    if (exportBtn) {
+        const originalText = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+        exportBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Exportiere...`;
+        
+        // Submit the form and reset button after a short delay
+        document.getElementById('exportConfigForm').submit();
+        
+        // Reset button state after submission (since the page will reload on success)
+        setTimeout(() => {
+            exportBtn.disabled = false;
+            exportBtn.innerHTML = originalText;
+        }, 5000); // Safety timeout in case the form submission fails
+    } else {
+        // Fallback if button not found
+        document.getElementById('exportConfigForm').submit();
+    }
 }
 
 // Sort the results table by a column
@@ -169,17 +204,87 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterInput = document.getElementById('resultFilter');
     if (filterInput) {
         filterInput.addEventListener('input', filterResults);
+        
+        // Add clear button for filter
+        const filterContainer = filterInput.parentElement;
+        if (filterContainer) {
+            const clearButton = document.createElement('button');
+            clearButton.className = 'btn btn-sm btn-outline-secondary position-absolute';
+            clearButton.style.right = '5px';
+            clearButton.style.top = '5px';
+            clearButton.innerHTML = '<i class="fas fa-times"></i>';
+            clearButton.addEventListener('click', () => {
+                filterInput.value = '';
+                filterResults();
+                filterInput.focus();
+            });
+            filterContainer.style.position = 'relative';
+            filterContainer.appendChild(clearButton);
+        }
     }
     
-    // Initialize export buttons
-    const exportCsvButton = document.getElementById('exportCsv');
-    if (exportCsvButton) {
-        exportCsvButton.addEventListener('click', () => exportResults('csv'));
+    // Initialize tooltips for action buttons
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Initialize export buttons in the main interface
+    const exportCsv = document.getElementById('exportCsv');
+    const exportExcel = document.getElementById('exportExcel');
+    if (exportCsv && exportExcel) {
+        // Show export config modal when buttons are clicked
+        exportCsv.addEventListener('click', () => {
+            const exportConfigModal = new bootstrap.Modal(document.getElementById('exportConfigModal'));
+            exportConfigModal.show();
+        });
+        exportExcel.addEventListener('click', () => {
+            const exportConfigModal = new bootstrap.Modal(document.getElementById('exportConfigModal'));
+            exportConfigModal.show();
+        });
     }
     
-    const exportExcelButton = document.getElementById('exportExcel');
-    if (exportExcelButton) {
-        exportExcelButton.addEventListener('click', () => exportResults('excel'));
+    // Initialize export buttons in the modal
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => exportResults('csv'));
+    }
+    
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', () => exportResults('excel'));
+    }
+    
+    const exportBibtexBtn = document.getElementById('exportBibtexBtn');
+    if (exportBibtexBtn) {
+        exportBibtexBtn.addEventListener('click', () => exportResults('bibtex'));
+    }
+    
+    // Handle select all columns checkbox
+    const selectAllCheckbox = document.getElementById('select-all-columns');
+    const columnCheckboxes = document.querySelectorAll('.column-checkbox');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            columnCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+        
+        // Check if all column checkboxes are already checked
+        const updateSelectAllState = () => {
+            selectAllCheckbox.checked = Array.from(columnCheckboxes).every(checkbox => checkbox.checked);
+            selectAllCheckbox.indeterminate = Array.from(columnCheckboxes).some(checkbox => checkbox.checked) && 
+                                             !Array.from(columnCheckboxes).every(checkbox => checkbox.checked);
+        };
+        
+        // Set initial state
+        updateSelectAllState();
+        
+        // Update when individual checkboxes change
+        columnCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectAllState);
+        });
     }
     
     // Initialize view toggling

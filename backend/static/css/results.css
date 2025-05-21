@@ -1,0 +1,109 @@
+/**
+ * MedicalSpy - Results styles
+ */
+
+/* Database badges */
+.badge-pubmed {
+    background-color: #336699;
+    color: white;
+}
+
+.badge-dnb {
+    background-color: #cc0000;
+    color: white;
+}
+
+/* Result card variations */
+.result-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.pubmed-result {
+    border-left: 4px solid #336699;
+}
+
+.dnb-result {
+    border-left: 4px solid #cc0000;
+}
+
+/* Table sorting indicators */
+th.sorting-asc::after {
+    content: " ↑";
+    color: #0d6efd;
+}
+
+th.sorting-desc::after {
+    content: " ↓";
+    color: #0d6efd;
+}
+
+th[data-sortable="true"] {
+    cursor: pointer;
+}
+
+th[data-sortable="true"]:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Tooltips */
+.tooltip-inner {
+    max-width: 300px;
+}
+
+/* Filter styling */
+#resultFilter {
+    padding-right: 30px;
+}
+
+/* Results summary */
+.search-summary-box {
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Table responsiveness improvements */
+@media (max-width: 768px) {
+    #resultsTable {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .card-view-btn-group {
+        margin-top: 1rem;
+    }
+}
+
+/* Export modal */
+.column-group-header {
+    font-weight: bold;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.25rem;
+}
+
+/* Loading indicators */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    border-radius: 0.25rem;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+}

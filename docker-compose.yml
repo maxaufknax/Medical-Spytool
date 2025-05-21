@@ -1,33 +1,54 @@
 version: '3.8'
 
 services:
+  # Main application service
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicalspy_app
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:5000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/medicalspy
-      - SESSION_SECRET=dev_secret_change_in_production
-      - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/medicalspy
+      - SESSION_SECRET=${SESSION_SECRET:-dev_secret_change_in_production}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./logs:/app/logs
       - ./output:/app/output
       - ./person_lists:/app/person_lists
+      - ./instance:/app/instance  # For SQLite fallback and other instance data
     depends_on:
       - db
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
+  # PostgreSQL database service
   db:
     image: postgres:14-alpine
+    container_name: medicalspy_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=medicalspy
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-medicalspy}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   postgres_data:

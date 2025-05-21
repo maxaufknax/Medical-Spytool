@@ -1,0 +1,156 @@
+# German translations for Medical Spytool.
+# Copyright (C) 2025 Medical Spytool Team
+# This file is distributed under the same license as the Medical Spytool project.
+msgid ""
+msgstr ""
+"Project-Id-Version: Medical Spytool 3.0\n"
+"Report-Msgid-Bugs-To: admin@medical-spytool.org\n"
+"POT-Creation-Date: 2025-05-15 15:00+0200\n"
+"PO-Revision-Date: 2025-05-15 15:00+0200\n"
+"Last-Translator: Medical Spytool Team <admin@medical-spytool.org>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# Authentication
+msgid "Login"
+msgstr "Anmelden"
+
+msgid "Logout"
+msgstr "Abmelden"
+
+msgid "Register"
+msgstr "Registrieren"
+
+msgid "Username"
+msgstr "Benutzername"
+
+msgid "Password"
+msgstr "Passwort"
+
+msgid "Email"
+msgstr "E-Mail"
+
+msgid "Forgot password?"
+msgstr "Passwort vergessen?"
+
+msgid "Reset password"
+msgstr "Passwort zurücksetzen"
+
+msgid "Remember me"
+msgstr "Angemeldet bleiben"
+
+msgid "Please log in to access this page."
+msgstr "Bitte melden Sie sich an, um auf diese Seite zuzugreifen."
+
+# Search
+msgid "Search"
+msgstr "Suchen"
+
+msgid "Advanced search"
+msgstr "Erweiterte Suche"
+
+msgid "Search term"
+msgstr "Suchbegriff"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Year"
+msgstr "Jahr"
+
+msgid "Database"
+msgstr "Datenbank"
+
+msgid "Results"
+msgstr "Ergebnisse"
+
+msgid "No results found."
+msgstr "Keine Ergebnisse gefunden."
+
+# Export
+msgid "Export"
+msgstr "Exportieren"
+
+msgid "Export format"
+msgstr "Exportformat"
+
+msgid "CSV"
+msgstr "CSV"
+
+msgid "Excel"
+msgstr "Excel"
+
+msgid "BibTeX"
+msgstr "BibTeX"
+
+# Analysis
+msgid "Analysis"
+msgstr "Analyse"
+
+msgid "Visualize"
+msgstr "Visualisieren"
+
+msgid "Publication year distribution"
+msgstr "Verteilung der Publikationsjahre"
+
+msgid "Database distribution"
+msgstr "Verteilung nach Datenbanken"
+
+msgid "Top authors"
+msgstr "Top-Autoren"
+
+# General UI
+msgid "Scientific Publication Search Tool"
+msgstr "Wissenschaftliches Publikations-Suchwerkzeug"
+
+msgid "Home"
+msgstr "Start"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Profile"
+msgstr "Profil"
+
+msgid "My Profile"
+msgstr "Mein Profil"
+
+msgid "Persons"
+msgstr "Personen"
+
+msgid "Log"
+msgstr "Protokoll"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Delete"
+msgstr "Löschen"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "View"
+msgstr "Ansehen"
+
+msgid "Help"
+msgstr "Hilfe"
+
+msgid "About"
+msgstr "Über"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "German"
+msgstr "Deutsch"
+
+msgid "English"
+msgstr "Englisch"

@@ -3,14 +3,16 @@
 {% block title %}MedicalSpy - Analysis{% endblock %}
 
 {% block content %}
-<div id="analysisPage">
+<div id="analysisPage" 
+     data-search-id="{{ search.id if search else '' }}"
+     data-results="{{ results|tojson if results else '[]' }}"
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><i class="fas fa-chart-bar me-2"></i>Results Analysis</h1>
         <div class="btn-group">
-            <a href="{{ url_for('search') }}" class="btn btn-outline-primary">
+            <a href="{{ url_for('search.index') }}" class="btn btn-outline-primary">
                 <i class="fas fa-search me-1"></i>New Search
             </a>
-            <a href="{{ url_for('results') }}" class="btn btn-outline-secondary">
+            <a href="{{ url_for('search.results') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-list me-1"></i>View Results
             </a>
         </div>
@@ -160,13 +162,15 @@
             {{ analysis_data|tojson }}
         </script>
     {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            No search results available for analysis. Please perform a search first.
-        </div>
-        <div class="text-center mt-5">
-            <a href="{{ url_for('search') }}" class="btn btn-primary btn-lg">
-                <i class="fas fa-search me-2"></i>Go to Search
+        <!-- No Results Message -->
+        <div class="text-center mt-5" {% if results %}style="display: none;"{% endif %}>
+            <div class="mb-4">
+                <i class="fas fa-chart-bar fa-4x text-muted"></i>
+            </div>
+            <h3>Keine Ergebnisse für die Analyse verfügbar</h3>
+            <p class="text-muted">Führen Sie zuerst eine Suche durch, um die Ergebnisse analysieren zu können.</p>
+            <a href="{{ url_for('search.index') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-search"></i> Suche starten
             </a>
         </div>
     {% endif %}
@@ -174,5 +178,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
 {% endblock %}

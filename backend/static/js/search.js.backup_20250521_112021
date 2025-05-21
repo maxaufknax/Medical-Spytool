@@ -1,0 +1,182 @@
+/**
+ * MedicalSpy - Search module
+ * This file contains functions for search functionality.
+ * 
+ * Updated with enhanced CSRF token handling to fix search form issues
+ */
+
+// Global variables to store persons data and selected persons
+let allPersons = [];
+let selectedPersons = new Set();
+let lastSearchQuery = '';
+
+// Helper function to get a cookie by name
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+// Function to synchronize CSRF token from cookie to form
+function syncCsrfToken() {
+    const tokenFromCookie = getCookie('csrf_token');
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
+    
+    if (tokenFromCookie && tokenInput) {
+        // Update form token if it differs from cookie token
+        if (tokenInput.value !== tokenFromCookie) {
+            console.log('Synchronizing CSRF token from cookie to form');
+            tokenInput.value = tokenFromCookie;
+        }
+    } else if (!tokenInput.value) {
+        console.error('No CSRF token available in cookie or form');
+    }
+}
+
+// Initialize search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize CSRF token handling first
+    syncCsrfToken();
+    
+    // Set up an interval to periodically check and refresh the CSRF token
+    setInterval(syncCsrfToken, 60000); // Check every minute
+    
+    // Then initialize the search form
+    initializeSearchForm();
+    initializePersonsData();
+    
+    // Add a debug message
+    console.log("Search module initialized with CSRF token synchronization");
+});
+
+// Initialize form handlers
+function initializeSearchForm() {
+    const searchForm = document.getElementById('searchForm');
+    if (!searchForm) return;
+
+    const searchModeInput = document.getElementById('searchMode');
+    const searchModeTabs = document.getElementById('searchModeTabs');
+    
+    // Update search mode when tabs change
+    if (searchModeTabs) {
+        searchModeTabs.addEventListener('show.bs.tab', function(event) {
+            const activeTab = event.target.id;
+            switch(activeTab) {
+                case 'simple-search-tab':
+                    searchModeInput.value = 'simple';
+                    break;
+                case 'person-search-tab':
+                    searchModeInput.value = 'person';
+                    break;
+                case 'advanced-search-tab':
+                    searchModeInput.value = 'advanced';
+                    break;
+            }
+        });
+    }
+    
+    // Handle form submission    searchForm.addEventListener('submit', function(event) {
+        // First sync the CSRF token from cookie to form
+        syncCsrfToken();
+        
+        // Verify CSRF token exists after synchronizing
+        const csrfToken = document.querySelector('input[name="csrf_token"]');
+        if (!csrfToken || !csrfToken.value) {
+            event.preventDefault();
+            console.error('Missing CSRF token even after sync attempt');
+            showAlert('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.', 'danger');
+            return false;
+        }
+        
+        // Log the token to console for debugging
+        console.log('CSRF token present for form submission:', csrfToken.value.substring(0, 5) + '...');
+
+        // Get active tab to determine which search mode is active
+        const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
+        if (!activeTab) {
+            console.warn('No active tab found');
+        } else {
+            const tabId = activeTab.id;
+            if (tabId === 'simple-search-tab') {
+                // Check simple search fields
+                const simpleQuery = document.querySelector('#simple-search input[name="simple_query_content"]');
+                if (simpleQuery && !simpleQuery.value.trim()) {
+                    event.preventDefault();
+                    showAlert('Bitte geben Sie einen Suchbegriff ein.', 'warning');
+                    return false;
+                }
+            }
+        }
+        
+        // Validate database selection
+        const databases = Array.from(document.querySelectorAll('input[name="databases"]:checked'));
+        if (databases.length === 0) {
+            event.preventDefault();
+            showAlert('Bitte mindestens eine Datenbank auswählen.', 'warning');
+            return false;
+        }
+        
+        // Show loading state
+        setLoadingState(true, 'searchSubmitButton');
+        
+    // Submit the form programmatically
+        searchForm.submit();
+    });
+}
+
+// Initialize persons data
+function initializePersonsData() {
+    if (window.allPersons && Array.isArray(window.allPersons)) {
+        allPersons = window.allPersons;
+        console.log('Persons data initialized:', allPersons);
+    }
+}
+
+// Show loading state during search
+function setLoadingState(isLoading, buttonId = 'simpleSearchButton') {
+    const searchButton = document.getElementById(buttonId);
+    if (!searchButton) return;
+
+    if (isLoading) {
+        searchButton.disabled = true;
+        searchButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Suche läuft...';
+        
+        // Store original form action
+        const searchForm = document.getElementById('searchForm');
+        if (searchForm) {
+            searchForm.dataset.originalAction = searchForm.action;
+        }
+    } else {
+        searchButton.disabled = false;
+        searchButton.innerHTML = '<i class="fas fa-search me-2"></i>Suche starten';
+        
+        // Restore original form action if needed
+        const searchForm = document.getElementById('searchForm');
+        if (searchForm && searchForm.dataset.originalAction) {
+            searchForm.action = searchForm.dataset.originalAction;
+        }
+    }
+}
+
+// Helper function to show alerts
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.role = 'alert';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    if (container) {
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 150);
+        }, 5000);
+    }
+}

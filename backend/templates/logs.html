@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}System-Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2><i class="fas fa-clipboard-list"></i> System-Logs</h2>
+                    <p class="text-muted">Systemprotokolle und Ereignisse der Anwendung</p>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <a href="{{ url_for('logs.index', level='all') }}" class="btn btn-sm {{ 'btn-primary' if request.args.get('level') == 'all' or not request.args.get('level') else 'btn-outline-primary' }}">Alle</a>
+                            <a href="{{ url_for('logs.index', level='INFO') }}" class="btn btn-sm {{ 'btn-info' if request.args.get('level') == 'INFO' else 'btn-outline-info' }}">Info</a>
+                            <a href="{{ url_for('logs.index', level='WARNING') }}" class="btn btn-sm {{ 'btn-warning' if request.args.get('level') == 'WARNING' else 'btn-outline-warning' }}">Warnungen</a>
+                            <a href="{{ url_for('logs.index', level='ERROR') }}" class="btn btn-sm {{ 'btn-danger' if request.args.get('level') == 'ERROR' else 'btn-outline-danger' }}">Fehler</a>
+                        </div>
+                        <div>
+                            <form action="{{ url_for('logs.clear') }}" method="post" onsubmit="return confirm('Sind Sie sicher, dass Sie alle Logs löschen möchten?');" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash-alt"></i> Logs löschen
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Zeitstempel</th>
+                                    <th>Level</th>
+                                    <th>Nachricht</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if logs %}
+                                    {% for log in logs %}
+                                        <tr>
+                                            <td class="text-nowrap">{{ log.timestamp }}</td>
+                                            <td>
+                                                <span class="badge {% if log.level == 'ERROR' %}bg-danger{% elif log.level == 'WARNING' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                                                    {{ log.level }}
+                                                </span>
+                                            </td>
+                                            <td>{{ log.message }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3">Keine Log-Einträge gefunden.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if logs|length >= 100 %}
+                    <div class="text-center mt-3">
+                        <p class="text-muted">Zeige die neuesten 100 Log-Einträge. Ältere Logs werden nicht angezeigt.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -76,16 +76,27 @@
                             </div>
                         </a>
                     </li>
-                </ul>
-            </div>
+                </ul>            </div>            
             <div class="card-body">
-                <form id="searchForm" action="{{ url_for('search') }}" method="post">
-                    <!-- Hidden field to track the search mode -->
+                <form id="searchForm" action="{{ url_for('search.index') }}" method="post" class="needs-validation" novalidate>                    <!-- Hidden fields -->
                     <input type="hidden" id="searchMode" name="search_mode" value="simple">
+                    <input type="hidden" id="csrfTokenInput" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <!-- CSRF Debug Info (only visible during development) -->
+                    {% if config.DEBUG %}
+                    <div class="alert alert-secondary mb-3 small">
+                        <strong>CSRF Debug:</strong>
+                        <ul class="mb-0">
+                            <li>Session ID: {{ session.sid if session.sid else 'No session ID' }}</li>
+                            <li>Token value: {{ csrf_token() }}</li>
+                            <li>Session permanent: {{ 'Yes' if session.permanent else 'No' }}</li>
+                        </ul>
+                    </div>
+                    {% endif %}
                     
                     <!-- Tab Content -->
                     <div class="tab-content" id="searchModeContent">
-                        <!-- Simple Search Tab (Schnellsuche) -->
+                        <!-- Simple Search Tab -->
                         <div class="tab-pane fade show active" id="simple-search" role="tabpanel">
                             <div class="alert alert-info border-left-info mb-4 shadow-sm">
                                 <div class="d-flex">
@@ -94,167 +105,270 @@
                                     </div>
                                     <div>
                                         <h5 class="alert-heading text-primary mb-1">Schnellsuche</h5>
-                                        <p class="mb-0">Suchen Sie schnell und einfach nach Schlüsselwörtern in allen ausgewählten Datenbanken. Ideal für eine erste Übersicht oder wenn Sie spezifische Begriffe recherchieren möchten.</p>
+                                        <p class="mb-0">Suchen Sie schnell und einfach nach Schlüsselwörtern in allen ausgewählten Datenbanken.</p>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="card bg-light mb-4 shadow-sm border-0">
-                                <div class="card-body p-4">
-                                    <h5 class="card-title mb-3 text-primary">
-                                        <i class="fas fa-keyboard me-2"></i>Suchbegriffe eingeben
-                                    </h5>
-                                    
-                                    <div class="mb-4">
-                                        <div class="card bg-white border-0 shadow-sm p-3">
-                                            <div class="card-body p-0">
-                                                <div class="input-group input-group-lg">
-                                                    <span class="input-group-text bg-primary text-white border-0 rounded-start-pill">
-                                                        <i class="fas fa-search fa-lg"></i>
-                                                    </span>
-                                                    <input type="text" class="form-control form-control-lg border-0 shadow-none bg-light" 
-                                                        id="simpleSearchQuery" name="search_query" 
-                                                        placeholder="z.B. Diabetes, COVID-19, Kardiovaskuläre Erkrankungen..."
-                                                        aria-label="Suchbegriffe eingeben" 
-                                                        aria-describedby="searchQueryHelpBlock"
-                                                        autocomplete="off"
-                                                        autofocus>
-                                                    <button type="button" class="btn btn-outline-secondary border-0 bg-light rounded-end-pill" id="clearSearchButton" 
-                                                        title="Suchfeld zurücksetzen">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </div>
-
-                                                <div class="d-flex align-items-start mt-3 bg-light p-4 rounded-3 border">
-                                                    <div class="search-icon-container rounded-circle me-3 mt-1 flex-shrink-0">
-                                                        <i class="fas fa-lightbulb text-warning"></i>
-                                                    </div>
-                                                    <div id="searchQueryHelpBlock" class="form-text mb-0">
-                                                        <h6 class="mb-2 fw-bold text-primary">Tipps zur Suche:</h6>
-                                                        <ul class="mb-0 ps-3">
-                                                            <li class="mb-2">Verwenden Sie Kommas, um mehrere Suchbegriffe zu trennen<br>
-                                                                <span class="text-muted small fst-italic">Beispiel: <code>Diabetes, Insulin</code></span>
-                                                            </li>
-                                                            <li class="mb-2">Die Suche muss mindestens 2 Zeichen enthalten</li>
-                                                            <li>Wählen Sie unten mindestens eine Datenbank für die Suche aus</li>
-                                                        </ul>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="d-flex align-items-center mt-3 bg-light p-3 rounded-3 border">
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="text-primary me-2">
-                                                            <i class="fas fa-search"></i>
-                                                        </span>
-                                                        <div>
-                                                            <div class="fw-bold">Suchtipps:</div>
-                                                            <ul class="mb-0 ps-3 small">
-                                                                <li>Geben Sie klare, spezifische Begriffe ein</li>
-                                                                <li>Verwenden Sie medizinische Fachbegriffe für präzisere Ergebnisse</li>
-                                                                <li>Trennen Sie mehrere Begriffe mit Kommas</li>
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <h5 class="card-title mb-3 text-primary">
-                                        <i class="fas fa-database me-2"></i>Datenbanken auswählen
-                                    </h5>
-                                    
-                                    <div class="card bg-white shadow-sm border-0 mb-4">
-                                        <div class="card-body p-4">
-                                            <div class="databases-container">
-                                                <div class="databases-header d-flex align-items-center justify-content-between mb-3">
-                                                    <div class="databases-title d-flex align-items-center">
-                                                        <span class="icon me-2 d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle" style="width: 32px; height: 32px;">
-                                                            <i class="fas fa-server"></i>
-                                                        </span>
-                                                        <h6 class="mb-0 fw-bold">Verfügbare Datenbanken</h6>
-                                                    </div>
-                                                    <button type="button" class="databases-select-all btn btn-sm btn-outline-primary rounded-pill px-3" id="selectAllDatabases">
-                                                        <i class="fas fa-check-double me-1"></i> Alle auswählen
-                                                    </button>
-                                                </div>
-                                                
-                                                <div class="database-cards-grid">
-                                                    {% for db in databases %}
-                                                    <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
-                                                        <input class="database-checkbox" type="checkbox" value="{{ db }}" 
-                                                            id="db-simple-{{ db }}" name="databases[]" 
-                                                            {% if db == 'PubMed' %}checked{% endif %}>
-                                                        <div class="database-status-indicator">
-                                                            <i class="fas fa-check"></i>
-                                                        </div>
-                                                        <div class="database-card-inner">
-                                                            <div class="database-icon">
-                                                                <i class="fas fa-database"></i>
-                                                            </div>
-                                                            <div class="database-content">
-                                                                <div class="database-name">{{ db }}</div>
-                                                                <p class="database-description">
-                                                                    {% if db == 'PubMed' %}
-                                                                        Medizinische Fachliteratur (Medline)
-                                                                    {% elif db == 'Deutsche Nationalbibliothek' %}
-                                                                        Deutsche Publikationen und Dissertationen
-                                                                    {% elif db == 'Scopus' %}
-                                                                        Interdisziplinäre Forschungsliteratur
-                                                                    {% elif db == 'Web of Science' %}
-                                                                        Hochrangige wissenschaftliche Zeitschriften
-                                                                    {% else %}
-                                                                        Wissenschaftliche Publikationen
-                                                                    {% endif %}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {% endfor %}
-                                                </div>
-                                                
-                                                <div class="databases-help">
-                                                    <i class="fas fa-info-circle"></i>
-                                                    Wählen Sie eine oder mehrere Datenbanken für Ihre Suche aus. Die Suche wird parallel in allen ausgewählten Datenbanken durchgeführt.
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-
-                                    <!-- Großer primärer Suchbutton -->
-                                    <div class="d-grid gap-2 mt-4">
-                                        <button type="submit" class="btn btn-primary btn-lg py-3 shadow-lg search-button rounded-pill" id="simpleSearchButton">
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <span class="search-icon-container bg-white text-primary rounded-circle me-3 d-flex align-items-center justify-content-center">
-                                                    <i class="fas fa-search fa-lg"></i>
-                                                </span>
-                                                <span class="fs-5 fw-bold">Suche starten</span>
-                                            </div>
-                                        </button>
-                                        <div class="text-center mt-2 text-secondary small">
-                                            <i class="fas fa-info-circle me-1"></i> Die ausgewählten Datenbanken werden parallel durchsucht
-                                        </div>
+                            <!-- Search input -->
+                            <div class="form-group mb-4">
+                                <label for="simpleSearchInput" class="form-label">Suchbegriff</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="simpleSearchInput" name="simple_query_content" 
+                                           placeholder="Geben Sie einen Suchbegriff ein..." required>
+                                    <div class="invalid-feedback">
+                                        Bitte geben Sie einen Suchbegriff ein.
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-center mt-4">
-                                <div class="option-separator position-relative my-2 w-100">
-                                    <hr class="text-muted">
-                                    <span class="position-absolute top-0 start-50 translate-middle bg-white px-3 text-muted">oder</span>
+                            <!-- Database selection -->
+                            <div class="form-group mb-4">
+                                <label class="form-label d-block">Datenbanken auswählen</label>
+                                <div class="btn-group-vertical w-100">                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" name="databases" value="PubMed" id="pubmedCheckbox" checked>
+                                        <label class="form-check-label" for="pubmedCheckbox">
+                                            <i class="fas fa-database text-primary me-2"></i>PubMed
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" name="databases" value="Deutsche Nationalbibliothek" id="dnbCheckbox">
+                                        <label class="form-check-label" for="dnbCheckbox">
+                                            <i class="fas fa-book text-primary me-2"></i>Deutsche Nationalbibliothek
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Bitte wählen Sie mindestens eine Datenbank aus.
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-center mt-3 mb-2">
-                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="tab" href="#advanced-search" role="tab">
-                                    <i class="fas fa-sliders-h me-1"></i> Erweiterte Suchoptionen nutzen
+                            <!-- Submit button -->
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg" id="simpleSearchButton">
+                                    <i class="fas fa-search me-2"></i>Suche starten
                                 </button>
                             </div>
                         </div>
                         
+                        <!-- Person Search Tab (Personenbezogene Suche) -->
+                        <div class="tab-pane fade" id="person-search" role="tabpanel" aria-labelledby="person-search-tab">
+                            <div class="alert alert-info border-left-info mb-4 shadow-sm">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="fas fa-users fa-2x text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="alert-heading text-primary mb-1">Personenbezogene Suche</h5>
+                                        <p class="mb-0">Finden Sie gezielt Publikationen bestimmter Forscher:innen, Autor:innen oder wissenschaftlicher Teams. Diese Suche ist ideal, um das Werk spezifischer Personen zu recherchieren.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Person Selection (Step 1) -->
+                            <div class="card mb-4 shadow-sm border-0">
+                                <div class="card-header bg-gradient-primary text-white">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-white text-primary p-2 me-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <span>1</span>
+                                        </div>
+                                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Person(en) auswählen</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body p-4">
+                                    <div id="selectedPersonsContainer" class="mb-4">
+                                        <!-- Selected persons will be displayed here as tags -->
+                                        <div class="alert alert-light border shadow-sm d-flex align-items-center" id="noPersonsSelectedAlert">
+                                            <i class="fas fa-user-circle fa-lg me-3 text-primary"></i>
+                                            <div>
+                                                <span class="fw-bold">Keine Personen ausgewählt.</span><br>
+                                                <small class="text-muted">Bitte wählen Sie mindestens eine Person aus der Liste unten aus oder erstellen Sie eine neue Person.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-4">
+                                        <h6 class="text-primary mb-3"><i class="fas fa-search me-2"></i>Personen suchen oder hinzufügen</h6>
+                                        <div class="input-group shadow-sm">
+                                            <span class="input-group-text bg-white text-primary">
+                                                <i class="fas fa-user-edit"></i>
+                                            </span>
+                                            <input type="text" class="form-control border" id="personSearchInput" placeholder="Namen eingeben, um Personen zu suchen..." autocomplete="off">
+                                            <button class="btn btn-primary" type="button" id="personSearchButton">
+                                                <i class="fas fa-search me-1"></i> Suchen
+                                            </button>
+                                            <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                                                <i class="fas fa-plus-circle me-1"></i> Neu
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="form-text mt-2">
+                                            <i class="fas fa-lightbulb text-warning me-1"></i>
+                                            Tipp: Die Suche durchsucht Vor- und Nachnamen in der Datenbank
+                                        </div>
+                                        
+                                        <!-- Dropdown for person results with improved styling -->
+                                        <div id="personSearchResults" class="dropdown-menu w-100 shadow-lg border-0 rounded-3" 
+                                             style="display: none; max-height: 300px; overflow-y: auto;">
+                                            <!-- Results will be populated via JavaScript -->
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Hidden input to store selected person IDs -->
+                                    <input type="hidden" id="selectedPersonIds" name="selected_person_ids">
+                                </div>
+                            </div>
+                            
+                            <!-- Database Selection (Step 2) -->
+                            <div class="card mb-4 shadow-sm border-0">
+                                <div class="card-header bg-gradient-primary text-white">
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-white text-primary p-2 me-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                            <span>2</span>
+                                        </div>
+                                        <h5 class="mb-0"><i class="fas fa-database me-2"></i>Suchparameter konfigurieren</h5>
+                                    </div>
+                                </div>
+                                <div class="card-body p-4">
+                                    <div class="row g-4">
+                                        <!-- Datenbanken Sektion -->
+                                        <div class="col-md-6">
+                                            <div class="card h-100 bg-light border-0">
+                                                <div class="card-body">
+                                                    <div class="databases-container">
+                                                        <div class="databases-header">
+                                                            <div class="databases-title">
+                                                                <span class="icon"><i class="fas fa-server"></i></span>
+                                                                Verfügbare Datenbanken
+                                                            </div>
+                                                            <button type="button" class="databases-select-all" id="selectAllDatabasesPerson">
+                                                                <i class="fas fa-check-double"></i> Alle auswählen
+                                                            </button>
+                                                        </div>
+                                                        
+                                                        <div class="database-cards-grid">
+                                                            {% for db in databases %}
+                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
+                                                                <input class="database-checkbox" type="checkbox" value="{{ db }}" 
+                                                                    id="db-person-{{ db }}" name="databases[]" 
+                                                                    {% if db == 'PubMed' %}checked{% endif %}>
+                                                                <div class="database-status-indicator">
+                                                                    <i class="fas fa-check"></i>
+                                                                </div>
+                                                                <div class="database-card-inner">
+                                                                    <div class="database-icon">
+                                                                        <i class="fas fa-database"></i>
+                                                                    </div>
+                                                                    <div class="database-content">
+                                                                        <div class="database-name">{{ db }}</div>
+                                                                        <p class="database-description">
+                                                                            {% if db == 'PubMed' %}
+                                                                                Medizinische Fachliteratur (Medline)
+                                                                            {% elif db == 'Deutsche Nationalbibliothek' %}
+                                                                                Deutsche Publikationen und Dissertationen
+                                                                            {% elif db == 'Scopus' %}
+                                                                                Interdisziplinäre Forschungsliteratur
+                                                                            {% elif db == 'Web of Science' %}
+                                                                                Hochrangige wissenschaftliche Zeitschriften
+                                                                            {% else %}
+                                                                                Wissenschaftliche Publikationen
+                                                                            {% endif %}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            {% endfor %}
+                                                        </div>
+                                                        
+                                                        <div class="databases-help">
+                                                            <i class="fas fa-info-circle"></i>
+                                                            Wählen Sie eine oder mehrere Datenbanken für die personenbezogene Suche aus.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Zusätzliche Begriffe Sektion -->
+                                        <div class="col-md-6">
+                                            <div class="card h-100 bg-light border-0">
+                                                <div class="card-body">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-filter me-2"></i>Suchbegriffe eingrenzen (optional)
+                                                    </h6>
+                                                    <div class="input-group shadow-sm mb-3">
+                                                        <span class="input-group-text bg-white text-primary">
+                                                            <i class="fas fa-search-plus"></i>
+                                                        </span>
+                                                        <input type="text" class="form-control border" id="personAdditionalTerms" name="additional_terms" 
+                                                            placeholder="z.B. Herzchirurgie, Onkologie...">
+                                                    </div>
+                                                    <div class="form-text">
+                                                        <i class="fas fa-lightbulb text-warning me-1"></i>
+                                                        Empfehlung: Verwenden Sie fachspezifische Begriffe
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Datumsbereich Sektion -->
+                                        <div class="col-12">
+                                            <div class="card bg-light border-0">
+                                                <div class="card-body">
+                                                    <h6 class="card-title text-primary mb-3">
+                                                        <i class="fas fa-calendar-alt me-2"></i>Zeitlichen Rahmen festlegen (optional)
+                                                    </h6>
+                                                    <div class="row g-3">
+                                                        <div class="col-md-6">
+                                                            <label for="personStartDate" class="form-label">Veröffentlicht nach</label>
+                                                            <div class="input-group shadow-sm">
+                                                                <span class="input-group-text bg-white text-primary">
+                                                                    <i class="fas fa-calendar"></i>
+                                                                </span>
+                                                                <input type="date" class="form-control border" id="personStartDate" name="start_date">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="personEndDate" class="form-label">Veröffentlicht vor</label>
+                                                            <div class="input-group shadow-sm">
+                                                                <span class="input-group-text bg-white text-primary">
+                                                                    <i class="fas fa-calendar"></i>
+                                                                </span>
+                                                                <input type="date" class="form-control border" id="personEndDate" name="end_date">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 mb-4">
+                                <button type="submit" class="btn btn-primary btn-lg py-3 shadow" id="personSearchSubmitButton">
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <span class="search-icon-container bg-white text-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                            <i class="fas fa-search fa-lg"></i>
+                                        </span>
+                                        <span class="fs-5 fw-bold">Personenbasierte Suche starten</span>
+                                    </div>
+                                </button>
+                                <div class="text-center small mt-3 p-2 bg-light rounded-3 border">
+                                    <i class="fas fa-info-circle text-primary me-1"></i>
+                                    <strong>Hinweis:</strong> Suchen Sie Publikationen von bestimmten Personen in verschiedenen Datenbanken
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-light border shadow-sm small">
+                                <i class="fas fa-info-circle me-2 text-primary"></i> 
+                                Die Ergebnisse zeigen alle Publikationen der ausgewählten Personen, die den angegebenen Filterkriterien entsprechen.
+                            </div>
+                        </div>
+                        
                         <!-- Advanced Database Search Tab -->
-                        <div class="tab-pane fade" id="advanced-search" role="tabpanel">
+                        <div class="tab-pane fade" id="advanced-search" role="tabpanel" aria-labelledby="advanced-search-tab">
                             <div class="alert alert-info border-left-info mb-4 shadow-sm">
                                 <div class="d-flex">
                                     <div class="me-3">
@@ -408,7 +522,7 @@
                                                             {% endfor %}
                                                         </div>
                                                         
-                                                        <div class="alert alert-light border mb-0">
+                                                        <div class="alert alert-light small border p-2 mb-0">
                                                         <div class="d-flex">
                                                             <div class="me-3">
                                                                 <i class="fas fa-info-circle text-primary"></i>
@@ -477,7 +591,7 @@
                                                         </div>
                                                     </div>
                                                     
-                                                    <h6 class="card-title text-primary mb-3">
+                                                    <h6 class="card-title mb-3 text-primary">
                                                         <i class="fas fa-search me-2"></i>Personen suchen
                                                     </h6>
                                                     
@@ -788,7 +902,7 @@
                         </div>
                         
                         <!-- Saved Queries Tab -->
-                        <div class="tab-pane fade" id="saved-queries" role="tabpanel">
+                        <div class="tab-pane fade" id="saved-queries" role="tabpanel" aria-labelledby="saved-queries-tab">
                             <div class="alert alert-info border-left-info mb-3">
                                 <i class="fas fa-info-circle me-2"></i> 
                                 Die <strong>Gespeicherten Suchen</strong> ermöglichen es Ihnen, komplexe Suchanfragen zu speichern und jederzeit wieder zu verwenden.
@@ -823,11 +937,11 @@
                                                 <th>Aktionen</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="savedQueriesTableBody">
-                                            {% for query in saved_queries %}
+                                        <tbody id="savedQueriesTableBody">                                            {% for query in saved_queries %}
                                             <tr data-query-id="{{ query.id }}" class="align-middle saved-query-row">
                                                 <td>
                                                     <span class="fw-bold text-primary">{{ query.name }}</span>
+                                                    <small class="d-block text-muted text-truncate" style="max-width: 200px;">{{ query.search_text }}</small>
                                                 </td>
                                                 <td>
                                                     {% if query.search_mode == 'simple' %}
@@ -879,280 +993,6 @@
                             </div>
                             {% endif %}
                         </div>
-                        
-                        <!-- Person Search Tab (Personenbezogene Suche) -->
-                        <div class="tab-pane fade" id="person-search" role="tabpanel" aria-labelledby="person-search-tab">
-                            <div class="alert alert-info border-left-info mb-4 shadow-sm">
-                                <div class="d-flex">
-                                    <div class="me-3">
-                                        <i class="fas fa-users fa-2x text-primary"></i>
-                                    </div>
-                                    <div>
-                                        <h5 class="alert-heading text-primary mb-1">Personenbezogene Suche</h5>
-                                        <p class="mb-0">Finden Sie gezielt Publikationen bestimmter Forscher:innen, Autor:innen oder wissenschaftlicher Teams. Diese Suche ist ideal, um das Werk spezifischer Personen zu recherchieren.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Person Selection (Step 1) -->
-                            <div class="card mb-4 shadow-sm border-0">
-                                <div class="card-header bg-gradient-primary text-white">
-                                    <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-white text-primary p-2 me-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                            <span>1</span>
-                                        </div>
-                                        <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Person(en) auswählen</h5>
-                                    </div>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div id="selectedPersonsContainer" class="mb-4">
-                                        <!-- Selected persons will be displayed here as tags -->
-                                        <div class="alert alert-light border shadow-sm d-flex align-items-center" id="noPersonsSelectedAlert">
-                                            <i class="fas fa-info-circle fa-lg me-3 text-primary"></i> 
-                                            <div>
-                                                <span class="fw-bold">Keine Personen ausgewählt.</span><br>
-                                                <small class="text-muted">Bitte wählen Sie mindestens eine Person aus der Liste unten aus oder erstellen Sie eine neue Person.</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <h6 class="text-primary mb-3"><i class="fas fa-search me-2"></i>Personen suchen oder hinzufügen</h6>
-                                        <div class="input-group shadow-sm">
-                                            <span class="input-group-text bg-white text-primary">
-                                                <i class="fas fa-user-edit"></i>
-                                            </span>
-                                            <input type="text" class="form-control border" id="personSearchInput" placeholder="Namen eingeben, um Personen zu suchen..." autocomplete="off">
-                                            <button class="btn btn-primary" type="button" id="personSearchButton">
-                                                <i class="fas fa-search me-1"></i> Suchen
-                                            </button>
-                                            <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
-                                                <i class="fas fa-plus-circle me-1"></i> Neu
-                                            </button>
-                                        </div>
-                                        
-                                        <div class="form-text mt-2">
-                                            <i class="fas fa-lightbulb text-warning me-1"></i>
-                                            Tipp: Die Suche durchsucht Vor- und Nachnamen in der Datenbank
-                                        </div>
-                                        
-                                        <!-- Dropdown for person results with improved styling -->
-                                        <div id="personSearchResults" class="dropdown-menu w-100 shadow-lg border-0 rounded-3" 
-                                             style="display: none; max-height: 300px; overflow-y: auto;">
-                                            <!-- Results will be populated via JavaScript -->
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Hidden input to store selected person IDs -->
-                                    <input type="hidden" id="selectedPersonIds" name="selected_person_ids">
-                                </div>
-                            </div>
-                            
-                            <!-- Database Selection (Step 2) -->
-                            <div class="card mb-4 shadow-sm border-0">
-                                <div class="card-header bg-gradient-primary text-white">
-                                    <div class="d-flex align-items-center">
-                                        <div class="rounded-circle bg-white text-primary p-2 me-3 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                            <span>2</span>
-                                        </div>
-                                        <h5 class="mb-0"><i class="fas fa-database me-2"></i>Suchparameter konfigurieren</h5>
-                                    </div>
-                                </div>
-                                <div class="card-body p-4">
-                                    <div class="row g-4">
-                                        <!-- Datenbanken Sektion -->
-                                        <div class="col-md-6">
-                                            <div class="card h-100 bg-light border-0">
-                                                <div class="card-body">
-                                                    <div class="databases-container">
-                                                        <div class="databases-header">
-                                                            <div class="databases-title">
-                                                                <span class="icon"><i class="fas fa-server"></i></span>
-                                                                Verfügbare Datenbanken
-                                                            </div>
-                                                            <button type="button" class="databases-select-all" id="selectAllDatabasesPerson">
-                                                                <i class="fas fa-check-double"></i> Alle auswählen
-                                                            </button>
-                                                        </div>
-                                                        
-                                                        <div class="database-cards-grid">
-                                                            {% for db in databases %}
-                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
-                                                                <input class="database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                    id="db-person-{{ db }}" name="databases[]" 
-                                                                    {% if db == 'PubMed' %}checked{% endif %}>
-                                                                <div class="database-status-indicator">
-                                                                    <i class="fas fa-check"></i>
-                                                                </div>
-                                                                <div class="database-card-inner">
-                                                                    <div class="database-icon">
-                                                                        <i class="fas fa-database"></i>
-                                                                    </div>
-                                                                    <div class="database-content">
-                                                                        <div class="database-name">{{ db }}</div>
-                                                                        <p class="database-description">
-                                                                            {% if db == 'PubMed' %}
-                                                                                Medizinische Fachliteratur (Medline)
-                                                                            {% elif db == 'Deutsche Nationalbibliothek' %}
-                                                                                Deutsche Publikationen und Dissertationen
-                                                                            {% elif db == 'Scopus' %}
-                                                                                Interdisziplinäre Forschungsliteratur
-                                                                            {% elif db == 'Web of Science' %}
-                                                                                Hochrangige wissenschaftliche Zeitschriften
-                                                                            {% else %}
-                                                                                Wissenschaftliche Publikationen
-                                                                            {% endif %}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {% endfor %}
-                                                        </div>
-                                                        
-                                                        <div class="databases-help">
-                                                            <i class="fas fa-info-circle"></i>
-                                                            Wählen Sie eine oder mehrere Datenbanken für die personenbezogene Suche aus.
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Zusätzliche Begriffe Sektion -->
-                                        <div class="col-md-6">
-                                            <div class="card h-100 bg-light border-0">
-                                                <div class="card-body">
-                                                    <h6 class="card-title text-primary mb-3">
-                                                        <i class="fas fa-filter me-2"></i>Suchbegriffe eingrenzen (optional)
-                                                    </h6>
-                                                    <div class="input-group shadow-sm mb-3">
-                                                        <span class="input-group-text bg-white text-primary">
-                                                            <i class="fas fa-search-plus"></i>
-                                                        </span>
-                                                        <input type="text" class="form-control border" id="personAdditionalTerms" name="additional_terms" 
-                                                            placeholder="z.B. Herzchirurgie, Onkologie...">
-                                                    </div>
-                                                    <div class="form-text">
-                                                        <i class="fas fa-lightbulb text-warning me-1"></i>
-                                                        Empfehlung: Verwenden Sie fachspezifische Begriffe
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <!-- Datumsbereich Sektion -->
-                                        <div class="col-12">
-                                            <div class="card bg-light border-0">
-                                                <div class="card-body">
-                                                    <h6 class="card-title text-primary mb-3">
-                                                        <i class="fas fa-calendar-alt me-2"></i>Zeitlichen Rahmen festlegen (optional)
-                                                    </h6>
-                                                    <div class="row g-3">
-                                                        <div class="col-md-6">
-                                                            <label for="personStartDate" class="form-label">Veröffentlicht nach</label>
-                                                            <div class="input-group shadow-sm">
-                                                                <span class="input-group-text bg-white text-primary">
-                                                                    <i class="fas fa-calendar"></i>
-                                                                </span>
-                                                                <input type="date" class="form-control border" id="personStartDate" name="start_date">
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <label for="personEndDate" class="form-label">Veröffentlicht vor</label>
-                                                            <div class="input-group shadow-sm">
-                                                                <span class="input-group-text bg-white text-primary">
-                                                                    <i class="fas fa-calendar"></i>
-                                                                </span>
-                                                                <input type="date" class="form-control border" id="personEndDate" name="end_date">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="d-grid gap-2 mb-4">
-                                <button type="submit" class="btn btn-primary btn-lg py-3 shadow" id="personSearchSubmitButton">
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <span class="search-icon-container bg-white text-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
-                                            <i class="fas fa-search fa-lg"></i>
-                                        </span>
-                                        <span class="fs-5 fw-bold">Personenbasierte Suche starten</span>
-                                    </div>
-                                </button>
-                                <div class="text-center small mt-3 p-2 bg-light rounded-3 border">
-                                    <i class="fas fa-info-circle text-primary me-1"></i>
-                                    <strong>Hinweis:</strong> Suchen Sie Publikationen von bestimmten Personen in verschiedenen Datenbanken
-                                </div>
-                            </div>
-                            
-                            <div class="alert alert-light border shadow-sm small">
-                                <i class="fas fa-info-circle me-2 text-primary"></i> 
-                                Die Ergebnisse zeigen alle Publikationen der ausgewählten Personen, die den angegebenen Filterkriterien entsprechen.
-                            </div>
-                        </div>
-                        
-                        <!-- Saved Queries Tab -->
-                        <div class="tab-pane fade" id="saved-queries" role="tabpanel">
-                            <div class="alert alert-info mb-3">
-                                <i class="fas fa-info-circle me-2"></i> 
-                                Gespeicherte Suchanfragen laden und verwalten.
-                            </div>
-                            
-                            {% if saved_queries %}
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-hover">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Suchmodus</th>
-                                                <th>Datenbank(en)</th>
-                                                <th>Gespeichert am</th>
-                                                <th>Aktionen</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for query in saved_queries %}
-                                            <tr>
-                                                <td>{{ query.name }}</td>
-                                                <td>
-                                                    {% if query.search_mode == 'simple' %}
-                                                    <span class="badge bg-primary">Einfache Suche</span>
-                                                    {% elif query.search_mode == 'person' %}
-                                                    <span class="badge bg-success">Personensuche</span>
-                                                    {% elif query.search_mode == 'advanced' %}
-                                                    <span class="badge bg-info">Erweiterte Suche</span>
-                                                    {% else %}
-                                                    <span class="badge bg-secondary">{{ query.search_mode }}</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>{{ query.database }}</td>
-                                                <td>{{ query.saved_at }}</td>
-                                                <td>
-                                                    <div class="btn-group" role="group">
-                                                        <button type="button" class="btn btn-sm btn-outline-primary load-query" data-query-id="{{ query.id }}" title="Laden">
-                                                            <i class="fas fa-upload"></i> Laden
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-query" data-query-id="{{ query.id }}" title="Löschen">
-                                                            <i class="fas fa-trash"></i> Löschen
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            {% else %}
-                                <div class="alert alert-light">
-                                    <p>Keine gespeicherten Suchanfragen gefunden.</p>
-                                    <p>Verwenden Sie die Schaltfläche "Suche speichern", um Ihre Suchanfragen zu speichern.</p>
-                                </div>
-                            {% endif %}
-                        </div>
                     </div>
                     
                     <div class="mt-3">
@@ -1162,29 +1002,36 @@
                     </div>
                 </form>
             </div>
-        </div>
-    </div>
-    
-    <!-- Saved Queries and Person Management -->
-    <div class="col-lg-4">
+        </div>    </div>
+</div>
 
-        
+<!-- Quick Links - Neu positioniert und volle Breite -->
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-10">
         <!-- Quick Links -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Schnell-Links</h5>
+        <div class="card shadow">
+            <div class="card-header bg-gradient-primary text-white py-3">
+                <h5 class="mb-0"><i class="fas fa-link me-2"></i>Schnell-Links</h5>
             </div>
             <div class="card-body">
-                <div class="d-grid gap-2">
-                    <a href="{{ url_for('persons') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-users me-1"></i> Personenverwaltung
-                    </a>
-                    <a href="{{ url_for('settings') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-cog me-1"></i> Einstellungen
-                    </a>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('persons.index') }}" class="btn btn-outline-primary btn-lg">
+                                <i class="fas fa-users me-1"></i> Personen verwalten
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-grid">
+                            <a href="{{ url_for('settings.index') }}" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-cog me-1"></i> Einstellungen
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <hr />
-                <p class="small text-muted">
+                <p class="text-muted">
                     Nutzen Sie die Personenverwaltung, um Personen für die Suche zu verwalten. 
                     Diese können dann in der Personensuche und der erweiterten Datenbanksuche ausgewählt werden.
                 </p>
@@ -1250,8 +1097,9 @@
 {% block scripts %}
 <script>
     // Initialize allPersons array with data from the server
-    window.allPersons = {{ persons | tojson | safe }};
+    window.allPersons = JSON.parse('{{ persons|default([])|tojson|safe }}');
 </script>
+<script src="{{ url_for('static', filename='js/person-search.js') }}"></script>
 <script src="{{ url_for('static', filename='js/search.js') }}"></script>
 <script>
     // Verbesserte Tab-Interaktion mit Animation
@@ -1403,8 +1251,113 @@
             });
         });
     });
-    
-    console.log("Loaded persons:", {{ persons|tojson|safe }});
+</script>
+<script>    document.addEventListener('DOMContentLoaded', function() {
+        const searchForm = document.getElementById('searchForm');
+        
+        // Helper function to find the submit button for the current active search tab
+        function findActiveSubmitButton() {
+            const activeTab = document.querySelector('.tab-pane.active');
+            if (!activeTab) return null;
+            
+            return activeTab.querySelector('button[type="submit"]');
+        }
+        
+        // Setup loading indicators
+        function setupLoadingIndicators() {
+            // Get all submit buttons
+            const submitButtons = document.querySelectorAll('button[type="submit"]');
+            
+            // Add original text as data attribute and initialize spinner HTML
+            submitButtons.forEach(button => {
+                button.dataset.originalText = button.innerHTML;
+                button.dataset.loadingText = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Suche läuft...';
+            });
+        }
+        
+        // Initialize loading indicators
+        setupLoadingIndicators();
+        
+        if (searchForm) {
+            // Ensure the form has the correct action URL
+            const currentAction = searchForm.getAttribute('action');
+            if (!currentAction || currentAction === '') {
+                searchForm.setAttribute('action', '/search/');
+                console.log('Form action was missing, set to /search/');
+            }
+            
+            // Check CSRF token on form submission
+            searchForm.addEventListener('submit', function(event) {
+                // Verify CSRF token exists
+                const csrfToken = document.querySelector('input[name="csrf_token"]');
+                if (!csrfToken || !csrfToken.value) {
+                    event.preventDefault();
+                    console.error('Missing CSRF token!');
+                    alert('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.');
+                    return false;
+                }
+                
+                // Verify at least one database is selected
+                const selectedDatabases = Array.from(document.querySelectorAll('.database-checkbox:checked')).map(cb => cb.value);
+                if (selectedDatabases.length === 0) {
+                    event.preventDefault();
+                    alert('Bitte wählen Sie mindestens eine Datenbank für die Suche aus.');
+                    return false;
+                }
+                
+                // Verify query exists for simple search
+                const searchMode = document.getElementById('searchMode').value;
+                const query = document.querySelector('input[name="query"]');
+                if (searchMode === 'simple' && query && !query.value.trim()) {
+                    event.preventDefault();
+                    alert('Bitte geben Sie einen Suchbegriff ein.');
+                    return false;
+                }
+                
+                // All validations passed, show loading state
+                console.log('Form submission - All validations passed');
+                
+                // Show loading spinner
+                const activeButton = findActiveSubmitButton();
+                if (activeButton) {
+                    activeButton.disabled = true;
+                    activeButton.innerHTML = activeButton.dataset.loadingText;
+                }
+                
+                // Add feedback message above the form
+                const feedbackContainer = document.createElement('div');
+                feedbackContainer.id = 'searchFeedback';
+                feedbackContainer.className = 'alert alert-info mb-4';
+                feedbackContainer.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border me-3" role="status">
+                            <span class="visually-hidden">Suche läuft...</span>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Durchsuche ausgewählte Datenbanken...</h5>
+                            <p class="mb-0">Dies kann einige Sekunden dauern. Bitte haben Sie Geduld.</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert the feedback at the top of the form
+                const cardBody = document.querySelector('.card-body');
+                if (cardBody) {
+                    cardBody.insertBefore(feedbackContainer, cardBody.firstChild);
+                }
+                
+                // Disable all form inputs to prevent multiple submissions
+                const formInputs = searchForm.querySelectorAll('input, select, button');
+                formInputs.forEach(input => {
+                    if (input !== activeButton) {
+                        input.disabled = true;
+                    }
+                });
+                
+                // Form will submit normally
+            });
+        }
+    });
 </script>
 {% endblock %}
 

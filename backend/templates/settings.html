@@ -12,15 +12,34 @@
         <h5 class="mb-0">Configure Settings</h5>
     </div>
     <div class="card-body">
-        <form action="{{ url_for('settings') }}" method="post">
+        <form action="{{ url_for('settings.index') }}" method="post">
+            <!-- CSRF token for form security -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
             <!-- API Keys -->
             <div class="mb-4">
                 <h5>API Keys</h5>
-                <div class="mb-3">
-                    <label for="pubmedApiKey" class="form-label">PubMed API Key</label>
-                    <input type="text" class="form-control" id="pubmedApiKey" name="pubmed_api_key" 
-                           value="{{ settings.pubmed_api_key }}" placeholder="Enter your PubMed API key (optional)">
-                    <div class="form-text">Using an API key increases rate limits for PubMed requests.</div>
+                <div class="alert alert-info">
+                    <p><i class="fas fa-info-circle me-2"></i> API-Schlüssel werden aus Sicherheitsgründen ausschließlich über Umgebungsvariablen konfiguriert.</p>
+                    <ul class="mb-0">
+                        <li>Für PubMed: Setzen Sie die Umgebungsvariable <code>PUBMED_API_KEY</code></li>
+                    </ul>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6>API-Schlüssel Status:</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                PubMed API-Schlüssel
+                                {% if api_key_status.pubmed_api_key_configured %}
+                                <span class="badge bg-success rounded-pill">Konfiguriert</span>
+                                {% else %}
+                                <span class="badge bg-warning rounded-pill">Nicht konfiguriert</span>
+                                {% endif %}
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 

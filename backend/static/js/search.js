@@ -1,1110 +1,173 @@
 /**
- * MedicalSpy - Search module
+ * MedicalSpy - Search module - Fixed version
  * This file contains functions for search functionality.
  */
 
-// Global variable to store all persons - will use window.allPersons set by the server
-// Define this as a fallback only if window.allPersons is not available
-let allPersons = window.allPersons || [];
+// Global variables to store persons data and selected persons
+let allPersons = [];
 let selectedPersons = new Set();
+let lastSearchQuery = '';
 
-// For backward compatibility and easier code readability, create a reference to window.allPersons
-//let allPersons = window.allPersons;
-
-// Debugging function to check the persons
-function debugPersons() {
-    console.log("Loaded persons (via window.allPersons):", window.allPersons);
-    console.log("Loaded persons (via local allPersons):", allPersons);
-    return allPersons && allPersons.length > 0;
+// Helper function to get a cookie by name
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
 }
 
-// Show loading state during search
-function setLoadingState(isLoading, buttonId = 'simpleSearchButton') {
-    const searchForm = document.getElementById('searchForm');
-    const searchButton = document.getElementById(buttonId);
-
-    if (searchForm && searchButton) {
-        if (isLoading) {
-            searchForm.classList.add('loading');
-            searchButton.disabled = true;
-            
-            // Für die neuen Buttons mit komplexerer Struktur
-            if (searchButton.querySelector('.fs-5')) {
-                // Aktualisiere nur den Text innerhalb des span.fs-5
-                const textSpan = searchButton.querySelector('.fs-5');
-                if (textSpan) {
-                    textSpan.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Suche läuft...';
-                }
-            } else {
-                // Fallback für einfache Buttons ohne diese Struktur
-                searchButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Suche...';
-            }
-        } else {
-            searchForm.classList.remove('loading');
-            searchButton.disabled = false;
-            
-            // Texte wiederherstellen je nach Button-ID
-            if (searchButton.querySelector('.fs-5')) {
-                const textSpan = searchButton.querySelector('.fs-5');
-                if (textSpan) {
-                    if (buttonId === 'simpleSearchButton') {
-                        textSpan.innerHTML = 'Suche starten';
-                    } else if (buttonId === 'advancedSearchSubmitButton') {
-                        textSpan.innerHTML = 'Erweiterte Suche starten';
-                    } else if (buttonId === 'personSearchSubmitButton') {
-                        textSpan.innerHTML = 'Personenbasierte Suche starten';
-                    } else {
-                        textSpan.innerHTML = 'Suchen';
-                    }
-                }
-            } else {
-                searchButton.innerHTML = '<i class="fas fa-search me-1"></i> Suchen';
-            }
-        }
-    }
-}
-
-// Handle search form submission
-function handleSearchSubmit(event) {
-    // Get the active search mode
-    const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
-    if (!activeTab) return true;
+// Function to synchronize CSRF token from cookie to form
+function syncCsrfToken() {
+    const tokenFromCookie = getCookie('csrf_token');
+    const tokenInput = document.querySelector('input[name="csrf_token"]');
     
-    // Check if we're in the saved queries tab and prevent form submission
-    if (activeTab.id === 'saved-queries-tab') {
-        event.preventDefault();
-        return false;
+    if (tokenFromCookie && tokenInput) {
+        // Update form token if it differs from cookie token
+        if (tokenInput.value !== tokenFromCookie) {
+            console.log('Synchronizing CSRF token from cookie to form');
+            tokenInput.value = tokenFromCookie;
+        }
+        return tokenInput.value;
+    } else if (tokenInput && !tokenInput.value && tokenFromCookie) {
+        console.log('Form token empty but cookie token available - synchronizing');
+        tokenInput.value = tokenFromCookie;
+        return tokenInput.value;
+    } else if (!tokenFromCookie) {
+        console.error('No CSRF token available in cookie');
+    } else if (!tokenInput) {
+        console.error('No CSRF token input field found in form');
     }
-    
-    // Update the search mode hidden field
-    const searchModeField = document.getElementById('searchMode');
-    if (searchModeField) {
-        const tabId = activeTab.id;
-        
-        // Validiere, dass mindestens eine Datenbank ausgewählt wurde (für alle Tabs relevant)
-        const selectedDatabases = Array.from(document.querySelectorAll('.database-checkbox:checked')).map(cb => cb.value);
-        if (selectedDatabases.length === 0) {
-            event.preventDefault();
-            showToast('Fehler', 'Bitte wählen Sie mindestens eine Datenbank für die Suche aus.', 'error');
-            return false;
-        }
-        
-        if (tabId === 'simple-search-tab') {
-            searchModeField.value = 'simple';
-
-            // Validate simple search
-            const simpleQuery = document.getElementById('simpleSearchQuery').value.trim();
-            if (!simpleQuery) {
-                event.preventDefault();
-                showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein.', 'error');
-                return false;
-            }
-            
-            // Überprüfe, ob der Suchbegriff mindestens 2 Zeichen enthält
-            if (simpleQuery.length < 2) {
-                event.preventDefault();
-                showToast('Fehler', 'Der Suchbegriff muss mindestens 2 Zeichen enthalten.', 'error');
-                return false;
-            }
-            
-        } else if (tabId === 'advanced-search-tab') {
-            searchModeField.value = 'advanced';
-
-            // Validate advanced search - either a query OR selected persons is required
-            const advancedQuery = document.getElementById('advancedSearchQuery').value.trim();
-            const advancedSelectedPersonIds = document.getElementById('advancedSelectedPersonIds').value;
-
-            if (!advancedQuery && !advancedSelectedPersonIds) {
-                event.preventDefault();
-                showToast('Fehler', 'Bitte geben Sie einen Suchbegriff ein oder wählen Sie mindestens eine Person aus.', 'error');
-                return false;
-            }
-            
-            // Überprüfe, ob der Suchbegriff (falls vorhanden) mindestens 2 Zeichen enthält
-            if (advancedQuery && advancedQuery.length < 2) {
-                event.preventDefault();
-                showToast('Fehler', 'Der Suchbegriff muss mindestens 2 Zeichen enthalten.', 'error');
-                return false;
-            }
-            
-        } else if (tabId === 'person-search-tab') {
-            searchModeField.value = 'person';
-
-            // Validate person search
-            const selectedPersonIds = document.getElementById('selectedPersonIds').value;
-            if (!selectedPersonIds) {
-                event.preventDefault();
-                showToast('Fehler', 'Bitte wählen Sie mindestens eine Person aus.', 'error');
-                return false;
-            }
-        }
-    }
-
-    // Set loading state based on active tab
-    const buttonMap = {
-        'simple-search-tab': 'simpleSearchButton',
-        'advanced-search-tab': 'advancedSearchSubmitButton',
-        'person-search-tab': 'personSearchSubmitButton'
-    };
-    setLoadingState(true, buttonMap[activeTab.id]);
-
-    // Let the form submit normally
-    return true;
-}
-
-// Save a search query
-function saveSearchQuery() {
-    const queryName = document.getElementById('queryName').value;
-
-    // Determine which search mode is active
-    const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
-    if (!activeTab) {
-        showToast('Fehler', 'Keine aktive Suchansicht gefunden.', 'error');
-        return;
-    }
-
-    let searchQuery, database, additionalTerms, startDate, endDate, personName;
-
-    // Get values based on active tab
-    if (activeTab.id === 'simple-search-tab') {
-        searchQuery = document.getElementById('simpleSearchQuery').value;
-        database = document.getElementById('simpleDatabase').value;
-        additionalTerms = '';
-        startDate = '';
-        endDate = '';
-        personName = '';
-    } else if (activeTab.id === 'advanced-search-tab') {
-        searchQuery = document.getElementById('advancedSearchQuery').value;
-        database = document.getElementById('advancedDatabaseSelect').value;
-        additionalTerms = document.getElementById('advancedAdditionalTerms').value;
-        startDate = document.getElementById('advancedStartDate').value;
-        endDate = document.getElementById('advancedEndDate').value;
-        personName = document.getElementById('advancedSelectedPersonIds').value;
-    } else if (activeTab.id === 'person-search-tab') {
-        // For person search, combine selected person names into query
-        searchQuery = '';  // Will be built from selected persons on the server
-        database = document.getElementById('personDatabase').value;
-        additionalTerms = document.getElementById('personAdditionalTerms').value;
-        startDate = document.getElementById('personStartDate').value;
-        endDate = document.getElementById('personEndDate').value;
-        personName = document.getElementById('selectedPersonIds').value;
-    }
-
-    // Validate input
-    if (!queryName) {
-        showToast('Fehler', 'Bitte geben Sie einen Namen für diese Suche ein.', 'error');
-        return;
-    }
-
-    // Create request data
-    const data = {
-        query_name: queryName,
-        search_query: searchQuery,
-        database: database,
-        additional_terms: additionalTerms,
-        start_date: startDate,
-        end_date: endDate,
-        person_name: personName,
-        search_mode: document.getElementById('searchMode').value
-    };
-
-    // Send the request
-    fetch('/api/save_query', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show success message
-                showToast('Erfolg', 'Suche erfolgreich gespeichert.', 'success');
-
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('saveQueryModal'));
-                if (modal) {
-                    modal.hide();
-                }
-
-                // Reload the page to show the new query
-                window.location.reload();
-            } else {
-                showToast('Fehler', data.message || 'Fehler beim Speichern der Suche.', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error saving query:', error);
-            showToast('Fehler', 'Fehler beim Speichern der Suche. Siehe Konsole für Details.', 'error');
-        });
-}
-
-// Delete a saved query
-function deleteQuery(queryId) {
-    if (confirm('Sind Sie sicher, dass Sie diese Suche löschen möchten?')) {
-        fetch(`/api/delete_query/${queryId}`, {
-            method: 'DELETE'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('Erfolg', 'Suche erfolgreich gelöscht.', 'success');
-
-                    // Reload the page to update the list
-                    window.location.reload();
-                } else {
-                    showToast('Fehler', data.message || 'Fehler beim Löschen der Suche.', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting query:', error);
-                showToast('Fehler', 'Fehler beim Löschen der Suche. Siehe Konsole für Details.', 'error');
-            });
-    }
-}
-
-// Load a saved query into the search form
-function loadQuery(query) {
-    // Determine which tab to activate based on search mode
-    let tabId;
-    if (query.search_mode === 'simple') {
-        tabId = 'simple-search-tab';
-    } else if (query.search_mode === 'advanced') {
-        tabId = 'advanced-search-tab';
-    } else if (query.search_mode === 'person') {
-        tabId = 'person-search-tab';
-    } else {
-        // Default to simple search if mode is not recognized
-        tabId = 'simple-search-tab';
-    }
-
-    // Activate the appropriate tab
-    const tab = document.getElementById(tabId);
-    if (tab) {
-        const tabInstance = new bootstrap.Tab(tab);
-        tabInstance.show();
-    }
-
-    // Fill in the form fields based on search mode
-    if (query.search_mode === 'simple') {
-        if (document.getElementById('simpleSearchQuery')) {
-            document.getElementById('simpleSearchQuery').value = query.query || '';
-        }
-        if (document.getElementById('simpleDatabase')) {
-            document.getElementById('simpleDatabase').value = query.database || '';
-        }
-    } else if (query.search_mode === 'advanced') {
-        if (document.getElementById('advancedSearchQuery')) {
-            document.getElementById('advancedSearchQuery').value = query.query || '';
-        }
-        if (document.getElementById('advancedDatabaseSelect')) {
-            document.getElementById('advancedDatabaseSelect').value = query.database || '';
-        }
-        if (document.getElementById('advancedAdditionalTerms')) {
-            document.getElementById('advancedAdditionalTerms').value = query.additional_terms || '';
-        }
-        if (document.getElementById('advancedStartDate')) {
-            document.getElementById('advancedStartDate').value = query.start_date || '';
-        }
-        if (document.getElementById('advancedEndDate')) {
-            document.getElementById('advancedEndDate').value = query.end_date || '';
-        }
-
-        // Handle selected persons for advanced search
-        if (query.person_name) {
-            try {
-                document.getElementById('advancedSelectedPersonIds').value = query.person_name;
-
-                // Try to load the person names and display them as tags
-                updateAdvancedSelectedPersonsDisplay();
-
-                // Update database-specific filters
-                updateDatabaseSpecificFilters();
-            } catch (e) {
-                console.error('Error loading advanced person list:', e);
-            }
-        }
-    } else if (query.search_mode === 'person') {
-        if (document.getElementById('personDatabase')) {
-            document.getElementById('personDatabase').value = query.database || '';
-        }
-        if (document.getElementById('personAdditionalTerms')) {
-            document.getElementById('personAdditionalTerms').value = query.additional_terms || '';
-        }
-        if (document.getElementById('personStartDate')) {
-            document.getElementById('personStartDate').value = query.start_date || '';
-        }
-        if (document.getElementById('personEndDate')) {
-            document.getElementById('personEndDate').value = query.end_date || '';
-        }
-
-        // Handle selected persons
-        if (query.person_name) {
-            const personIds = query.person_name.split(',');
-            document.getElementById('selectedPersonIds').value = query.person_name;
-
-            // Try to load the person names and display them as tags
-            updateSelectedPersonsDisplay();
-        }
-    }
-
-    // Update the search mode hidden field
-    document.getElementById('searchMode').value = query.search_mode || 'simple';
-
-    // Show a toast
-    showToast('Suche geladen', 'Die gespeicherte Suche wurde geladen.', 'info');
-}
-
-// Show a toast notification
-function showToast(title, message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.querySelector('.toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-        toastContainer.style.zIndex = '1050';
-        document.body.appendChild(toastContainer);
-    }
-
-    // Create the toast element
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type}`;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-
-    // Create the toast content
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <strong>${title}</strong>: ${message}
-            </div>
-            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-
-    // Add the toast to the container
-    toastContainer.appendChild(toast);
-
-    // Initialize and show the toast
-    const bsToast = new bootstrap.Toast(toast, {
-        autohide: true,
-        delay: 5000
-    });
-    bsToast.show();
-
-    // Remove the toast when hidden
-    toast.addEventListener('hidden.bs.toast', function() {
-        toast.remove();
-    });
-}
-
-// Add a new person
-function addPerson() {
-    const name = document.getElementById('personName').value;
-    const firstName = document.getElementById('personFirstName').value;
-    const lastName = document.getElementById('personLastName').value;
-
-    // Validate input
-    if (!name || !firstName || !lastName) {
-        showToast('Fehler', 'Alle Felder sind erforderlich.', 'error');
-        return;
-    }
-
-    // Create form data
-    const formData = new FormData();
-    formData.append('action', 'add');
-    formData.append('name', name);
-    formData.append('first_name', firstName);
-    formData.append('last_name', lastName);
-
-    // Send the request
-    fetch('/api/manage_persons', {
-        method: 'POST',
-        body: formData
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Show success message
-                showToast('Erfolg', 'Person erfolgreich hinzugefügt.', 'success');
-
-                // Add the new person to the allPersons array
-                if (data.person) {
-                    allPersons.push(data.person);
-                }
-
-                // Close the modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('addPersonModal'));
-                if (modal) {
-                    modal.hide();
-                }
-
-                // Reload the page to show the new person
-                window.location.reload();
-            } else {
-                showToast('Fehler', data.message || 'Fehler beim Hinzufügen der Person.', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error adding person:', error);
-            showToast('Fehler', 'Fehler beim Hinzufügen der Person. Siehe Konsole für Details.', 'error');
-        });
-}
-
-
-// Handle database selection UI
-function initializeDatabaseSelection() {
-    // Get all database checkboxes
-    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
-    
-    // Add click event to each checkbox's label
-    databaseCheckboxes.forEach(checkbox => {
-        const label = document.querySelector(`label[for="${checkbox.id}"]`);
-        
-        if (label) {
-            // Update styling when checkbox is clicked
-            checkbox.addEventListener('change', function() {
-                if (this.checked) {
-                    label.classList.add('active');
-                    // Update icon
-                    const iconContainer = label.querySelector('.database-icon');
-                    if (iconContainer) {
-                        iconContainer.classList.add('bg-primary', 'text-white');
-                        iconContainer.classList.remove('border-2');
-                        iconContainer.innerHTML = '<i class="fas fa-check"></i>';
-                    }
-                } else {
-                    label.classList.remove('active');
-                    // Reset icon
-                    const iconContainer = label.querySelector('.database-icon');
-                    if (iconContainer) {
-                        iconContainer.classList.remove('bg-primary', 'text-white');
-                        iconContainer.classList.add('border-2');
-                        iconContainer.innerHTML = '<i class="fas fa-database text-secondary"></i>';
-                    }
-                }
-            });
-            
-            // Ensure initial state is correct
-            if (checkbox.checked) {
-                label.classList.add('active');
-                const iconContainer = label.querySelector('.database-icon');
-                if (iconContainer) {
-                    iconContainer.classList.add('bg-primary', 'text-white');
-                    iconContainer.classList.remove('border-2');
-                }
-            }
-        }
-    });
-}
-
-// Funktionen für die verbesserte Schnellsuche
-function initializeQuickSearch() {
-    // Funktion zum Löschen des Suchfelds
-    const clearSearchButton = document.getElementById('clearSearchButton');
-    const searchInput = document.getElementById('simpleSearchQuery');
-    
-    if (clearSearchButton && searchInput) {
-        clearSearchButton.addEventListener('click', function() {
-            searchInput.value = '';
-            searchInput.focus();
-        });
-        
-        // Das X nur anzeigen, wenn Text im Feld ist
-        searchInput.addEventListener('input', function() {
-            clearSearchButton.style.display = this.value.trim() !== '' ? 'block' : 'none';
-        });
-        
-        // Initial Zustand setzen
-        clearSearchButton.style.display = searchInput.value.trim() !== '' ? 'block' : 'none';
-    }
-    
-    // "Alle Datenbanken auswählen"-Button
-    const selectAllDatabasesButton = document.getElementById('selectAllDatabases');
-    if (selectAllDatabasesButton) {
-        selectAllDatabasesButton.addEventListener('click', function() {
-            // Alle Datenbank-Checkboxen finden und aktivieren
-            const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
-            let allChecked = true;
-            
-            // Prüfen, ob alle bereits ausgewählt sind
-            databaseCheckboxes.forEach(checkbox => {
-                if (!checkbox.checked) {
-                    allChecked = false;
-                }
-            });
-            
-            // Wenn alle ausgewählt sind, alle abwählen, sonst alle auswählen
-            databaseCheckboxes.forEach(checkbox => {
-                checkbox.checked = !allChecked;
-                
-                // Auch das Datenbankicon-Styling aktualisieren
-                const dbIcon = checkbox.closest('.card').querySelector('.database-icon');
-                if (dbIcon) {
-                    if (!allChecked) {
-                        dbIcon.classList.remove('bg-light', 'text-dark', 'border');
-                        dbIcon.classList.add('bg-primary', 'text-white');
-                    } else {
-                        dbIcon.classList.remove('bg-primary', 'text-white');
-                        dbIcon.classList.add('bg-light', 'text-dark', 'border');
-                    }
-                }
-            });
-            
-            // Button-Text aktualisieren
-            this.innerHTML = allChecked ? 
-                '<i class="fas fa-check-double me-1"></i>Alle auswählen' : 
-                '<i class="fas fa-times-circle me-1"></i>Alle abwählen';
-        });
-    }
-    
-}
-
-// Funktion zur Initialisierung der Datenbank-Checkboxen
-function initializeDatabaseCheckboxes() {
-    // Hinzufügen von Event-Listenern zu allen Datenbank-Checkboxen
-    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
-    databaseCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            // Styling der Datenbank-Icons aktualisieren
-            const dbIcon = this.closest('.card').querySelector('.database-icon');
-            if (dbIcon) {
-                if (this.checked) {
-                    dbIcon.classList.remove('bg-light', 'text-dark', 'border');
-                    dbIcon.classList.add('bg-primary', 'text-white');
-                } else {
-                    dbIcon.classList.remove('bg-primary', 'text-white');
-                    dbIcon.classList.add('bg-light', 'text-dark', 'border');
-                }
-            }
-        });
-    });
+    return null;
 }
 
 // Initialize search functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // Debug persons data - schützen, falls allPersons noch nicht definiert ist
-    console.log('Loaded persons:', allPersons || []);
-
-    try {
-        // Initialize quick search
-        initializeQuickSearch();
-        
-        // Initialize person search fields
-        initializePersonSearch();
-        
-        // Initialize event listeners for the saved queries tab
-        initializeSavedQueriesTab();
-        
-        // Initialize database selection UI
-        initializeDatabaseSelection();
-        
-        // Initialisiere die Datenbank-Checkboxen
-        initializeDatabaseCheckboxes();
-        
-        // Tooltips initialisieren
-        try {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        } catch (tooltipError) {
-            console.warn('Could not initialize tooltips:', tooltipError);
-        }
-        
-        // Attach form submission handler
-        const searchForm = document.getElementById('searchForm');
-        if (searchForm) {
-            searchForm.addEventListener('submit', handleSearchSubmit);
-            console.log('Successfully attached search form submit handler');
-            
-            // Focus auf das Suchfeld setzen
-            const searchInput = document.getElementById('simpleSearchQuery');
-            if (searchInput) {
-                setTimeout(() => {
-                    searchInput.focus();
-                }, 200);
-            }
-        } else {
-            console.warn('Search form element not found');
-        }
-    } catch (error) {
-        console.error('Error initializing search functionality:', error);
-    }
-});
-
-// Initialize event listeners for saved queries tab
-function initializeSavedQueriesTab() {
-    // Add event listeners to Load buttons
-    document.querySelectorAll('.load-query').forEach(button => {
-        button.addEventListener('click', function() {
-            const queryId = this.getAttribute('data-query-id');
-            
-            // Fetch the query details and load it
-            fetch(`/api/query/${queryId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        loadQuery(data.query);
-                    } else {
-                        showToast('Fehler', data.message || 'Fehler beim Laden der Suchanfrage', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading query:', error);
-                    showToast('Fehler', 'Technischer Fehler beim Laden der Suchanfrage', 'error');
-                });
-        });
+    console.log('DOMContentLoaded - initializing search functionality');
+    
+    // Initialize CSRF token handling first
+    const initialToken = syncCsrfToken();
+    console.log('Initial CSRF token: ' + (initialToken ? 'found' : 'missing'));
+    
+    // Set up an interval to periodically check and refresh the CSRF token
+    const tokenInterval = setInterval(function() {
+        const refreshedToken = syncCsrfToken();
+        console.log('CSRF token refresh: ' + (refreshedToken ? 'synchronized' : 'failed'));
+    }, 30000); // Check every 30 seconds
+    
+    // Ensure CSRF token is synced right before any forms are submitted
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            // Synchronize right before submission
+            const lastToken = syncCsrfToken();
+            console.log('CSRF token check before submission: ' + (lastToken ? 'valid' : 'missing'));
+        }, true); // Use capturing phase to run before other handlers
     });
     
-    // Add event listeners to Delete buttons
-    document.querySelectorAll('.delete-query').forEach(button => {
-        button.addEventListener('click', function() {
-            const queryId = this.getAttribute('data-query-id');
-            deleteQuery(queryId);
-        });
-    });
-}
-
-function initializePersonSearch() {
-    // Advanced search person field
-    const advancedPersonField = document.getElementById('advancedPersonSearchInput'); //Corrected ID
-    if (advancedPersonField) {
-        advancedPersonField.addEventListener('input', debounce(handleAdvancedPersonSearch, 300));
-    }
-
-    // Person search field
-    const personField = document.getElementById('personSearchInput'); //Corrected ID
-    if (personField) {
-        personField.addEventListener('input', debounce(handlePersonSearch, 300));
-    }
-
-    // Initialize person suggestions container
-    const suggestionsContainer = document.createElement('div');
-    suggestionsContainer.className = 'person-suggestions';
-    document.body.appendChild(suggestionsContainer);
-}
-
-function handleAdvancedPersonSearch(event) {
-    const input = event.target;
-    const query = input.value.toLowerCase();
-    const suggestions = allPersons.filter(person =>
-        person.name.toLowerCase().includes(query) ||
-        person.first_name.toLowerCase().includes(query) ||
-        person.last_name.toLowerCase().includes(query)
-    );
-
-    showPersonSuggestions(suggestions, input);
-}
-
-function handlePersonSearch(event) {
-    const input = event.target;
-    const query = input.value.toLowerCase();
-    const suggestions = allPersons.filter(person =>
-        person.name.toLowerCase().includes(query) ||
-        person.first_name.toLowerCase().includes(query) ||
-        person.last_name.toLowerCase().includes(query)
-    );
-
-    showPersonSuggestions(suggestions, input);
-}
-
-function showPersonSuggestions(suggestions, inputElement) {
-    const container = document.querySelector('.person-suggestions');
-    const rect = inputElement.getBoundingClientRect();
-
-    // Position suggestions below input
-    container.style.position = 'absolute';
-    container.style.top = `${rect.bottom + window.scrollY}px`;
-    container.style.left = `${rect.left + window.scrollX}px`;
-    container.style.width = `${rect.width}px`;
-
-    // Clear previous suggestions
-    container.innerHTML = '';
-
-    if (suggestions.length === 0) {
-        container.innerHTML = '<div class="suggestion-item no-results">Keine Personen gefunden</div>';
-        container.style.display = 'block';
-        return;
-    }
-
-    // Create suggestion elements
-    suggestions.forEach(person => {
-        const div = document.createElement('div');
-        div.className = 'suggestion-item';
-        div.textContent = person.name;  // Use the full display name instead
-        div.addEventListener('click', () => {
-            selectPerson(person, inputElement);
-            container.style.display = 'none';
-        });
-        container.appendChild(div);
-    });
-
-    container.style.display = 'block';
-}
-
-function selectPerson(person, inputElement) {
-    inputElement.value = person.name;  // Use the full display name
-    selectedPersons.add(person.id);
-
-    // Update hidden field if it exists
-    const hiddenField = document.getElementById('selectedPersonIds'); //Corrected ID
-    if (hiddenField) {
-        hiddenField.value = Array.from(selectedPersons).join(',');
-    }
-}
-
-// Utility function to debounce input handling
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-}
-
-// Close suggestions when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.person-suggestions') && !e.target.closest('input')) {
-        const container = document.querySelector('.person-suggestions');
-        if (container) {
-            container.style.display = 'none';
-        }
-    }
+    // Then initialize the search form
+    initializeSearchForm();
+    initializePersonsData();
+    
+    console.log('Search functionality initialization complete');
 });
 
-// Load all persons
-function loadAllPersons() {
-    // This function now assumes that the persons are already loaded in the HTML
-    allPersons = [];
+// Initialize form handlers
+function initializeSearchForm() {
+    const searchForm = document.getElementById('searchForm');
+    if (!searchForm) return;
 
-    // Check if persons are available in the DOM
-    const personElements = document.querySelectorAll('#persons-list .list-group-item[data-id]');
-
-    if (personElements.length > 0) {
-        personElements.forEach(element => {
-            const id = element.dataset.id;
-            const name = element.dataset.name;
-            const firstName = element.dataset.firstName;
-            const lastName = element.dataset.lastName;
-
-            allPersons.push({
-                id: id,
-                name: name,
-                first_name: firstName,
-                last_name: lastName
-            });
+    const searchModeInput = document.getElementById('searchMode');
+    const searchModeTabs = document.getElementById('searchModeTabs');
+    
+    // Update search mode when tabs change
+    if (searchModeTabs) {
+        searchModeTabs.addEventListener('show.bs.tab', function(event) {
+            const activeTab = event.target.id;
+            switch(activeTab) {
+                case 'simple-search-tab':
+                    searchModeInput.value = 'simple';
+                    break;
+                case 'person-search-tab':
+                    searchModeInput.value = 'person';
+                    break;
+                case 'advanced-search-tab':
+                    searchModeInput.value = 'advanced';
+                    break;
+            }
         });
-    } else {
-        // Fall back to extracting from the person selection dropdown
-        const personSelect = document.getElementById('dbPersonSelect');
-        if (personSelect) {
-            const options = personSelect.querySelectorAll('option:not([value=""])');
-            options.forEach(option => {
-                if (option.dataset.id) {
-                    allPersons.push({
-                        id: option.dataset.id,
-                        name: option.textContent,
-                        first_name: option.dataset.firstName || '',
-                        last_name: option.dataset.lastName || ''
-                    });
-                }
-            });
+    }
+      // Handle form submission
+    searchForm.addEventListener('submit', function(event) {
+        console.log('Form submission started - validating');
+        
+        // First sync the CSRF token from cookie to form
+        const csrfToken = syncCsrfToken();
+        
+        // Verify CSRF token exists after synchronizing
+        if (!csrfToken) {
+            event.preventDefault();
+            console.error('Missing CSRF token even after sync attempt');
+            alert('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.');
+            return false;
+        } else {
+            console.log('CSRF token valid: ' + csrfToken.substring(0, 5) + '...');
         }
-    }
-
-    console.log('Loaded', allPersons.length, 'persons');
-}
-
-// Handle search mode tab changes
-function handleSearchModeChange(event) {
-    // Update the search mode hidden field
-    const searchModeField = document.getElementById('searchMode');
-    if (!searchModeField) return;
-
-    // Get the target tab ID
-    const tabId = event.target.id;
-
-    // Update the search mode
-    if (tabId === 'simple-search-tab') {
-        searchModeField.value = 'simple';
-    } else if (tabId === 'advanced-search-tab') {
-        searchModeField.value = 'advanced';
-        // Show/hide database-specific filters based on selected database
-        updateDatabaseSpecificFilters();
-    } else if (tabId === 'person-search-tab') {
-        searchModeField.value = 'person';
-    }
-}
-
-// Function to update database-specific filters based on selected database
-function updateDatabaseSpecificFilters() {
-    const selectedDatabase = document.getElementById('advancedDatabaseSelect').value;
-    const pubmedFilters = document.getElementById('pubmed-specific-filters');
-    const dnbFilters = document.getElementById('dnb-specific-filters');
-
-    if (selectedDatabase === 'PubMed') {
-        pubmedFilters.style.display = 'block';
-        dnbFilters.style.display = 'none';
-    } else if (selectedDatabase === 'DNB') {
-        pubmedFilters.style.display = 'none';
-        dnbFilters.style.display = 'block';
-    } else {
-        // Hide all database-specific filters for other databases
-        pubmedFilters.style.display = 'none';
-        dnbFilters.style.display = 'none';
-    }
-}
-
-// Initialize the search page - Combined with the main initialization above
-// Diese zweite DOMContentLoaded-Listener-Funktion wurde entfernt, da sie redundant ist
-// und möglicherweise zu Konflikten führt. Die Funktionalität wurde in den obigen
-// DOMContentLoaded-Listener integriert.
-
-// Funktionalität für die Suche-Tabs
-document.addEventListener('DOMContentLoaded', function() {
-    // Search mode tabs
-    const searchModeTabs = document.querySelectorAll('#searchModeTabs .nav-link');
-    searchModeTabs.forEach(tab => {
-        tab.addEventListener('shown.bs.tab', handleSearchModeChange);
-    });
-
-
-    // Person search button
-    const personSearchButton = document.getElementById('personSearchButton');
-    if (personSearchButton) {
-        personSearchButton.addEventListener('click', handlePersonSearch);
-    }
-
-    // Save query button
-    const saveQueryButton = document.getElementById('saveQueryButton');
-    if (saveQueryButton) {
-        saveQueryButton.addEventListener('click', saveSearchQuery);
-    }
-
-    // Add person button
-    const addPersonButton = document.getElementById('addPersonButton');
-    if (addPersonButton) {
-        addPersonButton.addEventListener('click', addPerson);
-    }
-
-    // Add click event to person list items
-    const personsList = document.getElementById('persons-list');
-    if (personsList) {
-        const personItems = personsList.querySelectorAll('.list-group-item');
-        personItems.forEach(item => {
-            item.addEventListener('click', function(e) {
-                e.preventDefault();
-                const personId = this.dataset.id;
-                const personName = this.dataset.name;
-                const personFirstName = this.dataset.firstName;
-                const personLastName = this.dataset.lastName;
-
-                if (personId) {
-                    selectPerson({
-                        id: personId,
-                        name: personName,
-                        first_name: personFirstName,
-                        last_name: personLastName
-                    }, document.getElementById('personSearchInput')); //Added for new selectPerson
+        
+        // Get active tab to determine which search mode is active
+        const activeTab = document.querySelector('#searchModeTabs .nav-link.active');
+        if (!activeTab) {
+            console.warn('No active tab found');
+        } else {
+            const tabId = activeTab.id;
+            console.log('Active tab: ' + tabId);
+            
+            if (tabId === 'simple-search-tab') {
+                // Check simple search fields
+                const simpleQuery = document.querySelector('#simple-search input[name="simple_query_content"]');
+                if (simpleQuery && !simpleQuery.value.trim()) {
+                    event.preventDefault();
+                    alert('Bitte geben Sie einen Suchbegriff ein.');
+                    return false;
                 }
-            });
-        });
-    }
-
-
-    // Database selection change in advanced mode
-    const advancedDatabaseSelect = document.getElementById('advancedDatabaseSelect');
-    if (advancedDatabaseSelect) {
-        advancedDatabaseSelect.addEventListener('change', updateDatabaseSpecificFilters);
-        // Initialize filter visibility on page load
-        updateDatabaseSpecificFilters();
-    }
-
-    // Initialize person selectors
-    updateSelectedPersonsDisplay();
-    updateAdvancedSelectedPersonsDisplay(); // Added to initialize advanced search display
-
-    // Enable tooltips
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-});
-
-// Update the display of selected persons
-function updateSelectedPersonsDisplay() {
-    const selectedPersonIds = document.getElementById('selectedPersonIds');
-    const selectedPersonsContainer = document.getElementById('selectedPersonsContainer');
-    const noPersonsSelectedAlert = document.getElementById('noPersonsSelectedAlert');
-
-    if (!selectedPersonIds || !selectedPersonsContainer) return;
-
-    // Get current selected IDs
-    let currentIds = [];
-    try {
-        // Try to parse as JSON first
-        currentIds = JSON.parse(selectedPersonIds.value || '[]');
-    } catch (e) {
-        // Fallback to comma-separated for backward compatibility
-        currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',') : [];
-    }
-
-    // Clear the container except for the alert
-    const tags = selectedPersonsContainer.querySelectorAll('.badge');
-    tags.forEach(tag => tag.remove());
-
-    // Show or hide the "no persons" alert
-    if (noPersonsSelectedAlert) {
-        noPersonsSelectedAlert.style.display = currentIds.length > 0 ? 'none' : 'block';
-    }
-
-    // Add tags for each selected person
-    currentIds.forEach(id => {
-        const person = allPersons.find(p => p.id == id); // Use loose equality for type comparison
-        if (person) {
-            const tag = document.createElement('span');
-            tag.className = 'badge bg-primary me-2 mb-2';
-            tag.innerHTML = `
-                ${person.name}
-                <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove" 
-                    data-id="${person.id}" style="font-size: 0.5rem;"></button>
-            `;
-
-            // Add event listener to remove button
-            tag.querySelector('.btn-close').addEventListener('click', function() {
-                removePerson(this.dataset.id);
-            });
-
-            // Insert the tag before the alert
-            if (noPersonsSelectedAlert) {
-                selectedPersonsContainer.insertBefore(tag, noPersonsSelectedAlert);
-            } else {
-                selectedPersonsContainer.appendChild(tag);
             }
         }
-    });
-}
-
-// Remove a person from the selected list
-function removePerson(personId) {
-    // Get the hidden input for selected person IDs
-    const selectedPersonIds = document.getElementById('selectedPersonIds');
-
-    if (!selectedPersonIds) return;
-
-    // Get current selected IDs
-    let currentIds = [];
-    try {
-        // Try to parse as JSON first
-        currentIds = JSON.parse(selectedPersonIds.value || '[]');
-    } catch (e) {
-        // Fallback to comma-separated for backward compatibility
-        currentIds = selectedPersonIds.value ? selectedPersonIds.value.split(',').map(id => parseInt(id)) : [];
-    }
-
-    // Remove the ID - convert to number for comparison to ensure type matching
-    const updatedIds = currentIds.filter(id => parseInt(id) !== parseInt(personId));
-
-    // Update with JSON format
-    selectedPersonIds.value = JSON.stringify(updatedIds);
-
-    // Update the display
-    updateSelectedPersonsDisplay();
-}
-
-
-// Handle selection of a person in advanced search mode
-function selectAdvancedPerson(person) {
-    // Add to selected persons list if not already there
-    const selectedPersons = getSelectedAdvancedPersons();
-
-    // Check if already selected
-    if (selectedPersons.find(p => p.id === person.id)) {
-        return; // Already selected
-    }
-
-    // Add to list
-    selectedPersons.push(person);
-
-    // Update the hidden input
-    document.getElementById('advancedSelectedPersonIds').value = JSON.stringify(selectedPersons.map(p => p.id));
-
-    // Update display
-    updateAdvancedSelectedPersonsDisplay();
-}
-
-// Get list of currently selected persons in advanced search
-function getSelectedAdvancedPersons() {
-    const idsField = document.getElementById('advancedSelectedPersonIds');
-
-    if (idsField && idsField.value) {
-        try {
-            const ids = JSON.parse(idsField.value);
-            return ids.map(id => {
-                return allPersons.find(p => p.id == id); // Use loose equality to handle numeric/string IDs
-            }).filter(p => p); // Filter out any undefined entries
-        } catch (e) {
-            console.error('Error parsing selected person IDs:', e);
-            return [];
+        
+        // Validate database selection
+        const databases = Array.from(document.querySelectorAll('input[name="databases"]:checked'));
+        if (databases.length === 0) {
+            event.preventDefault();
+            alert('Bitte mindestens eine Datenbank auswählen.');
+            return false;
         }
-    }
-
-    return [];
-}
-
-// Update the display of selected persons in advanced search
-function updateAdvancedSelectedPersonsDisplay() {
-    const container = document.getElementById('advancedSelectedPersonsContainer');
-    const noPersonsAlert = document.getElementById('advancedNoPersonsSelectedAlert');
-
-    if (!container) return;
-
-    const selectedPersons = getSelectedAdvancedPersons();
-
-    // Clear existing tags (except the alert)
-    Array.from(container.children).forEach(child => {
-        if (child !== noPersonsAlert) {
-            container.removeChild(child);
+        console.log('Selected databases: ' + databases.map(db => db.value).join(', '));
+        
+        // Show loading indicator
+        const searchButton = document.querySelector('button[type="submit"]');
+        if (searchButton) {
+            searchButton.disabled = true;
+            searchButton.innerHTML = '<span class="spinner-border spinner-border-sm mr-2"></span> Suche läuft...';
+            console.log('Search button set to loading state');
         }
-    });
-
-    // Show/hide the "no persons" alert
-    if (noPersonsAlert) {
-        noPersonsAlert.style.display = selectedPersons.length ? 'none' : 'block';
-    }
-
-    // Add tags for each selected person
-    selectedPersons.forEach(person => {
-        const tag = document.createElement('div');
-        tag.className = 'badge bg-primary me-2 mb-2 p-2';
-        tag.innerHTML = `
-            ${person.name}
-            <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove" 
-                   data-id="${person.id}" style="font-size: 0.5rem;"></button>
-        `;
-
-        // Add event listener to remove button
-        tag.querySelector('.btn-close').addEventListener('click', function() {
-            removeAdvancedPerson(this.dataset.id);
-        });
-
-        container.appendChild(tag);
+        
+        // Double-check if the form has the CSRF token before submission
+        const formCsrfToken = document.querySelector('input[name="csrf_token"]');
+        if (!formCsrfToken || !formCsrfToken.value) {
+            event.preventDefault();
+            console.error('Form is missing CSRF token at final check');
+            alert('Formular fehlt das Sicherheitstoken. Bitte Seite neu laden.');
+            return false;
+        }
+        
+        console.log('Form validation passed - submitting form');
+        // Let the form submit naturally
+        return true;
     });
 }
 
-// Remove a person from the advanced search selection
-function removeAdvancedPerson(personId) {
-    let selectedPersons = getSelectedAdvancedPersons();
-
-    // Remove the person with matching ID
-    selectedPersons = selectedPersons.filter(p => p.id != personId); // Use loose equality
-
-    // Update the hidden input
-    document.getElementById('advancedSelectedPersonIds').value = JSON.stringify(selectedPersons.map(p => p.id));
-
-    // Update display
-    updateAdvancedSelectedPersonsDisplay();
+// Initialize persons data
+function initializePersonsData() {
+    if (window.allPersons && Array.isArray(window.allPersons)) {
+        allPersons = window.allPersons;
+        console.log('Persons data initialized:', allPersons.length + ' persons loaded');
+    }
 }

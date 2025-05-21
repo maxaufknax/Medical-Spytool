@@ -1,226 +1,151 @@
-# MedicalSpy - Scientific Publication Search Tool
+# MedicalSpy - Wissenschaftliches Publikations-Suchwerkzeug
 
-MedicalSpy is a comprehensive web application for searching, analyzing, and managing scientific medical publications. It provides an intuitive interface for querying multiple scientific databases, managing researcher profiles, visualizing results, and exporting data in various formats.
+MedicalSpy ist eine umfassende Webanwendung zur Suche, Analyse und Verwaltung wissenschaftlicher medizinischer Publikationen. Sie bietet eine intuitive Oberfläche für die Abfrage mehrerer wissenschaftlicher Datenbanken, die Verwaltung von Forscherprofilen, die Visualisierung von Ergebnissen und den Export von Daten in verschiedenen Formaten.
 
 ![MedicalSpy Logo](generated-icon.png)
 
 ## Status
 
-[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Docker Support](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
 
 ## Features
 
-- **Multi-Database Search**: Query PubMed and Deutsche Nationalbibliothek (DNB) with a unified interface
-- **Researcher Management**: Maintain profiles of researchers and their publications
-- **Advanced Search Options**: Filter by date range, language, publication type, and more
-- **Result Visualization**: Generate charts and graphs of publication data
-- **Data Export**: Export results to CSV, Excel, and other formats
-- **Saved Searches**: Save and reuse complex search queries
-- **Comprehensive Logging**: Track all activities and monitor system performance
+- **Multi-Datenbank-Suche**: Abfrage von PubMed und Deutsche Nationalbibliothek (DNB) mit einer einheitlichen Schnittstelle
+- **Forscherverwaltung**: Verwalten von Profilen von Forschern und deren Publikationen
+- **Erweiterte Suchoptionen**: Filtern nach Datumsbereich, Sprache, Publikationstyp und mehr
+- **Ergebnisvisualisierung**: Generieren von Diagrammen und Grafiken zu Publikationsdaten
+- **Datenexport**: Export der Ergebnisse in CSV, Excel und BibTeX Formate
+- **Gespeicherte Suchen**: Speichern und Wiederverwenden komplexer Suchabfragen
+- **Umfassende Protokollierung**: Nachverfolgung aller Aktivitäten und Überwachung der Systemleistung
 
-## Installation
+## Neu in dieser Version
 
-### Voraussetzungen
+- **Verbesserte Suchfunktionalität**: PubMed und DNB Konnektoren wurden stabilisiert und optimiert
+- **API-Schlüssel-Unterstützung**: Einfache Konfiguration von API-Schlüsseln über Umgebungsvariablen
+- **Besseres visuelles Feedback**: Ladeanimationen und Statusmeldungen bei Suchvorgängen
+- **Robuste Fehlerbehandlung**: Klare Fehlermeldungen und bessere Erholung von Fehlerzuständen
+- **Verbesserte Ergebnisdarstellung**: Karten- und Listenansicht mit Sortier- und Filterfunktionen
+- **Optimierte Exportfunktionen**: Verbesserte BibTeX-Generierung und flexiblere Spaltenauswahl
+- **CSRF-Schutz**: Erhöhte Sicherheit für alle Formulare der Anwendung
+- **Dark Mode**: Augenfreundliches Design für verschiedene Lichtverhältnisse
+- **Performance-Optimierungen**: Schnellere Suchgeschwindigkeit und kürzere Ladezeiten
 
-- Python 3.10 oder höher
-- PostgreSQL Datenbank
-- Systemabhängigkeiten für Matplotlib (siehe unten)
+## Schnellstart
 
-### Systemabhängigkeiten
+Das Projekt verwendet nun ein zentrales `manage.py` Skript für alle Setup- und Ausführungsaufgaben.
 
-Wenn Sie Linux verwenden, benötigen Sie möglicherweise diese Pakete für Matplotlib und PostgreSQL:
+### Windows
 
-```bash
-# Debian/Ubuntu
-sudo apt-get install libpq-dev python3-dev libfreetype6-dev pkg-config
-```
+1.  Stellen Sie sicher, dass Python 3.8+ installiert und im PATH verfügbar ist.
+2.  Öffnen Sie eine PowerShell oder Eingabeaufforderung im Projektverzeichnis.
+3.  **Setup (einmalig oder nach Updates):**
+    Führen Sie den folgenden Befehl aus, um die virtuelle Umgebung einzurichten, Abhängigkeiten zu installieren, die `.env`-Datei zu erstellen und die Datenbank zu initialisieren:
+    ```bash
+    python manage.py setup --full
+    ```
+    Für spezifische Setup-Schritte, siehe `python manage.py setup --help`.
+4.  **Anwendung starten:**
+    ```bash
+    python manage.py run --open-browser
+    ```
+    Dieser Befehl startet den Entwicklungsserver und öffnet die Anwendung in Ihrem Standardbrowser.
+    Für weitere Optionen (z.B. anderer Port, kein Browser-Start), siehe `python manage.py run --help`.
 
-### Einrichtung einer virtuellen Umgebung
+    Alternativ können Sie die vereinfachten Batch-Skripte verwenden:
+    *   `setup.cmd` (führt `python manage.py setup --full` aus)
+    *   `start.bat` (führt `python manage.py run --open-browser` aus)
+    *   `Start-MedicalSpytool.ps1` (PowerShell-Skript, das `manage.py` für Setup und Start verwendet)
 
-```bash
-# Virtuelle Umgebung erstellen
-python -m venv venv
+### Linux/MacOS
 
-# Virtuelle Umgebung aktivieren
-# Unter Windows:
-venv\Scripts\activate
-# Unter macOS/Linux:
-source venv/bin/activate
+1.  Stellen Sie sicher, dass Python 3.8+ (oder `python3`) installiert und im PATH verfügbar ist.
+2.  Öffnen Sie ein Terminal im Projektverzeichnis.
+3.  **Setup (einmalig oder nach Updates):**
+    Führen Sie den folgenden Befehl aus, um die virtuelle Umgebung einzurichten, Abhängigkeiten zu installieren, die `.env`-Datei zu erstellen und die Datenbank zu initialisieren:
+    ```bash
+    python3 manage.py setup --full 
+    # oder: python manage.py setup --full
+    ```
+    Für spezifische Setup-Schritte, siehe `python3 manage.py setup --help`.
+4.  **Anwendung starten:**
+    ```bash
+    python3 manage.py run --open-browser
+    # oder: python manage.py run --open-browser
+    ```
+    Dieser Befehl startet den Entwicklungsserver und öffnet die Anwendung in Ihrem Standardbrowser.
+    Für weitere Optionen (z.B. anderer Port, kein Browser-Start), siehe `python3 manage.py run --help`.
 
-# Abhängigkeiten installieren
-pip install -r project_requirements.txt
-```
+    Alternativ können Sie das vereinfachte Shell-Skript verwenden (stellen Sie sicher, dass es ausführbar ist: `chmod +x start.sh`):
+    *   `./start.sh` (führt `manage.py setup --full` und dann `manage.py run --open-browser` aus)
 
-### Detaillierte Anleitung für lokale Entwicklung in VS Code
+### Docker Installation
 
-Für eine umfassende Anleitung zur Einrichtung und Entwicklung mit Visual Studio Code, Tipps zur Fehlerbehebung und bewährte Praktiken, lesen Sie bitte die [Anleitung zur lokalen Entwicklung](LOCAL_DEVELOPMENT.md).
+1.  Stellen Sie sicher, dass Docker und Docker Compose installiert sind.
+2.  Öffnen Sie ein Terminal im Projektverzeichnis.
+3.  Erstellen und starten Sie die Container:
+    ```bash
+    docker-compose up -d
+    ```
+4.  Öffnen Sie Ihren Browser unter: http://localhost:5000 (oder dem in Ihrer Docker-Konfiguration festgelegten Port).
 
-### Environment Variables
+## System Requirements
 
-Create a `.env` file in the project root with the following variables:
+### Minimum Requirements
 
-```
-# Database Configuration
-DATABASE_URL=postgresql://username:password@localhost:5432/medicalspy
+- Python 3.8 oder höher
+- 2GB RAM
+- 1GB free disk space
+- Internet connection for database queries
 
-# Session Secret - Change this to a random string in production!
-SESSION_SECRET=your_secure_session_key_here
+### Optional
 
-# API Keys
-PUBMED_API_KEY=your_pubmed_api_key
+- PostgreSQL database (SQLite is used by default, konfiguriert durch `manage.py`)
+- PubMed API key for higher rate limits (kann in der `.env`-Datei gesetzt werden)
 
-# Logging Configuration
-LOG_LEVEL=INFO
+## Configuration
 
-# Application Settings
-OUTPUT_PATH=./output
-PERSON_LIST_PATH=./person_lists
-DEFAULT_DATABASE=PubMed
-```
+Die Anwendung wird primär über eine `.env`-Datei im Projekt-Root-Verzeichnis konfiguriert. Diese Datei wird automatisch vom `manage.py setup --env` Befehl mit Standardwerten erstellt.
 
-## Running the Application
+### Wichtige Konfigurationsoptionen (`.env` Datei)
 
-### For Development
+| Variable         | Beschreibung                                     | Standard (von `manage.py` gesetzt) |
+|------------------|--------------------------------------------------|------------------------------------|
+| `DATABASE_URL`   | Datenbank-Verbindungsstring                      | `sqlite:///instance/medicalspy.db` |
+| `FLASK_APP`      | Flask Applikationseinstiegspunkt                 | `backend.app:create_app()`         |
+| `FLASK_ENV`      | Flask Umgebung (development, production)         | `development`                      |
+| `SECRET_KEY`     | Geheimer Schlüssel für Session-Verschlüsselung   | (generierter Zufallswert)          |
+| `LOG_LEVEL`      | Logging-Level (DEBUG, INFO, WARNING, ERROR)    | `INFO`                             |
+| `PUBMED_API_KEY` | API-Schlüssel für PubMed (optional)              | `your_pubmed_api_key_here`         |
+| `DNB_API_KEY`    | API-Schlüssel für DNB (optional)                 | `your_dnb_api_key_here`            |
 
-```bash
-# Run with default settings
-python run.py
 
-# Run with custom port and host
-python run.py --port 8080 --host 127.0.0.1
+## Nutzung
 
-# Run with debug logging
-python run.py --log-level DEBUG
+### Einfache Suche
 
-# Check configuration without starting the server
-python run.py --check-only
-```
+1. Navigieren Sie zur Suchseite über das Hauptmenü
+2. Geben Sie Suchbegriffe ein
+3. Wählen Sie Datenbanken aus (PubMed, DNB, oder beide)
+4. Klicken Sie auf "Suchen"
 
-### Running Tests
+### Erweiterte Suche
 
-The application includes a test suite that can be run with:
+- Klicken Sie auf "Erweiterte Suche" für komplexe Abfragen
+- Filtern nach Zeitraum, Publikationstyp und mehr
+- Verwenden Sie Autor:in-basierte Suche für gezielte Resultate
 
-```bash
-# Run all tests
-python run_tests.py
+### Ergebnisse exportieren
 
-# Run with increased verbosity
-python run_tests.py -v
-python run_tests.py -vv
+1. Führen Sie eine Suche durch
+2. Auf der Ergebnisseite finden Sie Export-Optionen oben rechts
+3. Wählen Sie das gewünschte Format (CSV, Excel, BibTeX)
+4. Wählen Sie die zu exportierenden Spalten im Dialog
+5. Klicken Sie auf "Exportieren" um die Datei herunterzuladen
 
-# Run specific test file
-python run_tests.py --test-path tests/test_config.py
+### Ergebnisse filtern und sortieren
 
-# Run specific test directory
-python run_tests.py --test-path tests/
-```
-
-### For Production
-
-We recommend using Gunicorn as a WSGI server:
-
-```bash
-gunicorn --bind 0.0.0.0:5000 main:app
-```
-
-For a more robust setup, consider using a reverse proxy like Nginx in front of Gunicorn.
-
-### Using Docker
-
-The application includes Docker and Docker Compose configurations for easy deployment:
-
-```bash
-# Build and start with Docker Compose
-docker-compose up --build
-
-# Run in detached mode
-docker-compose up -d
-
-# Stop containers
-docker-compose down
-
-# To retain database data between runs
-docker-compose down
-docker-compose up
-```
-
-### Database Management
-
-The application includes database management tools:
-
-```bash
-# Check database connection
-python db_tools.py --check
-
-# Initialize database tables
-python db_tools.py --init
-
-# Reset database (drop and recreate all tables)
-python db_tools.py --reset
-
-# Add a sample person for testing
-python db_tools.py --add-sample
-```
-
-## Database Schema
-
-MedicalSpy uses SQLAlchemy with a PostgreSQL database. The main models are:
-
-- **SearchQuery**: Stores saved search queries
-- **SearchResult**: Stores results from search queries
-- **Person**: Manages researcher profiles
-- **Setting**: Stores application settings
-- **LogEntry**: Tracks application logging
-
-## API Connectors
-
-The application includes connectors for different scientific databases:
-
-- **PubMedConnector**: Connects to the PubMed E-utilities API
-- **DNBConnector**: Connects to the Deutsche Nationalbibliothek SRU API
-
-## Project Structure
-
-```
-medicalspy/
-│
-├── backend/           # Backend application code
-│   ├── app.py         # Flask application setup
-│   ├── models.py      # Database models
-│   ├── connectors.py  # API connectors for databases
-│   ├── search.py      # Search functionality
-│   ├── utils.py       # Utility functions
-│   ├── config.py      # Configuration management
-│   ├── static/        # Static files (CSS, JS, images)
-│   └── templates/     # HTML templates
-│
-├── logs/              # Application logs
-├── output/            # Default directory for exported data
-├── person_lists/      # Default directory for person lists
-│
-├── main.py            # Entry point for WSGI servers
-├── run.py             # Development server with additional settings
-├── .env               # Environment variables (not in version control)
-├── .env.example       # Example environment variables
-├── project_requirements.txt  # Python dependencies
-└── README.md          # Project documentation
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature/my-new-feature`
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- PubMed API from the National Center for Biotechnology Information (NCBI)
-- Deutsche Nationalbibliothek (DNB) SRU Interface
+- Verwenden Sie das Filterfeld auf der Ergebnisseite, um Ergebnisse zu filtern
+- Klicken Sie auf Spaltenüberschriften in der Listenansicht zum Sortieren
+- Wechseln Sie zwischen Listen- und Kartenansicht mit den entsprechenden Buttons

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}MedicalSpy - Benutzerprofil{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px; font-size: 3rem;">
+                            {{ current_user.username[0].upper() }}
+                        </div>
+                    </div>
+                    <h5 class="mb-1">{{ current_user.first_name }} {{ current_user.last_name }}</h5>
+                    <p class="text-muted mb-3">@{{ current_user.username }}</p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-1"></i> Profil bearbeiten
+                        </a>
+                    </div>
+                </div>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-envelope me-2"></i> E-Mail</span>
+                        <span>{{ current_user.email }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-id-badge me-2"></i> Benutzerrolle</span>
+                        <span>{{ 'Administrator' if current_user.is_admin else 'Benutzer' }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-calendar-alt me-2"></i> Registriert seit</span>
+                        <span>{{ current_user.created_at.strftime('%d.%m.%Y') }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-clock me-2"></i> Letzte Anmeldung</span>
+                        <span>{{ current_user.last_login.strftime('%d.%m.%Y %H:%M') }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Aktivitäten</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> In zukünftigen Versionen werden hier Ihre persönlichen Aktivitäten und Statistiken angezeigt.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-save me-2"></i>Gespeicherte Suchen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> In zukünftigen Versionen werden hier Ihre persönlichen gespeicherten Suchen angezeigt.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

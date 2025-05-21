@@ -1,0 +1,148 @@
+/* 
+ * Keyboard navigation styles for Medical Spytool
+ * Enhanced accessibility styles for keyboard users
+ * Updated: May 15, 2025 - Added enhanced focus styles and color contrast for better accessibility
+ */
+
+/* Skip navigation link - hidden until focused */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    background: var(--primary-color);
+    color: #fff;
+    padding: 10px 15px;
+    z-index: 1050;
+    transition: top 0.3s;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0;
+    outline: 3px solid var(--accent-color);
+}
+
+/* Enhanced focus styles for keyboard navigation */
+body.keyboard-navigation :focus {
+    outline: 3px solid var(--accent-color) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.4) !important;
+}
+
+/* Don't show enhanced focus styles on buttons during mouse navigation */
+button:focus:not(:focus-visible) {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Interactive elements should have visible focus state */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[role="button"]:focus,
+[tabindex]:not([tabindex="-1"]):focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Make search results tabbable and show focus */
+.search-result:focus {
+    outline: 2px solid var(--accent-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* Navigation tabs keyboard navigation enhancement */
+.nav-tabs .nav-link:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 -2px 0 var(--accent-color);
+}
+
+/* Modal content focus improvements */
+.modal-content:focus {
+    outline: none;
+}
+
+/* Custom focus indicators for dark mode */
+[data-bs-theme="dark"] body.keyboard-navigation :focus {
+    outline-color: #5dade2 !important;
+    box-shadow: 0 0 0 3px rgba(93, 173, 226, 0.6) !important;
+}
+
+[data-bs-theme="dark"] .search-result:focus {
+    outline-color: #5dade2;
+    background-color: rgba(93, 173, 226, 0.2);
+}
+
+/* Make keyboard focus visible for table rows */
+tr:focus {
+    outline: 2px solid var(--accent-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+/* Keyboard shortcuts dialog styling */
+#keyboard-shortcuts-help .modal-dialog {
+    max-width: 800px;
+}
+
+#keyboard-shortcuts-help .modal-body h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+#keyboard-shortcuts-help kbd {
+    display: inline-block;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #212529;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.2rem;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+    margin: 0 0.1rem;
+}
+
+/* Focus rings for focusable interactive elements */
+[role="button"]:focus,
+[role="tab"]:focus,
+[role="menuitem"]:focus,
+summary:focus {
+    outline: 3px solid var(--accent-color);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Accessibility: reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .skip-link {
+        transition: none !important;
+    }
+}
+
+/* High contrast mode improvements */
+@media screen and (forced-colors: active) {
+    button:focus,
+    a:focus,
+    input:focus,
+    select:focus,
+    textarea:focus {
+        outline: 3px solid CanvasText !important;
+    }
+    
+    .skip-link:focus {
+        background-color: Canvas !important;
+        color: CanvasText !important;
+        outline: 3px solid CanvasText !important;
+    }
+}

@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+MedicalSpy - Web-based scientific publication search tool
+Version 3.0
+
+This Flask application provides a web interface for searching scientific publications
+in various databases, including PubMed and the Deutsche Nationalbibliothek (DNB).
+It includes advanced search, analysis, and export functionality.
+"""
+
+import os
+import json
+import uuid
+import logging
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_file, g
+from flask_wtf.csrf import CSRFProtect
+from flask_login import LoginManager
+import pandas as pd
+from io import BytesIO
+from pathlib import Path
+from werkzeug.exceptions import HTTPException
+from flasgger import Swagger
+from flask_babel import _
+
+# Import custom modules
+from backend.config import load_settings, save_settings, ensure_directories
+from backend.models import db, SearchQuery, SearchResult, Person, Setting, LogEntry, User
+from backend.utils import log_message, get_log_messages, clear_log_messages
+from backend.i18n import init_babel
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(Path("logs/medicalspy.log")),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("MedicalSpy")
+
+def create_app(config_name=None):
+    """Create Flask application with appropriate configuration"""
+    # Initialize Flask app
+    app = Flask(__name__)
+    app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
+    
+    # Configure database
+    database_url = os.environ.get('DATABASE_URL')
+    if not database_url:
+        # Set default SQLite database path if not provided
+        instance_dir = Path('instance')
+        instance_dir.mkdir(exist_ok=True)
+        database_url = f'sqlite:///{instance_dir}/medicalspy.db'
+        os.environ['DATABASE_URL'] = database_url
+        
+    logger.info(f"Establishing database connection to {database_url}")
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # Check connection before use
+        'pool_recycle': 280,    # Renew connection after 280 seconds
+        'pool_timeout': 30,     # Timeout for pool connections
+        'max_overflow': 5,      # Allow 5 additional connections outside the pool
+    }
+    
+    # Load API keys from environment variables
+    app.config['PUBMED_API_KEY'] = os.environ.get('PUBMED_API_KEY', '')
+      # Initialize CSRF protection
+    csrf = CSRFProtect(app)
+    
+    # Initialize Flask-Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+    login_manager.login_message = 'Bitte melden Sie sich an, um auf diese Seite zuzugreifen.'
+    login_manager.login_message_category = 'info'
+    
+    # Initialize Swagger for API documentation
+    swagger_config = {
+        "headers": [],
+        "specs": [
+            {
+                "endpoint": "apispec",
+                "route": "/apispec.json",
+                "rule_filter": lambda rule: True,  # all in
+                "model_filter": lambda tag: True,  # all in
+            }
+        ],
+        "static_url_path": "/flasgger_static",
+        "swagger_ui": True,
+        "specs_route": "/apidocs/"
+    }
+    
+    swagger = Swagger(app, config=swagger_config, template={
+        "swagger": "2.0",
+        "info": {
+            "title": "Medical Spytool API",
+            "description": "Medical Spytool - API für wissenschaftliche Publikationssuche",
+            "version": "3.0.0",
+            "contact": {
+                "email": "admin@medical-spytool.org"
+            }
+        },
+        "schemes": ["http", "https"],
+    })
+      # Initialize Flask-Babel for internationalization
+    babel = init_babel(app)
+    
+    # Register language switching route
+    @app.route('/set_language/<language>')
+    def set_language(language):
+        """Set the language for the current session"""
+        if language in app.config.get('BABEL_SUPPORTED_LOCALES', ['de', 'en']):
+            session['lang'] = language
+            
+        # Redirect to previous page or home
+        return redirect(request.referrer or url_for('main.index'))
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        """Load user from database by ID"""
+        return User.query.get(int(user_id))
+    
+    db.init_app(app)
+    
+    # Create database tables if they don't exist    try:
+        with app.app_context():
+            db.create_all()
+            logger.info("Database tables created (if they didn't exist already)")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {str(e)}")
+        logger.error("Application will continue, but database operations might fail.")
+        
+    # Initialize session variables if not present
+    @app.before_request
+    def before_request():
+        try:
+            # Store current language in global context for templates
+            g.lang = session.get('lang', request.accept_languages.best_match(['de', 'en'], default='de'))
+            
+            # Initialize search_results if not in session
+            if 'search_results' not in session:
+                session['search_results'] = []
+                
+            # Load saved queries if not already in session
+            if 'saved_queries' not in session:
+                try:
+                    queries = SearchQuery.query.order_by(SearchQuery.created_at.desc()).all()
+                    session['saved_queries'] = [query.to_dict() for query in queries]
+                except Exception as e:
+                    logger.error(f"Failed to load saved queries: {str(e)}")
+                    session['saved_queries'] = []
+                    
+            # Load settings if not in session
+            if 'settings' not in session:
+                try:
+                    session['settings'] = Setting.get_settings_dict()
+                except Exception as e:
+                    logger.error(f"Failed to load settings: {str(e)}")
+                    session['settings'] = {}
+                    
+            # Load persons if not in session
+            if 'persons' not in session:
+                try:
+                    persons = Person.query.all()
+                    session['persons'] = [person.to_dict() for person in persons]
+                except Exception as e:
+                    logger.error(f"Failed to load persons: {str(e)}")
+                    session['persons'] = []
+        except Exception as e:
+            logger.error(f"Error in before_request: {str(e)}")
+    
+    # Error Handlers
+    @app.errorhandler(404)
+    def page_not_found(e):
+        """Handle 404 errors with custom template and support ID"""
+        # Generate a support ID for error reference
+        support_id = str(uuid.uuid4())[:8].upper()
+        log_message(f"404 error on {request.path}, support_id {support_id}", level='WARNING')
+        
+        # Check if it's an API request (expecting JSON)
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Not Found',
+                'message': 'The requested resource does not exist.',
+                'status_code': 404,
+                'support_id': support_id
+            }), 404
+        
+        # For normal HTML requests, return the error page
+        return render_template('errors/404.html', support_id=support_id), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        """Handle 500 errors with custom template and support ID"""
+        support_id = str(uuid.uuid4())[:8].upper()
+        log_message(f"500 error: {str(e)}, support_id {support_id}", level='ERROR')
+        
+        # For API requests
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Internal Server Error',
+                'message': 'An unexpected error occurred.',
+                'status_code': 500,
+                'support_id': support_id
+            }), 500
+        
+        return render_template('errors/500.html', support_id=support_id), 500
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Handle all unhandled exceptions"""
+        # Pass through HTTP errors (they'll be caught by specific errorhandlers)
+        if isinstance(e, HTTPException):
+            return e
+            
+        # Generate unique support ID for error tracking
+        support_id = str(uuid.uuid4())[:8].upper()
+        log_message(f"Unhandled exception: {str(e)}, support_id {support_id}", level='ERROR')
+        logger.exception(f"Full traceback for support_id {support_id}")
+        
+        # For API requests, return JSON error
+        if request.path.startswith('/api/'):
+            return jsonify({
+                'error': 'Internal Server Error',
+                'message': 'An unexpected error occurred.',
+                'status_code': 500,
+                'support_id': support_id
+            }), 500
+            
+        # For regular requests, return HTML error page
+        return render_template('errors/500.html', support_id=support_id), 500
+
+    # Register blueprints
+    from backend.blueprints import all_blueprints
+    for blueprint in all_blueprints:
+        app.register_blueprint(blueprint)
+
+    return app
+
+# Create the Flask app instance
+app = create_app()
+
+if __name__ == '__main__':
+    # This will only run when executing app.py directly (not through gunicorn/main.py)
+    log_message("Starting development server directly through app.py")
+    app.run(debug=True, host='127.0.0.1', port=5000)

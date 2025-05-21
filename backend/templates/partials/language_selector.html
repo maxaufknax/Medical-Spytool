@@ -1,0 +1,11 @@
+<!-- Language Selector Component -->
+<div class="lang-selector dropdown" aria-label="{{ _('Language') }}" title="{{ _('Language') }}">
+  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="languageDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+    <i class="fas fa-globe"></i>
+    <span class="visually-hidden">{{ _('Language') }}</span>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+    <li><a class="dropdown-item {% if session.get('lang') == 'de' or (not session.get('lang') and g.get('lang') == 'de') %}active{% endif %}" href="{{ url_for('set_language', language='de') }}">{{ _('German') }}</a></li>
+    <li><a class="dropdown-item {% if session.get('lang') == 'en' or (not session.get('lang') and g.get('lang') == 'en') %}active{% endif %}" href="{{ url_for('set_language', language='en') }}">{{ _('English') }}</a></li>
+  </ul>
+</div>

@@ -503,6 +503,76 @@
     }
 }
 
+/* Enhanced mobile responsiveness */
+@media (max-width: 576px) {
+    .container {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    h1, .h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2, .h2 {
+        font-size: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .btn {
+        padding: 0.375rem 0.5rem;
+    }
+    
+    .form-control, .form-select {
+        font-size: 0.9rem;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    .footer {
+        padding: 1rem 0;
+        text-align: center;
+    }
+    
+    /* Stack buttons vertically on mobile */
+    .d-flex.flex-row .btn:not(:last-child) {
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Adjust column layout for forms */
+    .row > [class^="col-"] {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Medium devices */
+@media (min-width: 577px) and (max-width: 991px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .card-body {
+        padding: 1.25rem;
+    }
+    
+    /* Adjust multi-column layouts */
+    .row.multi-column > [class^="col-"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
 /* Dark Mode Anpassungen */
 [data-bs-theme="dark"] .database-card {
     background-color: var(--card-bg);
