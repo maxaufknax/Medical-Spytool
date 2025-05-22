@@ -82,18 +82,6 @@
                     <input type="hidden" id="searchMode" name="search_mode" value="simple">
                     <input type="hidden" id="csrfTokenInput" name="csrf_token" value="{{ csrf_token() }}">
                     
-                    <!-- CSRF Debug Info (only visible during development) -->
-                    {% if config.DEBUG %}
-                    <div class="alert alert-secondary mb-3 small">
-                        <strong>CSRF Debug:</strong>
-                        <ul class="mb-0">
-                            <li>Session ID: {{ session.sid if session.sid else 'No session ID' }}</li>
-                            <li>Token value: {{ csrf_token() }}</li>
-                            <li>Session permanent: {{ 'Yes' if session.permanent else 'No' }}</li>
-                        </ul>
-                    </div>
-                    {% endif %}
-                    
                     <!-- Tab Content -->
                     <div class="tab-content" id="searchModeContent">
                         <!-- Simple Search Tab -->
@@ -251,7 +239,7 @@
                                                             {% for db in databases %}
                                                             <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
                                                                 <input class="database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                    id="db-person-{{ db }}" name="databases[]" 
+                                                                    id="db-person-{{ db }}" name="databases" 
                                                                     {% if db == 'PubMed' %}checked{% endif %}>
                                                                 <div class="database-status-indicator">
                                                                     <i class="fas fa-check"></i>
@@ -1254,109 +1242,65 @@
 </script>
 <script>    document.addEventListener('DOMContentLoaded', function() {
         const searchForm = document.getElementById('searchForm');
-        
-        // Helper function to find the submit button for the current active search tab
-        function findActiveSubmitButton() {
-            const activeTab = document.querySelector('.tab-pane.active');
-            if (!activeTab) return null;
-            
-            return activeTab.querySelector('button[type="submit"]');
-        }
-        
-        // Setup loading indicators
-        function setupLoadingIndicators() {
-            // Get all submit buttons
-            const submitButtons = document.querySelectorAll('button[type="submit"]');
-            
-            // Add original text as data attribute and initialize spinner HTML
-            submitButtons.forEach(button => {
-                button.dataset.originalText = button.innerHTML;
-                button.dataset.loadingText = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Suche läuft...';
-            });
-        }
-        
-        // Initialize loading indicators
-        setupLoadingIndicators();
-        
+        const submitButtons = document.querySelectorAll('button[type="submit"]');
+
         if (searchForm) {
-            // Ensure the form has the correct action URL
-            const currentAction = searchForm.getAttribute('action');
-            if (!currentAction || currentAction === '') {
-                searchForm.setAttribute('action', '/search/');
-                console.log('Form action was missing, set to /search/');
-            }
-            
-            // Check CSRF token on form submission
             searchForm.addEventListener('submit', function(event) {
-                // Verify CSRF token exists
+                // Validate form
+                if (!searchForm.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
+
+                // Verify CSRF token
                 const csrfToken = document.querySelector('input[name="csrf_token"]');
                 if (!csrfToken || !csrfToken.value) {
                     event.preventDefault();
-                    console.error('Missing CSRF token!');
                     alert('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.');
-                    return false;
+                    return;
                 }
-                
-                // Verify at least one database is selected
-                const selectedDatabases = Array.from(document.querySelectorAll('.database-checkbox:checked')).map(cb => cb.value);
+
+                // Verify database selection
+                const selectedDatabases = document.querySelectorAll('input[name="databases"]:checked');
                 if (selectedDatabases.length === 0) {
                     event.preventDefault();
-                    alert('Bitte wählen Sie mindestens eine Datenbank für die Suche aus.');
-                    return false;
+                    alert('Bitte wählen Sie mindestens eine Datenbank aus.');
+                    return;
                 }
-                
-                // Verify query exists for simple search
-                const searchMode = document.getElementById('searchMode').value;
-                const query = document.querySelector('input[name="query"]');
-                if (searchMode === 'simple' && query && !query.value.trim()) {
-                    event.preventDefault();
-                    alert('Bitte geben Sie einen Suchbegriff ein.');
-                    return false;
-                }
-                
-                // All validations passed, show loading state
-                console.log('Form submission - All validations passed');
-                
-                // Show loading spinner
-                const activeButton = findActiveSubmitButton();
-                if (activeButton) {
-                    activeButton.disabled = true;
-                    activeButton.innerHTML = activeButton.dataset.loadingText;
-                }
-                
-                // Add feedback message above the form
-                const feedbackContainer = document.createElement('div');
-                feedbackContainer.id = 'searchFeedback';
-                feedbackContainer.className = 'alert alert-info mb-4';
-                feedbackContainer.innerHTML = `
-                    <div class="d-flex align-items-center">
-                        <div class="spinner-border me-3" role="status">
-                            <span class="visually-hidden">Suche läuft...</span>
+
+                // Show loading state
+                submitButtons.forEach(button => {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Suche läuft...';
+                });
+
+                // Add loading overlay
+                const loadingOverlay = document.createElement('div');
+                loadingOverlay.classList.add('loading-overlay');
+                loadingOverlay.innerHTML = `
+                    <div class="loading-content">
+                        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <div>
-                            <h5 class="mb-1">Durchsuche ausgewählte Datenbanken...</h5>
-                            <p class="mb-0">Dies kann einige Sekunden dauern. Bitte haben Sie Geduld.</p>
-                        </div>
+                        <h5>Suche läuft...</h5>
+                        <p class="text-muted">Bitte warten Sie, während die ausgewählten Datenbanken durchsucht werden.</p>
                     </div>
                 `;
-                
-                // Insert the feedback at the top of the form
-                const cardBody = document.querySelector('.card-body');
-                if (cardBody) {
-                    cardBody.insertBefore(feedbackContainer, cardBody.firstChild);
-                }
-                
-                // Disable all form inputs to prevent multiple submissions
-                const formInputs = searchForm.querySelectorAll('input, select, button');
-                formInputs.forEach(input => {
-                    if (input !== activeButton) {
-                        input.disabled = true;
-                    }
-                });
-                
-                // Form will submit normally
+                document.body.appendChild(loadingOverlay);
             });
         }
+
+        // Add database selection handler
+        const databaseCheckboxes = document.querySelectorAll('input[name="databases"]');
+        databaseCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const anyChecked = Array.from(databaseCheckboxes).some(cb => cb.checked);
+                submitButtons.forEach(button => {
+                    button.disabled = !anyChecked;
+                });
+            });
+        });
     });
 </script>
 {% endblock %}

@@ -365,104 +365,39 @@ def export_to_bibtex(data, filename_base=None, unique=False):
         bibtex_output.append("\n".join(bibtex_entry))
     
     # Join all entries with newlines
-    return "\n\n".join(bibtex_output)
-    
     # Join all entries with double newlines and return
     return "\n\n".join(bibtex_output)
-        elif isinstance(author_data, str) and author_data:
-            # Format author string for BibTeX
-            if ";" in author_data:
-                authors_str = " and ".join([a.strip() for a in author_data.split(";")])
-            elif (
-                "," in author_data
-                and " and " not in author_data.lower()
-                and " und " not in author_data.lower()
-            ):
-                # Assume format is "Last1, First1, Last2, First2"
-                parts = [p.strip() for p in author_data.split(",")]
-                authors = []
-                for i in range(0, len(parts), 2):
-                    if i + 1 < len(parts):
-                        authors.append(f"{parts[i]}, {parts[i+1]}")
-                    else:
-                        authors.append(parts[i])
-                authors_str = " and ".join(authors)
-            else:
-                # Replace natural language "and" with BibTeX "and"
-                authors_str = re.sub(
-                    r"\s+and\s+|\s+und\s+", " and ", author_data, flags=re.IGNORECASE
-                )
-            bibtex_entry.append(f"  author = {{{authors_str}}},")
 
-        # Add title
-        title = entry.get("Titel") or entry.get("Title") or entry.get("TI") or ""
-        if title:
-            # Preserve uppercase letters in BibTeX by adding {}
-            title = title.replace("{", "{{").replace("}", "}}").replace("&", "\&")
-            bibtex_entry.append(f"  title = {{{title}}},")
+def format_author_data(author_data):
+    if isinstance(author_data, str) and author_data:
+        # Format author string for BibTeX
+        if ";" in author_data:
+            authors_str = " and ".join([a.strip() for a in author_data.split(";")])
+        elif (
+            "," in author_data
+            and " and " not in author_data.lower()
+            and " und " not in author_data.lower()
+        ):
+            # Assume format is "Last1, First1, Last2, First2"
+            parts = [p.strip() for p in author_data.split(",")]
+            authors = []
+            for i in range(0, len(parts), 2):
+                if i + 1 < len(parts):
+                    authors.append(f"{parts[i]}, {parts[i+1]}")
+                else:
+                    authors.append(parts[i])
+            authors_str = " and ".join(authors)
+        else:
+            # Replace natural language "and" with BibTeX "and"
+            authors_str = re.sub(
+                r"\s+and\s+|\s+und\s+", " and ", author_data, flags=re.IGNORECASE
+            )
+        return authors_str
+    return ""
 
-        # Add journal/booktitle
-        journal = entry.get("Journal") or entry.get("Source") or entry.get("SO") or ""
-        if journal and bibtex_type == "article":
-            bibtex_entry.append(f"  journal = {{{journal}}},")
-        elif journal:
-            bibtex_entry.append(f"  booktitle = {{{journal}}},")
-
-        # Add year
-        if year and year != "NoYear":
-            bibtex_entry.append(f"  year = {{{year}}},")
-
-        # Add volume, number, pages
-        volume = entry.get("Volume") or entry.get("Band") or ""
-        if volume:
-            bibtex_entry.append(f"  volume = {{{volume}}},")
-
-        number = entry.get("Issue") or entry.get("Number") or entry.get("Ausgabe") or ""
-        if number:
-            bibtex_entry.append(f"  number = {{{number}}},")
-
-        pages = entry.get("Pages") or entry.get("Seiten") or ""
-        if pages:
-            # Format pages for BibTeX (replace single dash with double dash)
-            pages = re.sub(r"(\d+)\s*-\s*(\d+)", r"\1--\2", pages)
-            bibtex_entry.append(f"  pages = {{{pages}}},")
-
-        # Add DOI
-        doi = entry.get("DOI") or ""
-        if doi:
-            bibtex_entry.append(f"  doi = {{{doi}}},")
-
-        # Add URL
-        url = entry.get("URL") or entry.get("Link") or ""
-        if url:
-            bibtex_entry.append(f"  url = {{{url}}},")
-
-        # Add publisher
-        publisher = entry.get("Publisher") or entry.get("Verlag") or ""
-        if publisher:
-            bibtex_entry.append(f"  publisher = {{{publisher}}},")
-
-        # Add abstract
-        abstract = entry.get("Abstract") or entry.get("Zusammenfassung") or entry.get("AB") or ""
-        if abstract:
-            # Truncate very long abstracts to avoid BibTeX issues
-            if len(abstract) > 2000:
-                abstract = abstract[:1997] + "..."
-            bibtex_entry.append(f"  abstract = {{{abstract}}},")
-
-        # Add keywords
-        keywords = entry.get("Keywords") or entry.get("Schlagwörter") or ""
-        if keywords:
-            if isinstance(keywords, list):
-                keywords = ", ".join(keywords)
-            bibtex_entry.append(f"  keywords = {{{keywords}}},")
-
-        # Close the entry
-        bibtex_entry[-1] = bibtex_entry[-1].rstrip(",")
-        bibtex_entry.append("}")
-
-        # Add the entry to the output
-        bibtex_output.append("\n".join(bibtex_entry))
-
-    # Return all entries joined with newlines and an empty line between entries
-    return "\n\n".join(bibtex_output)
+def format_title(title):
+    """Format a title for BibTeX export."""
+    if title:
+        # Preserve uppercase letters in BibTeX by adding {}
+        return title.replace("{", "{{").replace("}", "}}").replace("&", "\&")
+    return ""

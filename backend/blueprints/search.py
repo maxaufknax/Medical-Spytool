@@ -13,13 +13,58 @@ from flask_wtf.csrf import validate_csrf, ValidationError
 from backend.models import db, SearchQuery, SearchResult, Person
 from backend.search import search_database, parse_date_range
 from backend.connectors import get_connector_for_database
-from backend.search_fix import enhanced_search_database  # Import the enhanced search
+from backend.search_fix import enhanced_search_database
 from backend.utils import log_message
+from backend.api_utils import search_status_response
 import logging
 
 logger = logging.getLogger(__name__)
 
 search_bp = Blueprint("search", __name__)
+
+@search_bp.route("/status", methods=["GET"])
+def check_search_status():
+    """
+    AJAX endpoint to check the current search status
+    Returns JSON with search status information
+    """
+    search_status = session.get('search_status', 'idle')
+    start_time_str = session.get('search_start_time')
+    current_query_id = session.get('current_query_id')
+    
+    # Check if search has been running too long
+    if start_time_str and search_status == 'searching':
+        try:
+            start_time = datetime.fromisoformat(start_time_str)
+            current_time = get_utc_now()
+            duration = (current_time - start_time).total_seconds()
+            
+            # If search has been running for more than 45 seconds, consider it stuck
+            if duration > 45:
+                logger.warning(f"Search appears to be stuck, running for {duration:.2f}s")
+                search_status = 'timeout'
+                session['search_status'] = 'timeout'
+                session.modified = True
+        except Exception as e:
+            logger.error(f"Error calculating search duration: {str(e)}")
+    
+    # Get any errors from the session
+    errors = session.get('search_errors', [])
+    redirect_url = None
+    
+    # Add redirect URL if search is complete and we have results
+    if search_status == 'completed' and current_query_id:
+        redirect_url = url_for('search.results')
+    elif search_status in ('error', 'no_results', 'timeout'):
+        redirect_url = url_for('search.index')
+    
+    # Use the standardized API response
+    return search_status_response(
+        status=search_status,
+        errors=errors,
+        redirect_url=redirect_url,
+        query_id=current_query_id
+    )
 
 def get_utc_now():
     """Helper function to get current UTC time"""
@@ -28,16 +73,16 @@ def get_utc_now():
 def get_search_results(query_id):
     """Get search results from database by query ID"""
     try:
-        # Use the relationship on SearchQuery to get results
-        query = SearchQuery.query.get(query_id)
-        if not query:
-            logger.error(f"Query {query_id} not found")
-            return []
-            
-        results = query.results.all()
-        return [result.data for result in results if result.result_data]
+        # Fetch all results for this query, ordered by database and then by any internal ordering
+        results = SearchResult.query.filter_by(query_id=query_id).order_by(
+            SearchResult.database,
+            SearchResult.timestamp
+        ).all()
+        
+        # Extract the actual result data
+        return [result.result_data for result in results if result.result_data]
     except Exception as e:
-        logger.error(f"Error retrieving search results for query {query_id}: {e}")
+        logger.error(f"Error fetching results for query {query_id}: {str(e)}", exc_info=True)
         return []
 
 def clean_expired_results():
@@ -63,7 +108,7 @@ def save_search_results(query_obj, results):
         return 0
         
     saved_count = 0
-    errors = []
+    errors = []  # Initialize errors list
     batch_size = 100
 
     try:
@@ -135,227 +180,208 @@ def save_search_results(query_obj, results):
 
 @search_bp.route("/", methods=["GET", "POST"])
 def index():
-    """Handle search form display (GET) and search execution (POST)"""
+    """Handle search form display and search execution"""
+    logger.debug("Entering search index route")
+    
     if request.method == "POST":
-        try:            # Enhanced CSRF validation - skip in testing mode
-            if not current_app.config.get('TESTING'):
-                try:
-                    # Get and validate CSRF token
-                    csrf_token = request.form.get('csrf_token')
-                    session_token = session.get('csrf_token')
-                    cookie_token = request.cookies.get('csrf_token')
-                    
-                    # Log detailed token information for debugging
-                    logger.info(f"CSRF token from form: {csrf_token[:5]}... (length: {len(csrf_token) if csrf_token else 0})")
-                    logger.info(f"CSRF token from session: {session_token[:5] if session_token else None}... (length: {len(session_token) if session_token else 0})")
-                    logger.info(f"CSRF token from cookie: {cookie_token[:5] if cookie_token else None}... (length: {len(cookie_token) if cookie_token else 0})")
-                    logger.info(f"Session keys: {list(session.keys())}")
-                    
-                    # Check if token exists in form
-                    if not csrf_token:
-                        logger.error("CSRF token missing from form data")
-                        raise ValidationError("Missing CSRF token")
-                    
-                    # Auto-fix the session if needed by copying from cookie
-                    if not session_token and cookie_token:
-                        logger.warning("Missing session token but cookie token exists - auto-fixing")
-                        session['csrf_token'] = cookie_token
-                        session.modified = True
-                        session_token = cookie_token
-                    
-                    # Validate the token
-                    try:
-                        validate_csrf(csrf_token)
-                        logger.info("CSRF token validation successful")
-                    except ValidationError as ve:
-                        # Try fallback validation with token from cookie
-                        if cookie_token and cookie_token != csrf_token:
-                            logger.warning("Primary validation failed, trying with cookie token")
-                            try:
-                                validate_csrf(cookie_token)
-                                logger.info("CSRF validation successful with cookie token")
-                                # Update form token for future validation
-                                csrf_token = cookie_token
-                            except ValidationError:
-                                # Both validations failed, raise the original error
-                                raise ve
-                        else:
-                            # No fallback available, re-raise
-                            raise ve
-                    
-                except ValidationError as csrf_error:
-                    logger.error(f"CSRF validation failed: {str(csrf_error)}")
-                    
-                    # Generate a new token
-                    from flask_wtf.csrf import generate_csrf
-                    new_token = generate_csrf()
-                    session['csrf_token'] = new_token
-                    session.modified = True
-                    logger.info(f"Regenerated new CSRF token: {new_token[:5]}...")
-                    
-                    # Redirect back to the search page with a user-friendly message
-                    flash("Sicherheitstoken ungültig oder abgelaufen. Bitte versuchen Sie es erneut.", "warning")
-                    return redirect(url_for("search.index"))
-
-            # Clean up old results periodically
-            if not hasattr(current_app, 'last_cleanup'):
-                current_app.last_cleanup = get_utc_now()
-            if get_utc_now() - current_app.last_cleanup > timedelta(hours=24):
-                clean_expired_results()
-                current_app.last_cleanup = get_utc_now()
-
+        try:
+            # CSRF validation
+            csrf_token = request.form.get('csrf_token')
+            if not csrf_token:
+                logger.warning("Missing CSRF token in search request")
+                flash('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.', 'error')
+                return redirect(url_for('search.index'))
+            
+            try:
+                validate_csrf(csrf_token)
+            except ValidationError:
+                logger.warning("Invalid CSRF token in search request")
+                flash('Ungültiges oder abgelaufenes Sicherheitstoken. Bitte laden Sie die Seite neu.', 'error')
+                return redirect(url_for('search.index'))
+            
             # Get and validate search parameters
-            search_mode = request.form.get("search_mode", "simple")
-            databases = request.form.getlist("databases")
+            search_mode = request.form.get('search_mode', 'simple')
+            selected_databases = request.form.getlist('databases')
             
-            # Get the correct query input based on the search_mode
-            if search_mode == "simple":
-                query = request.form.get("simple_query_content", "").strip()
-            elif search_mode == "person":
-                # For person search, the main "query" might be constructed differently
-                # or might not be a single text field.
-                # For now, let's assume person_name is the primary identifier
-                # and additional_terms can supplement it.
-                person_name = request.form.get("person_name", "").strip()
-                additional_terms = request.form.get("additional_terms", "").strip()
-                if person_name and additional_terms:
-                    query = f"{person_name} AND {additional_terms}"
-                elif person_name:
-                    query = person_name
-                else:
-                    query = additional_terms # Or handle as an error if person_name is required
-                # If selected_person_ids are used, they should be fetched here
-                # selected_person_ids = request.form.get("selected_person_ids")
-            elif search_mode == "advanced":
-                query = request.form.get("search_query", "").strip() # from advanced search main input
-                # Potentially combine with other advanced fields
-            else: # Default or unknown search mode
-                query = request.form.get("query", "").strip() # Fallback, though ideally each mode has specific handling
+            # Determine query based on search mode
+            query = None
+            if search_mode == 'simple':
+                query = request.form.get('simple_query_content', '').strip()
+            elif search_mode == 'person':
+                query = _construct_person_search_query(request.form)
+            elif search_mode == 'advanced':
+                query = request.form.get('advanced_query_content', '').strip()
+            else:
+                logger.error(f"Invalid search mode: {search_mode}")
+                flash('Unbekannter Suchmodus.', 'error')
+                return redirect(url_for('search.index'))
 
-            # Input validation
+            # Validate query and database selection
             if not query:
-                flash("Bitte geben Sie einen Suchbegriff ein.", "warning")
-                return redirect(url_for("search.index"))
+                logger.warning("Empty search query submitted")
+                flash('Bitte geben Sie einen Suchbegriff ein.', 'warning')
+                return redirect(url_for('search.index'))
+                
+            if not selected_databases:
+                logger.warning("No databases selected for search")
+                flash('Bitte wählen Sie mindestens eine Datenbank aus.', 'warning')
+                return redirect(url_for('search.index'))
             
-            if not databases:
-                flash("Bitte wählen Sie mindestens eine Datenbank aus.", "warning")
-                return redirect(url_for("search.index"))            # Execute search with better error handling
-            logger.info(f"Starting search: mode={search_mode}, query='{query}', databases={databases}")
-            start_time = get_utc_now()
+            # Clear any existing search status
+            _clear_search_session_data()
+            
+            # Set initial search status
+            session['search_status'] = 'searching'
+            session['search_start_time'] = get_utc_now().isoformat()
+            session.modified = True
+            
+            logger.info(f"Starting search: mode={search_mode}, query='{query}', databases={selected_databases}")
             
             try:
-                # Show searching status to the user in the session
-                session['search_status'] = 'searching'
-                session['search_start_time'] = get_utc_now().isoformat()
-                session.modified = True
-                  # Use enhanced search function with error handling
-                results, search_errors = enhanced_search_database(
+                # Execute enhanced search with timeout handling
+                results, search_errors, search_summary = enhanced_search_database(
                     query=query,
-                    databases=databases,
+                    databases=selected_databases,
                     search_mode=search_mode,
-                    timeout=60  # Set a reasonable timeout
+                    timeout=30  # Global timeout in seconds
                 )
                 
-                if search_errors:
-                    for db_error in search_errors:
-                        errors.append({
-                            'database': db_error.get('database', 'Unknown'),
-                            'error': db_error.get('error', 'Unknown error'),
-                            'time': db_error.get('time', 0)
-                        })
+                # Process and save search results
+                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, query, selected_databases, search_mode)
                 
-                # Record overall search metrics
-                search_time = (get_utc_now() - start_time).total_seconds()
-                result_count = len(results)
-                logger.info(f"Total search completed in {search_time:.2f}s, found {result_count} results")
-                
-                # Store errors in session for display on results page
-                if errors:
-                    session['search_errors'] = errors
-                
-                # Clear search status
-                session.pop('search_status', None)
-                session.pop('search_start_time', None)
-                
-                # Handle case where no results were found
-                if not results:
-                    if errors:
-                        error_dbs = ", ".join([e['database'] for e in errors])
-                        flash(f"Fehler bei der Suche in {error_dbs}. Bitte versuchen Sie es später erneut.", "warning")
-                    else:
-                        flash("Keine Ergebnisse gefunden.", "info")
-                    return redirect(url_for("search.index"))
-                
-            except Exception as search_error:
-                search_time = (get_utc_now() - start_time).total_seconds()
-                logger.error(f"Search failed in {search_time:.2f}s: {search_error}")
-                
-                # Clear search status and flash error
-                session.pop('search_status', None)
-                session.pop('search_start_time', None)
-                
-                # Provide a user-friendly error message based on exception details
-                error_message = str(search_error)
-                if "API key" in error_message.lower() or "api_key" in error_message.lower():
-                    flash(f"Suchfehler: API-Schlüssel fehlt oder ist ungültig für einen der ausgewählten Dienste.", "error")
-                elif "timeout" in error_message.lower():
-                    flash(f"Suchfehler: Zeitüberschreitung bei der Verbindung zu einem der Dienste. Bitte versuchen Sie es später erneut.", "error")
-                elif "format" in error_message.lower() or "parse" in error_message.lower():
-                    flash(f"Suchfehler: Problem beim Verarbeiten der Antwort von einem der Dienste.", "error")
+                # Update search status based on results
+                if saved_count > 0:
+                    session['search_status'] = 'completed'
+                    flash(f'{saved_count} Ergebnisse gefunden.', 'success')
+                    logger.info(f"Search completed successfully with {saved_count} results")
+                    return redirect(url_for('search.results'))
                 else:
-                    flash(f"Suchfehler: {error_message}", "error")
-                
-                return redirect(url_for("search.index"))
-
-            # Save search query and results to database
-            try:
-                # Parse dates if provided
-                start_date = request.form.get('start_date')
-                end_date = request.form.get('end_date')
-                if start_date or end_date:
-                    start_date, end_date = parse_date_range(start_date, end_date)
-
-                # Create search query record
-                search_query = SearchQuery(
-                    name=f"Suche vom {get_utc_now().strftime('%Y-%m-%d %H:%M:%S')}",
-                    search_text=query,  # Changed from query=query
-                    database=','.join(databases),  # Join list into comma-separated string
-                    search_mode=search_mode,
-                    additional_terms=request.form.get('additional_terms', '').strip(),
-                    start_date=start_date,
-                    end_date=end_date,
-                    person_name=request.form.get('person_name', '').strip()
-                )
-                db.session.add(search_query)
-                db.session.commit()
-                logger.info(f"Saved search query with ID: {search_query.id}")
-
-                # Save results using the new helper function
-                saved_count = save_search_results(search_query, results)
-                if saved_count < result_count:
-                    logger.warning(f"Only {saved_count} of {result_count} results were saved successfully")
-
-                # Store only references in session
-                session['current_query_id'] = search_query.id
-                session['query_timestamp'] = search_query.timestamp.isoformat()
-                session['result_count'] = saved_count
+                    session['search_status'] = 'no_results'
+                    flash('Keine Ergebnisse gefunden.', 'info')
+                    logger.info("Search completed with no results")
+                    return redirect(url_for('search.index'))
+                    
+            except Exception as e:
+                logger.error(f"Error during search execution: {str(e)}", exc_info=True)
+                session['search_status'] = 'error'
+                session['search_error'] = str(e)
+                flash(f'Fehler bei der Suche: {str(e)}', 'error')
+                return redirect(url_for('search.index'))
+            finally:
                 session.modified = True
-
-                return redirect(url_for("search.results"))
-
-            except Exception as db_error:
-                logger.error(f"Database error: {str(db_error)}")
-                db.session.rollback()
-                flash("Fehler beim Speichern der Suchergebnisse.", "error")
-                return redirect(url_for("search.index"))
-
+                
         except Exception as e:
-            logger.error(f"Search error: {str(e)}")
-            flash(f"Fehler bei der Suche: {str(e)}", "error")
-            return redirect(url_for("search.index"))
-
+            logger.error(f"Unexpected error in search route: {str(e)}", exc_info=True)
+            session['search_status'] = 'error'
+            session['search_error'] = str(e)
+            flash('Ein unerwarteter Fehler ist aufgetreten.', 'error')
+            return redirect(url_for('search.index'))
+    
     # GET request - show search form
-    return render_template("search.html", databases=["PubMed", "Deutsche Nationalbibliothek"])
+    return render_template('search.html', 
+                         databases=['PubMed', 'Deutsche Nationalbibliothek'],
+                         search_status=session.get('search_status', 'idle'))
+
+def _construct_person_search_query(form_data):
+    """Helper function to construct person search query"""
+    selected_person_ids_str = form_data.get('selected_person_ids', '')
+    additional_keywords = form_data.get('person_search_keywords', '').strip()
+    
+    if not selected_person_ids_str:
+        flash('Bitte wählen Sie mindestens eine Person für die personenbezogene Suche aus.', 'warning')
+        return None
+
+    try:
+        selected_person_ids = [int(pid) for pid in selected_person_ids_str.split(',') if pid.isdigit()]
+        persons = Person.query.filter(Person.id.in_(selected_person_ids)).all()
+        
+        if not persons:
+            flash('Ausgewählte Personen nicht gefunden.', 'warning')
+            return None
+
+        # Construct query string
+        person_names = [f"{p.first_name} {p.last_name}" for p in persons]
+        query_parts = [f"({name})" for name in person_names]
+        
+        if additional_keywords:
+            return f"({' OR '.join(query_parts)}) AND ({additional_keywords})"
+        return ' OR '.join(query_parts)
+        
+    except Exception as e:
+        logger.error(f"Error constructing person search query: {str(e)}", exc_info=True)
+        return None
+
+def _clear_search_session_data():
+    """Helper function to clear search-related session data"""
+    keys_to_clear = [
+        'search_status',
+        'search_start_time',
+        'search_error',
+        'search_summary',
+        'search_errors',
+        'current_query_id'
+    ]
+    
+    for key in keys_to_clear:
+        session.pop(key, None)
+    session.modified = True
+
+def _process_search_results(results, search_errors, search_summary, query, selected_databases, search_mode):
+    """
+    Process search results and update session status accordingly
+    
+    Args:
+        results (list): List of search results
+        search_errors (dict): Dictionary of errors by database
+        search_summary (dict): Summary of search results by database
+        query (str): The search query
+        selected_databases (list): List of selected databases
+        search_mode (str): The search mode used
+        
+    Returns:
+        tuple: (saved_count, query_obj) containing the number of saved results and the query object
+    """
+    try:
+        # Create search query record
+        search_query = SearchQuery(
+            search_text=query,
+            database=','.join(selected_databases),
+            search_mode=search_mode,
+            timestamp=get_utc_now()
+        )
+        db.session.add(search_query)
+        db.session.commit()
+        logger.info(f"Created search query record with ID: {search_query.id}")
+        
+        # Save results
+        saved_count = save_search_results(search_query, results)
+        logger.info(f"Saved {saved_count} results for query ID: {search_query.id}")
+        
+        # Update session with search information
+        session['current_query_id'] = search_query.id
+        session['search_summary'] = search_summary
+        
+        if search_errors:
+            session['search_errors'] = [{'database': db, 'error': err} for db, err in search_errors.items()]
+            logger.warning(f"Search completed with errors: {search_errors}")
+        
+        # Update search status based on results
+        if saved_count > 0:
+            session['search_status'] = 'completed'
+            logger.info(f"Search completed successfully with {saved_count} results")
+        else:
+            session['search_status'] = 'no_results'
+            logger.info("Search completed with no results")
+        
+        session.modified = True
+        return saved_count, search_query
+        
+    except Exception as e:
+        logger.error(f"Error processing search results: {str(e)}", exc_info=True)
+        session['search_status'] = 'error'
+        session['search_error'] = str(e)
+        session.modified = True
+        raise
 
 @search_bp.route("/results")
 def results():
@@ -365,64 +391,31 @@ def results():
         flash("Keine aktiven Suchergebnisse gefunden.", "warning")
         return redirect(url_for("search.index"))
 
-    try:        # Get query details
+    try:
+        # Get query details and results
         query = SearchQuery.query.get(query_id)
         if not query:
             flash("Die gesuchten Ergebnisse wurden nicht gefunden.", "warning")
-            return redirect(url_for("search.index"))        
+            return redirect(url_for("search.index"))
         
         # Get results from database
         results = get_search_results(query_id)
         
-        # Get search errors if any from the connectors
-        search_errors = []
-        search_summary = {}
+        # Get search summary and errors from session
+        search_summary = session.get('search_summary', {})
+        search_errors = session.get('search_errors', [])
         
-        # Attempt to get errors and result counts for each database
-        for db_name in query.database.split(','):
-            connector = get_connector_for_database(db_name)
-            if connector and connector.last_error:
-                search_errors.append({
-                    'database': db_name,
-                    'error': connector.last_error
-                })
-                
-            # Count results per database
-            db_results = [r for r in results if r.get('Datenbank') == db_name]
-            search_summary[db_name] = len(db_results)
-        
+        # Render results template
         return render_template(
             "results.html",
             results=results,
             query=query,
             search_errors=search_errors,
-            search_summary=search_summary
+            search_summary=search_summary,
+            total_results=len(results)
         )
-
+        
     except Exception as e:
-        logger.error(f"Error displaying results: {str(e)}")
+        logger.error(f"Error displaying results: {str(e)}", exc_info=True)
         flash("Fehler beim Anzeigen der Ergebnisse.", "error")
         return redirect(url_for("search.index"))
-
-@search_bp.before_request
-def log_request_info():
-    """Log request information and ensure session validity"""
-    logger.debug(f"Request path: {request.path}")
-    session.permanent = True  # Ensure session stays alive during search
-    
-    # Check session expiry
-    timestamp = session.get('query_timestamp')
-    if timestamp:
-        try:
-            search_time = datetime.fromisoformat(timestamp)
-            if get_utc_now() - search_time > timedelta(hours=1):
-                # Clear expired search results from session
-                session.pop('current_query_id', None)
-                session.pop('query_timestamp', None)
-                session.pop('result_count', None)
-                session.modified = True
-                logger.info("Cleared expired search results from session")
-        except Exception as e:
-            logger.error(f"Error checking session expiry: {e}")
-            # Clear invalid session data
-            session.pop('query_timestamp', None)
