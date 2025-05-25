@@ -44,7 +44,7 @@
                     <strong>Suchmodus:</strong> {{ query.search_mode if query and query.search_mode else "Einfache Suche" }}
                 </div>
                 <div class="mb-2">
-                    <strong>Gesamtergebnisse:</strong> {{ results|length if results else 0 }}
+                    <strong>Gesamtergebnisse:</strong> {{ results_page.total if results_page else 0 }}
                 </div>
             </div>
             <div class="col-md-4">
@@ -96,7 +96,18 @@
                 {% for db, count in search_summary.items() %}
                 <div class="col-md-3 mb-2">
                     <div class="d-flex justify-content-between border-bottom pb-1">
-                        <span>{{ db }}:</span>
+                        <span>
+                            {{ db }}:
+                            {% set db_has_error = false %}
+                            {% for error_item in search_errors %}
+                                {% if error_item.database == db %}
+                                    {% set db_has_error = true %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if db_has_error %}
+                                <i class="fas fa-exclamation-triangle text-danger ms-1" data-bs-toggle="tooltip" title="Bei dieser Datenbank ist ein Fehler aufgetreten. Details siehe oben."></i>
+                            {% endif %}
+                        </span>
                         <strong>{{ count }}</strong>
                     </div>
                 </div>
@@ -112,10 +123,14 @@
     <div class="card-header">
         <div class="row align-items-center">
             <div class="col-md-4">
-                <h5 class="mb-0">Results: <span id="resultCount">{{ results|length }}</span></h5>
+                <h5 class="mb-0">
+                    Ergebnisse: 
+                    <span id="currentPageResultCount">{{ results|length }}</span>
+                    (Angezeigt auf dieser Seite. Seite {{ results_page.page }} von {{ results_page.pages }}, Insgesamt: {{ results_page.total }})
+                </h5>
             </div>
             <div class="col-md-4">
-                <input type="text" id="resultFilter" class="form-control" placeholder="Filter results...">
+                <input type="text" id="resultFilter" class="form-control" placeholder="Filter current page...">
             </div>
             <div class="col-md-4 text-md-end">
                 <div class="btn-group me-2">
@@ -191,7 +206,7 @@
         <!-- Card View -->
         <div id="cardView" class="d-none">
             <div class="row">
-                {% for result in results %}
+                {% for result in results %} {# results is now results_on_page #}
                 <div class="col-lg-6 mb-3">
                     <div class="card result-card h-100 {% if result.Datenbank == 'PubMed' %}pubmed-result{% elif result.Datenbank == 'Deutsche Nationalbibliothek' %}dnb-result{% endif %}">
                         <div class="card-body">
@@ -255,6 +270,41 @@
                 {% endfor %}
             </div>
         </div>
+    </div>
+    <div class="card-footer">
+        <!-- Pagination Controls -->
+        {% if results_page and results_page.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <!-- Previous Page Link -->
+                <li class="page-item {% if not results_page.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{% if results_page.has_prev %}{{ url_for('search.results', page=results_page.prev_num) }}{% else %}#{% endif %}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                </li>
+
+                <!-- Page Numbers -->
+                {% for page_num in results_page.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if results_page.page == page_num %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('search.results', page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Next Page Link -->
+                <li class="page-item {% if not results_page.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{% if results_page.has_next %}{{ url_for('search.results', page=results_page.next_num) }}{% else %}#{% endif %}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 </div>
 {% else %}

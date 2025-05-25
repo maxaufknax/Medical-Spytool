@@ -13,7 +13,7 @@ from flask_wtf.csrf import validate_csrf, ValidationError
 from backend.models import db, SearchQuery, SearchResult, Person
 from backend.search import search_database, parse_date_range
 from backend.connectors import get_connector_for_database
-from backend.search_fix import enhanced_search_database
+from backend.search_fix import enhanced_search_database, search_single_database
 from backend.utils import log_message
 from backend.api_utils import search_status_response
 import logging
@@ -70,20 +70,22 @@ def get_utc_now():
     """Helper function to get current UTC time"""
     return datetime.now(timezone.utc)
 
-def get_search_results(query_id):
-    """Get search results from database by query ID"""
+def get_search_results(query_id, page, per_page):
+    """Get paginated search results from database by query ID"""
     try:
-        # Fetch all results for this query, ordered by database and then by any internal ordering
-        results = SearchResult.query.filter_by(query_id=query_id).order_by(
+        # Fetch paginated results for this query
+        pagination = SearchResult.query.filter_by(query_id=query_id).order_by(
             SearchResult.database,
             SearchResult.timestamp
-        ).all()
+        ).paginate(page=page, per_page=per_page, error_out=False)
         
-        # Extract the actual result data
-        return [result.result_data for result in results if result.result_data]
+        # Extract the actual result data for the current page
+        # The pagination object itself will be returned.
+        # items_on_page = [result.result_data for result in pagination.items if result.result_data]
+        return pagination # Return the whole pagination object
     except Exception as e:
-        logger.error(f"Error fetching results for query {query_id}: {str(e)}", exc_info=True)
-        return []
+        logger.error(f"Error fetching paginated results for query {query_id}: {str(e)}", exc_info=True)
+        return None # Return None or an empty pagination object on error
 
 def clean_expired_results():
     """Clean up old search results from database"""
@@ -210,7 +212,8 @@ def index():
             elif search_mode == 'person':
                 query = _construct_person_search_query(request.form)
             elif search_mode == 'advanced':
-                query = request.form.get('advanced_query_content', '').strip()
+                # Main search terms for advanced search
+                query = request.form.get('search_query', '').strip()
             else:
                 logger.error(f"Invalid search mode: {search_mode}")
                 flash('Unbekannter Suchmodus.', 'error')
@@ -235,19 +238,65 @@ def index():
             session['search_start_time'] = get_utc_now().isoformat()
             session.modified = True
             
-            logger.info(f"Starting search: mode={search_mode}, query='{query}', databases={selected_databases}")
+            logger.info(f"Starting search: mode={search_mode}, databases={selected_databases}")
             
+            # Store the main search term for display and for SearchQuery record
+            main_search_term = query # query is from request.form.get('search_query') if advanced
+
             try:
-                # Execute enhanced search with timeout handling
-                results, search_errors, search_summary = enhanced_search_database(
-                    query=query,
-                    databases=selected_databases,
-                    search_mode=search_mode,
-                    timeout=30  # Global timeout in seconds
-                )
+                if search_mode == 'advanced':
+                    all_results = []
+                    search_errors = {}
+                    search_summary = {}
+                    
+                    # Use a consistent start time for all database searches in this session
+                    # search_start_time_for_timeout = get_utc_now()
+
+                    for db_name in selected_databases:
+                        advanced_query_str = _construct_advanced_query_string(request.form, db_name)
+                        if not advanced_query_str: # Skip if no query could be constructed (e.g. no main term)
+                            logger.warning(f"Skipping {db_name} for advanced search as no query was constructed.")
+                            search_summary[db_name] = 0
+                            continue
+
+                        logger.info(f"Executing advanced search for {db_name} with query: {advanced_query_str}")
+                        # Timeout for each single database call (e.g., 25 seconds)
+                        # The overall timeout for the request will be implicitly handled by Flask/Gunicorn
+                        single_db_search_timeout = 25 
+                        
+                        # Call search_single_database directly
+                        # search_single_database returns a dict: {"database": db_name, "results": [], "error": None, "duration": seconds, "count": num_results}
+                        db_search_result = search_single_database(
+                            query=advanced_query_str,
+                            db_name=db_name,
+                            search_mode=search_mode, # Pass 'advanced' mode
+                            db_timeout=single_db_search_timeout
+                        )
+                        
+                        all_results.extend(db_search_result.get("results", []))
+                        if db_search_result.get("error"):
+                            search_errors[db_name] = db_search_result.get("error")
+                        search_summary[db_name] = db_search_result.get("count", 0)
+
+                    # Add overall summary stats if needed by _process_search_results
+                    search_summary['total_results'] = sum(search_summary.values())
+                    search_summary['databases_with_errors'] = len(search_errors)
+
+                    results = all_results
+                else: # Simple or Person search
+                    # Original query is used for simple/person search
+                    logger.info(f"Executing {search_mode} search with query='{query}' for databases: {selected_databases}")
+                    results, search_errors, search_summary = enhanced_search_database(
+                        query=query, # This is main_search_term for simple, or constructed person query
+                        databases=selected_databases,
+                        search_mode=search_mode,
+                        timeout=30  # Global timeout in seconds
+                    )
                 
                 # Process and save search results
-                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, query, selected_databases, search_mode)
+                # For advanced search, 'query' parameter to _process_search_results should be the main search term
+                term_for_logging_and_storage = main_search_term if search_mode == 'advanced' else query
+                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, term_for_logging_and_storage, selected_databases, search_mode)
                 
                 # Update search status based on results
                 if saved_count > 0:
@@ -264,8 +313,9 @@ def index():
             except Exception as e:
                 logger.error(f"Error during search execution: {str(e)}", exc_info=True)
                 session['search_status'] = 'error'
-                session['search_error'] = str(e)
-                flash(f'Fehler bei der Suche: {str(e)}', 'error')
+                # Store the raw error for debugging or more detailed views if needed, but not for flash.
+                session['search_error_internal'] = str(e) 
+                flash('Ein Fehler ist während des Suchvorgangs aufgetreten. Möglicherweise sind nicht alle Datenbanken durchsucht worden oder Ergebnisse unvollständig. Bitte versuchen Sie es später erneut oder überprüfen Sie Ihre Suchanfrage.', 'error')
                 return redirect(url_for('search.index'))
             finally:
                 session.modified = True
@@ -281,6 +331,98 @@ def index():
     return render_template('search.html', 
                          databases=['PubMed', 'Deutsche Nationalbibliothek'],
                          search_status=session.get('search_status', 'idle'))
+
+def _construct_advanced_query_string(form_data, database_name):
+    """Helper function to construct advanced search query string."""
+    query_parts = []
+    
+    # Main search query
+    main_query = form_data.get('search_query', '').strip()
+    if main_query:
+        query_parts.append(f"({main_query})")
+        
+    # Additional terms
+    additional_terms = form_data.get('additional_terms', '').strip()
+    if additional_terms:
+        query_parts.append(f"AND ({additional_terms})")
+        
+    # Selected persons
+    selected_person_ids_str = form_data.get('advanced_selected_person_ids', '')
+    if selected_person_ids_str:
+        try:
+            selected_person_ids = [int(pid) for pid in selected_person_ids_str.split(',') if pid.isdigit()]
+            persons = Person.query.filter(Person.id.in_(selected_person_ids)).all()
+            if persons:
+                person_queries = []
+                for p in persons:
+                    if database_name == 'PubMed':
+                        person_queries.append(f"{p.last_name} {p.first_name[0]}[AU]")
+                    elif database_name == 'Deutsche Nationalbibliothek':
+                        # DNB uses PPN for authors or just names; exact syntax might need refinement
+                        person_queries.append(f"PER={p.first_name} {p.last_name}") 
+                if person_queries:
+                    query_parts.append(f"AND ({' OR '.join(person_queries)})")
+        except Exception as e:
+            logger.error(f"Error processing selected persons for advanced search: {str(e)}")
+
+    # Date range
+    start_date_str = form_data.get('start_date', '').strip()
+    end_date_str = form_data.get('end_date', '').strip()
+    if start_date_str and end_date_str:
+        try:
+            # Ensure dates are in YYYY/MM/DD format for PubMed
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
+            if database_name == 'PubMed':
+                query_parts.append(f"AND ({start_date}:{end_date}[DP])")
+            elif database_name == 'Deutsche Nationalbibliothek':
+                # DNB date format: JJJJMMTT-JJJJMMTT for zeitraum (zei)
+                start_dnb = datetime.strptime(start_date_str, '%Y-%m-%d').strftime('%Y%m%d')
+                end_dnb = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%Y%m%d')
+                query_parts.append(f"AND (zei={start_dnb}-{end_dnb})")
+        except ValueError:
+            logger.warning(f"Invalid date format for advanced search: {start_date_str} or {end_date_str}")
+            
+    # Language
+    language = form_data.get('language', '').strip()
+    if language:
+        if database_name == 'PubMed':
+            # PubMed uses full language name or abbreviation
+            lang_map = {'german': 'german', 'english': 'english'} # extend as needed
+            if language.lower() in lang_map:
+                 query_parts.append(f"AND ({lang_map[language.lower()]}[LA])")
+        elif database_name == 'Deutsche Nationalbibliothek':
+            # DNB uses 3-letter codes (e.g., ger, eng)
+            lang_map_dnb = {'german': 'ger', 'english': 'eng'} # extend as needed
+            if language.lower() in lang_map_dnb:
+                query_parts.append(f"AND (spr={lang_map_dnb[language.lower()]})")
+                
+    # Publication type
+    pub_type = form_data.get('publication_type', '').strip()
+    if pub_type:
+        if database_name == 'PubMed':
+            # This is a simplified mapping. PubMed has many publication types.
+            pt_map = {'journal_article': 'Journal Article', 'book': 'Book', 'review': 'Review'}
+            if pub_type.lower() in pt_map:
+                query_parts.append(f"AND ({pt_map[pub_type.lower()]}[PT])")
+        elif database_name == 'Deutsche Nationalbibliothek':
+            # DNB uses different system for publication types (e.g. map to mat codes)
+            # Example: 'Bücher' (Books) -> mat=B
+            # This requires more detailed mapping based on DNB's actual values
+            if pub_type.lower() == 'book': # Placeholder
+                 query_parts.append(f"AND (mat=B)")
+
+
+    # Boolean flags
+    if database_name == 'PubMed':
+        if form_data.get('full_text_only') == 'on':
+            query_parts.append('AND ("full text"[SB])')
+    elif database_name == 'Deutsche Nationalbibliothek':
+        if form_data.get('online_only') == 'on':
+            # DNB uses 'COO=1' for online available resources
+            query_parts.append('AND (COO=1)')
+            
+    return ' '.join(query_parts)
 
 def _construct_person_search_query(form_data):
     """Helper function to construct person search query"""
@@ -398,21 +540,42 @@ def results():
             flash("Die gesuchten Ergebnisse wurden nicht gefunden.", "warning")
             return redirect(url_for("search.index"))
         
-        # Get results from database
-        results = get_search_results(query_id)
-        
+        # Get page number from request, default to 1
+        page = request.args.get('page', 1, type=int)
+        per_page = 20  # Or get from config, e.g., current_app.config.get('PER_PAGE', 20)
+
+        # Get paginated results from database
+        results_pagination = get_search_results(query_id, page, per_page)
+
+        if results_pagination is None:
+            flash("Fehler beim Laden der Ergebnisse.", "error")
+            return redirect(url_for("search.index"))
+
+        # Extract items for the current page to be displayed
+        # The .items attribute of the pagination object contains the records for the current page.
+        # These items already have .result_data, but we need to parse the JSON for the template.
+        results_on_page = []
+        for item in results_pagination.items:
+            if item.result_data:
+                try:
+                    results_on_page.append(json.loads(item.result_data))
+                except json.JSONDecodeError:
+                    logger.error(f"Error decoding JSON for result item {item.id} in query {query_id}")
+                    results_on_page.append({}) # Add empty dict or skip
+
         # Get search summary and errors from session
-        search_summary = session.get('search_summary', {})
+        search_summary = session.get('search_summary', {}) # This is overall summary
         search_errors = session.get('search_errors', [])
         
         # Render results template
         return render_template(
             "results.html",
-            results=results,
+            results_page=results_pagination, # Pass the pagination object
+            results=results_on_page, # Pass the actual items for the current page
             query=query,
             search_errors=search_errors,
             search_summary=search_summary,
-            total_results=len(results)
+            # total_results is now part of results_pagination.total
         )
         
     except Exception as e:

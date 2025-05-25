@@ -431,7 +431,7 @@
                                                     </h6>
                                                     
                                                     <div class="mb-4">
-                                                        <label for="advancedSearchQuery" class="form-label">Hauptsuchbegriffe</label>
+                                                        <label for="advancedSearchQuery" class="form-label">Hauptsuchbegriffe <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Geben Sie hier die Kernbegriffe Ihrer Suche ein. Diese Begriffe definieren das Hauptthema Ihrer Recherche."></i></label>
                                                         <div class="input-group input-group-lg shadow-sm">
                                                             <span class="input-group-text bg-white text-primary">
                                                                 <i class="fas fa-search"></i>
@@ -441,12 +441,12 @@
                                                         </div>
                                                         <div class="form-text mt-2">
                                                             <i class="fas fa-info-circle text-info me-1"></i>
-                                                            Dies sind die primären Suchbegriffe. Mehrere Begriffe werden automatisch mit ODER verknüpft.
+                                                            Geben Sie einen oder mehrere Hauptbegriffe ein. Mehrere Begriffe im Hauptfeld (z.B. "A B") werden in der Regel als "A OR B" interpretiert, abhängig von der Datenbank. Verwenden Sie Anführungszeichen für exakte Phrasen (z.B. "chronische Nierenerkrankung").
                                                         </div>
                                                     </div>
                                                     
                                                     <div class="mb-3">
-                                                        <label for="advancedAdditionalTerms" class="form-label">Zusätzliche eingrenzende Begriffe (optional)</label>
+                                                        <label for="advancedAdditionalTerms" class="form-label">Zusätzliche eingrenzende Begriffe (optional) <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Verfeinern Sie Ihre Suche, indem Sie Begriffe hinzufügen, die in den gefundenen Dokumenten ebenfalls vorkommen müssen."></i></label>
                                                         <div class="input-group shadow-sm">
                                                             <span class="input-group-text bg-white text-primary">
                                                                 <i class="fas fa-plus-circle"></i>
@@ -456,7 +456,7 @@
                                                         </div>
                                                         <div class="form-text mt-2">
                                                             <i class="fas fa-lightbulb text-warning me-1"></i>
-                                                            Diese Begriffe werden mit UND verknüpft und helfen, irrelevante Ergebnisse auszuschließen.
+                                                            Diese Begriffe werden mit den Hauptsuchbegriffen per UND verknüpft (z.B. "(Hauptbegriff A ODER Hauptbegriff B) UND Zusatzbegriff C"). Dies hilft, die Suchergebnisse zu präzisieren.
                                                         </div>
                                                     </div>
                                                 </div>
@@ -518,9 +518,9 @@
                                                             <div>
                                                                 <h6 class="mb-1">Hinweise zur Datenbankauswahl</h6>
                                                                 <ul class="mb-0 ps-3 small">
-                                                                    <li><strong>PubMed</strong>: Biomedizinische Literatur, klinische Studien, medizinische Journals</li>
-                                                                    <li><strong>DNB</strong>: Deutsche Veröffentlichungen, akademische Publikationen, Bücher</li>
-                                                                    <li>Die Suche in mehreren Datenbanken kann einige Sekunden länger dauern</li>
+                                                                    <li><strong>PubMed</strong>: Fokussiert auf biomedizinische Literatur, klinische Studien und medizinische Fachzeitschriften. Ideal für medizinische Forschung.</li>
+                                                                    <li><strong>DNB</strong>: Umfasst deutsche Veröffentlichungen, Dissertationen, Bücher und andere Medien. Gut für Recherchen im deutschsprachigen Raum.</li>
+                                                                    <li>Die Suche in mehreren Datenbanken kann die Suchdauer leicht erhöhen, liefert aber umfassendere Ergebnisse.</li>
                                                                 </ul>
                                                             </div>
                                                         </div>
@@ -557,7 +557,7 @@
                                                     </div>
                                                     <div>
                                                         <h6 class="mb-1">Zur Information</h6>
-                                                        <p class="mb-0">Diese Filter sind optional. Sie können bestimmte Autor:innen auswählen, um die Suche auf deren Publikationen einzuschränken, oder diesen Schritt überspringen.</p>
+                                                        <p class="mb-0">Diese Filter sind optional. Sie können bestimmte Autor:innen auswählen, um die Suche auf deren Publikationen einzuschränken, oder diesen Schritt überspringen. Ausgewählte Personen werden per UND mit den Hauptsuchbegriffen und anderen Filtern verknüpft.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -588,7 +588,8 @@
                                                             <i class="fas fa-user-edit"></i>
                                                         </span>
                                                         <input type="text" class="form-control border" id="advancedPersonSearchInput" 
-                                                               placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off">
+                                                               placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off"
+                                                               data-bs-toggle="tooltip" title="Suchen Sie hier nach bereits erfassten Personen. Die Ergebnisse erscheinen in einer dynamischen Liste.">
                                                         <button class="btn btn-primary" type="button" id="advancedPersonSearchButton">
                                                             <i class="fas fa-search me-1"></i> Suchen
                                                         </button>
@@ -669,7 +670,7 @@
                                                     </div>
                                                     <div>
                                                         <h6 class="mb-1">Feinabstimmung Ihrer Suche</h6>
-                                                        <p class="mb-0">Verwenden Sie diese Filter, um Ihre Suche auf bestimmte Zeiträume, Sprachen und Publikationstypen einzuschränken. Alle Filter sind optional.</p>
+                                                        <p class="mb-0">Verwenden Sie diese Filter, um Ihre Suche auf bestimmte Zeiträume, Sprachen und Publikationstypen einzuschränken. Alle Filter sind optional und werden in der Regel per UND mit den vorherigen Kriterien verknüpft.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -688,7 +689,7 @@
                                                                 <span class="input-group-text bg-white text-primary">
                                                                     <i class="fas fa-calendar-alt"></i>
                                                                 </span>
-                                                                <input type="date" class="form-control border date-picker" id="advancedStartDate" name="start_date">
+                                                                <input type="date" class="form-control border date-picker" id="advancedStartDate" name="start_date" data-bs-toggle="tooltip" title="Frühestes Veröffentlichungsdatum. Klicken Sie, um einen Kalender zu öffnen.">
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6">
@@ -697,7 +698,7 @@
                                                                 <span class="input-group-text bg-white text-primary">
                                                                     <i class="fas fa-calendar-alt"></i>
                                                                 </span>
-                                                                <input type="date" class="form-control border date-picker" id="advancedEndDate" name="end_date">
+                                                                <input type="date" class="form-control border date-picker" id="advancedEndDate" name="end_date" data-bs-toggle="tooltip" title="Spätestes Veröffentlichungsdatum. Klicken Sie, um einen Kalender zu öffnen.">
                                                             </div>
                                                         </div>
                                                     </div>
@@ -719,7 +720,7 @@
                                                     <div class="row g-4">
                                                         <div class="col-md-6">
                                                             <label for="advancedLanguage" class="form-label">Sprache</label>
-                                                            <select class="form-select shadow-sm border" id="advancedLanguage" name="language">
+                                                            <select class="form-select shadow-sm border" id="advancedLanguage" name="language" data-bs-toggle="tooltip" title="Wählen Sie eine Sprache, um die Ergebnisse auf diese Sprache zu filtern.">
                                                                 <option value="">Alle Sprachen</option>
                                                                 <option value="eng">Englisch</option>
                                                                 <option value="ger">Deutsch</option>
@@ -728,12 +729,12 @@
                                                             </select>
                                                             <div class="form-text mt-2">
                                                                 <i class="fas fa-info-circle text-info me-1"></i>
-                                                                Limitiert die Suche auf Publikationen in der ausgewählten Sprache
+                                                                Limitiert die Suche auf Publikationen in der ausgewählten Sprache.
                                                             </div>
                                                         </div>
                                                         <div class="col-md-6">
                                                             <label for="advancedPublicationType" class="form-label">Publikationstyp</label>
-                                                            <select class="form-select shadow-sm border" id="advancedPublicationType" name="publication_type">
+                                                            <select class="form-select shadow-sm border" id="advancedPublicationType" name="publication_type" data-bs-toggle="tooltip" title="Filtern Sie nach bestimmten Publikationsarten wie Journal-Artikeln oder Büchern.">
                                                                 <option value="">Alle Typen</option>
                                                                 <option value="journal">Journal-Artikel</option>
                                                                 <option value="review">Review</option>
@@ -742,7 +743,7 @@
                                                             </select>
                                                             <div class="form-text mt-2">
                                                                 <i class="fas fa-info-circle text-info me-1"></i>
-                                                                Beschränkt die Suche auf spezifische Publikationsarten
+                                                                Beschränkt die Suche auf spezifische Publikationsarten.
                                                             </div>
                                                         </div>
                                                     </div>
@@ -777,7 +778,7 @@
                                                     </div>
                                                     <div>
                                                         <h6 class="mb-1">Optimierung nach Datenbanken</h6>
-                                                        <p class="mb-0">Diese erweiterten Filter ermöglichen Ihnen datenbankspezifische Einschränkungen, um genau die Ressourcen zu finden, die Sie benötigen.</p>
+                                                        <p class="mb-0">Diese erweiterten Filter ermöglichen Ihnen datenbankspezifische Einschränkungen. Nutzen Sie diese, wenn Sie mit den Eigenheiten der jeweiligen Datenbank vertraut sind, um Ihre Suche weiter zu verfeinern. Diese Optionen werden per UND mit den vorherigen Filtern kombiniert.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -795,22 +796,22 @@
                                                         <div class="card-body">
                                                             <div class="mb-3">
                                                                 <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" id="pubmedFullTextFilter" name="full_text_only">
+                                                                    <input class="form-check-input" type="checkbox" id="pubmedFullTextFilter" name="full_text_only" data-bs-toggle="tooltip" title="Sucht gezielt nach Artikeln, bei denen der Volltext direkt über PubMed Central oder verlinkte Verlage verfügbar ist.">
                                                                     <label class="form-check-label fw-bold" for="pubmedFullTextFilter">
                                                                         Nur Volltext-Artikel
                                                                     </label>
                                                                 </div>
-                                                                <div class="form-text ms-4">Zeigt nur Artikel an, deren vollständiger Text verfügbar ist</div>
+                                                                <div class="form-text ms-4">Zeigt nur Artikel an, deren vollständiger Text verfügbar ist.</div>
                                                             </div>
                                                             
                                                             <div class="mb-3">
                                                                 <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" id="pubmedFreeAccessFilter" name="free_access_only">
+                                                                    <input class="form-check-input" type="checkbox" id="pubmedFreeAccessFilter" name="free_access_only" data-bs-toggle="tooltip" title="Filtert nach Artikeln, die als 'Free Full Text' in PubMed gekennzeichnet sind und somit kostenlos zugänglich sein sollten.">
                                                                     <label class="form-check-label fw-bold" for="pubmedFreeAccessFilter">
                                                                         Nur frei zugängliche Artikel
                                                                     </label>
                                                                 </div>
-                                                                <div class="form-text ms-4">Beschränkt die Suche auf kostenlos verfügbare Publikationen</div>
+                                                                <div class="form-text ms-4">Beschränkt die Suche auf kostenlos verfügbare Publikationen.</div>
                                                             </div>
                                                             
                                                             <div class="alert alert-light small border p-2 mb-0">
@@ -833,22 +834,22 @@
                                                         <div class="card-body">
                                                             <div class="mb-3">
                                                                 <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" id="dnbOnlineFilter" name="online_only">
+                                                                    <input class="form-check-input" type="checkbox" id="dnbOnlineFilter" name="online_only" data-bs-toggle="tooltip" title="Filtert nach Ressourcen, die von der DNB als online verfügbar gekennzeichnet sind (z.B. Netzpublikationen, digitalisierte Drucke).">
                                                                     <label class="form-check-label fw-bold" for="dnbOnlineFilter">
                                                                         Nur Online-Ressourcen
                                                                     </label>
                                                                 </div>
-                                                                <div class="form-text ms-4">Zeigt nur Publikationen mit digitalem/Online-Zugang an</div>
+                                                                <div class="form-text ms-4">Zeigt nur Publikationen mit digitalem/Online-Zugang an.</div>
                                                             </div>
                                                             
                                                             <div class="mb-3">
                                                                 <div class="form-check form-switch">
-                                                                    <input class="form-check-input" type="checkbox" id="dnbAcademicFilter" name="academic_only">
+                                                                    <input class="form-check-input" type="checkbox" id="dnbAcademicFilter" name="academic_only" data-bs-toggle="tooltip" title="Versucht, die Suche auf wissenschaftliche oder akademische Publikationen zu beschränken. Die genaue Implementierung hängt von den DNB-Kategorisierungen ab.">
                                                                     <label class="form-check-label fw-bold" for="dnbAcademicFilter">
                                                                         Nur akademische Publikationen
                                                                     </label>
                                                                 </div>
-                                                                <div class="form-text ms-4">Beschränkt die Suche auf wissenschaftliche/akademische Werke</div>
+                                                                <div class="form-text ms-4">Beschränkt die Suche auf wissenschaftliche/akademische Werke.</div>
                                                             </div>
                                                             
                                                             <div class="alert alert-light small border p-2 mb-0">

@@ -147,14 +147,31 @@ def search_database(query, databases, search_mode="simple", person_name="", **kw
                 logger.warning(f"No results found in {db_name}")
                 
         except Exception as e:
-            error_msg = f"Error searching {db_name}: {str(e)}"
-            logger.error(error_msg)
-            search_errors.append({"database": db_name, "error": str(e)})
+            # The error 'e' from search_database_with_connector is already specific
+            # e.g., "Fehler bei der Suche in [DB_NAME]: [original error]"
+            error_message_for_this_db = str(e)
+            logger.error(f"Error during search in {db_name}: {error_message_for_this_db}")
+            
+            # If called for only one database (as from search_fix.py),
+            # re-raise the specific error to be caught by search_fix.py
+            if len(databases) == 1:
+                raise Exception(error_message_for_this_db) from e
+            
+            # For multiple database calls (if search_database is ever called directly with multiple dbs),
+            # collect errors and continue.
+            search_errors.append({"database": db_name, "error": error_message_for_this_db})
             continue
 
+    # This part is now mainly for direct calls to search_database with multiple databases,
+    # if any such calls exist and expect this behavior.
+    # For calls from search_fix.py (single DB), this won't be reached if an error occurred,
+    # as the exception would have been re-raised above.
     if not all_results and search_errors:
-        error_messages = [f"{error['database']}: {error['error']}" for error in search_errors]
-        raise Exception(f"Search failed in all databases: {'; '.join(error_messages)}")
+        # Consolidate error messages if it was a multi-database search call that failed for all.
+        error_messages_summary = [f"{err['database']}: {err['error']}" for err in search_errors]
+        # This generic message might be too broad if some DBs succeeded and this is still hit.
+        # However, if all_results is empty, it implies all failed or returned nothing.
+        raise Exception(f"Search failed for all specified databases. Errors: {'; '.join(error_messages_summary)}")
 
     logger.info(f"Total results found: {len(all_results)}")
     if search_errors:
