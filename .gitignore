@@ -47,3 +47,17 @@ Thumbs.db
 
 # Application specific
 medicalspy_config.json
+
+# Session files
+instance/sessions/
+instance/flask_session/
+backend/instance/sessions/
+
+# Temporary test files
+test_*.py
+simple_search_test.py
+debug_*.py
+init_db.py
+
+# Database backups
+backups/

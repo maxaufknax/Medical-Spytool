@@ -10,7 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from flask import current_app
-from backend.config import get_env_setting
+from config import get_env_setting
 from sqlalchemy.types import TypeDecorator, TEXT
 
 # Initialize SQLAlchemy without binding to an app

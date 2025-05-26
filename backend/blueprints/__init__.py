@@ -9,14 +9,14 @@ import logging
 
 # Import all blueprints
 try:
-    from backend.blueprints.main import main_bp
-    from backend.blueprints.search import search_bp
-    from backend.blueprints.persons import persons_bp
-    from backend.blueprints.settings import settings_bp
-    from backend.blueprints.analysis import analysis_bp
-    from backend.blueprints.export import export_bp
-    from backend.blueprints.logs import logs_bp
-    from backend.blueprints.auth import auth_bp
+    from .main import main_bp
+    from .search import search_bp
+    from .persons import persons_bp
+    from .settings import settings_bp
+    from .analysis import analysis_bp
+    from .export import export_bp
+    from .logs import logs_bp
+    from .auth import auth_bp
 except ImportError as e:
     logger = logging.getLogger(__name__)
     logger.error(f"Error importing blueprints: {e}")
