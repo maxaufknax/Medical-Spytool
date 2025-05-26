@@ -86,16 +86,15 @@ def init_csrf_protection(app, csrf):
         # Skip for exempted endpoints
         if request.endpoint not in safe_endpoints:
             csrf_token = session.get('csrf_token', generate_csrf())
-            
-            # Set secure cookie
+              # Set accessible cookie for JavaScript (not httponly)
             response.set_cookie(
                 'csrf_token',
                 csrf_token,
                 max_age=3600,  # 1 hour
                 secure=not app.debug,  # Secure in production
-                httponly=True,  # Prevent XSS access
+                httponly=False,  # Allow JavaScript access for token sync
                 samesite='Strict'  # Prevent CSRF
-            )            # Add CSRF token to response headers for AJAX requests
+            )# Add CSRF token to response headers for AJAX requests
             response.headers['X-CSRF-Token'] = csrf_token
             
         return response

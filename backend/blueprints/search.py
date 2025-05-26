@@ -13,7 +13,7 @@ from flask_wtf.csrf import validate_csrf, ValidationError
 from backend.models import db, SearchQuery, SearchResult, Person
 from backend.search import search_database, parse_date_range
 from backend.connectors import get_connector_for_database
-from backend.search_fix import enhanced_search_database, search_single_database
+from backend.search_fix import enhanced_search_database, search_single_database  # Import the enhanced search
 from backend.utils import log_message
 from backend.api_utils import search_status_response
 import logging
@@ -183,12 +183,15 @@ def save_search_results(query_obj, results):
 @search_bp.route("/", methods=["GET", "POST"])
 def index():
     """Handle search form display and search execution"""
-    logger.debug("Entering search index route")
+    logger.info(f"Entering search index route - Method: {request.method}")
     
     if request.method == "POST":
+        logger.info("Processing POST request for search")
         try:
             # CSRF validation
             csrf_token = request.form.get('csrf_token')
+            logger.info(f"CSRF token received: {csrf_token[:20] if csrf_token else 'None'}...")
+            
             if not csrf_token:
                 logger.warning("Missing CSRF token in search request")
                 flash('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.', 'error')
@@ -196,14 +199,29 @@ def index():
             
             try:
                 validate_csrf(csrf_token)
-            except ValidationError:
-                logger.warning("Invalid CSRF token in search request")
+                logger.info("CSRF validation successful")
+            except ValidationError as e:
+                logger.warning(f"Invalid CSRF token in search request: {str(e)}")
                 flash('Ungültiges oder abgelaufenes Sicherheitstoken. Bitte laden Sie die Seite neu.', 'error')
                 return redirect(url_for('search.index'))
             
             # Get and validate search parameters
             search_mode = request.form.get('search_mode', 'simple')
             selected_databases = request.form.getlist('databases')
+            
+            # For person search, also check person_databases field
+            if search_mode == 'person' and not selected_databases:
+                selected_databases = request.form.getlist('person_databases')
+            
+            # If still no databases, try both (defensive programming)
+            if not selected_databases:
+                all_db_fields = request.form.getlist('databases') + request.form.getlist('person_databases')
+                selected_databases = list(set(all_db_fields))  # Remove duplicates
+            
+            # Debug logging
+            logger.info(f"Search request: mode={search_mode}")
+            logger.info(f"Form data: {dict(request.form.lists())}")
+            logger.info(f"Selected databases: {selected_databases}")
             
             # Determine query based on search mode
             query = None
@@ -358,71 +376,83 @@ def _construct_advanced_query_string(form_data, database_name):
                     if database_name == 'PubMed':
                         person_queries.append(f"{p.last_name} {p.first_name[0]}[AU]")
                     elif database_name == 'Deutsche Nationalbibliothek':
-                        # DNB uses PPN for authors or just names; exact syntax might need refinement
-                        person_queries.append(f"PER={p.first_name} {p.last_name}") 
+                        person_queries.append(f"per={p.first_name} {p.last_name}")
+                    else:
+                        person_queries.append(f"{p.first_name} {p.last_name}")
+                
                 if person_queries:
                     query_parts.append(f"AND ({' OR '.join(person_queries)})")
         except Exception as e:
-            logger.error(f"Error processing selected persons for advanced search: {str(e)}")
+            logger.error(f"Error processing person IDs for advanced search: {str(e)}")
+    
+    # Author
+    author = form_data.get('author', '').strip()
+    if author:
+        if database_name == 'PubMed':
+            query_parts.append(f"AND ({author}[AU])")
+        else:
+            query_parts.append(f"AND (author:{author})")
+    
+    # Year range
+    year_from = form_data.get('year_from', '').strip()
+    year_to = form_data.get('year_to', '').strip()
+    if year_from or year_to:
+        if database_name == 'PubMed':
+            if year_from and year_to:
+                query_parts.append(f"AND (\"{year_from}\"[Date - Publication] : \"{year_to}\"[Date - Publication])")
+            elif year_from:
+                query_parts.append(f"AND (\"{year_from}\"[Date - Publication] : 3000[Date - Publication])")
+            elif year_to:
+                query_parts.append(f"AND (1800[Date - Publication] : \"{year_to}\"[Date - Publication])")
+        else:
+            if year_from and year_to:
+                query_parts.append(f"AND (year:{year_from}-{year_to})")
+            elif year_from:
+                query_parts.append(f"AND (year:>={year_from})")
+            elif year_to:
+                query_parts.append(f"AND (year:<={year_to})")
+    
+    # Title keywords
+    title = form_data.get('title', '').strip()
+    if title:
+        if database_name == 'PubMed':
+            query_parts.append(f"AND ({title}[TI])")
+        else:
+            query_parts.append(f"AND (title:{title})")
+    
+    # Join all parts
+    if not query_parts:
+        return ""
+    
+    # Remove the first "AND" if the query starts with it
+    query_string = " ".join(query_parts)
+    if query_string.startswith("AND "):
+        query_string = query_string[4:]
+    
+    return query_string
 
-    # Date range
-    start_date_str = form_data.get('start_date', '').strip()
-    end_date_str = form_data.get('end_date', '').strip()
-    if start_date_str and end_date_str:
+@search_bp.before_request
+def log_request_info():
+    """Log request information and ensure session validity"""
+    logger.debug(f"Request path: {request.path}")
+    session.permanent = True  # Ensure session stays alive during search
+    
+    # Check session expiry
+    timestamp = session.get('query_timestamp')
+    if timestamp:
         try:
-            # Ensure dates are in YYYY/MM/DD format for PubMed
-            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
-            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%Y/%m/%d')
-            if database_name == 'PubMed':
-                query_parts.append(f"AND ({start_date}:{end_date}[DP])")
-            elif database_name == 'Deutsche Nationalbibliothek':
-                # DNB date format: JJJJMMTT-JJJJMMTT for zeitraum (zei)
-                start_dnb = datetime.strptime(start_date_str, '%Y-%m-%d').strftime('%Y%m%d')
-                end_dnb = datetime.strptime(end_date_str, '%Y-%m-%d').strftime('%Y%m%d')
-                query_parts.append(f"AND (zei={start_dnb}-{end_dnb})")
-        except ValueError:
-            logger.warning(f"Invalid date format for advanced search: {start_date_str} or {end_date_str}")
-            
-    # Language
-    language = form_data.get('language', '').strip()
-    if language:
-        if database_name == 'PubMed':
-            # PubMed uses full language name or abbreviation
-            lang_map = {'german': 'german', 'english': 'english'} # extend as needed
-            if language.lower() in lang_map:
-                 query_parts.append(f"AND ({lang_map[language.lower()]}[LA])")
-        elif database_name == 'Deutsche Nationalbibliothek':
-            # DNB uses 3-letter codes (e.g., ger, eng)
-            lang_map_dnb = {'german': 'ger', 'english': 'eng'} # extend as needed
-            if language.lower() in lang_map_dnb:
-                query_parts.append(f"AND (spr={lang_map_dnb[language.lower()]})")
-                
-    # Publication type
-    pub_type = form_data.get('publication_type', '').strip()
-    if pub_type:
-        if database_name == 'PubMed':
-            # This is a simplified mapping. PubMed has many publication types.
-            pt_map = {'journal_article': 'Journal Article', 'book': 'Book', 'review': 'Review'}
-            if pub_type.lower() in pt_map:
-                query_parts.append(f"AND ({pt_map[pub_type.lower()]}[PT])")
-        elif database_name == 'Deutsche Nationalbibliothek':
-            # DNB uses different system for publication types (e.g. map to mat codes)
-            # Example: 'Bücher' (Books) -> mat=B
-            # This requires more detailed mapping based on DNB's actual values
-            if pub_type.lower() == 'book': # Placeholder
-                 query_parts.append(f"AND (mat=B)")
-
-
-    # Boolean flags
-    if database_name == 'PubMed':
-        if form_data.get('full_text_only') == 'on':
-            query_parts.append('AND ("full text"[SB])')
-    elif database_name == 'Deutsche Nationalbibliothek':
-        if form_data.get('online_only') == 'on':
-            # DNB uses 'COO=1' for online available resources
-            query_parts.append('AND (COO=1)')
-            
-    return ' '.join(query_parts)
+            search_time = datetime.fromisoformat(timestamp)
+            if get_utc_now() - search_time > timedelta(hours=1):
+                # Clear expired search results from session
+                session.pop('current_query_id', None)
+                session.pop('query_timestamp', None)
+                session.pop('result_count', None)
+                session.modified = True
+                logger.info("Cleared expired search results from session")
+        except Exception as e:
+            logger.error(f"Error checking session expiry: {e}")
+            # Clear invalid session data
+            session.pop('query_timestamp', None)
 
 def _construct_person_search_query(form_data):
     """Helper function to construct person search query"""

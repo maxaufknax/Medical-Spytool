@@ -19,24 +19,33 @@ function getCookie(name) {
     return null;
 }
 
-// Function to synchronize CSRF token from cookie to form
+// Function to synchronize CSRF token from meta tag or cookie to form
 function syncCsrfToken() {
-    const tokenFromCookie = getCookie('csrf_token');
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
     const tokenInput = document.querySelector('input[name="csrf_token"]');
+    let csrfToken = null;
     
-    if (tokenFromCookie && tokenInput) {
-        // Update form token if it differs from cookie token
-        if (tokenInput.value !== tokenFromCookie) {
-            console.log('Synchronizing CSRF token from cookie to form');
-            tokenInput.value = tokenFromCookie;
+    // First try to get token from meta tag
+    if (metaTag) {
+        csrfToken = metaTag.getAttribute('content');
+    }
+    
+    // If no meta tag token, try cookie as fallback
+    if (!csrfToken) {
+        csrfToken = getCookie('csrf_token');
+    }
+    
+    if (csrfToken && tokenInput) {
+        // Update form token if it differs
+        if (tokenInput.value !== csrfToken) {
+            console.log('Synchronizing CSRF token to form');
+            tokenInput.value = csrfToken;
         }
         return tokenInput.value;
-    } else if (tokenInput && !tokenInput.value && tokenFromCookie) {
-        console.log('Form token empty but cookie token available - synchronizing');
-        tokenInput.value = tokenFromCookie;
-        return tokenInput.value;
-    } else if (!tokenFromCookie) {
-        console.error('No CSRF token available in cookie');
+    }
+    
+    if (!csrfToken) {
+        console.error('No CSRF token found in meta tag or cookie');
     } else if (!tokenInput) {
         console.error('No CSRF token input field found in form');
     }

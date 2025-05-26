@@ -234,12 +234,11 @@
                                                                 <i class="fas fa-check-double"></i> Alle auswählen
                                                             </button>
                                                         </div>
-                                                        
-                                                        <div class="database-cards-grid">
+                                                          <div class="database-cards-grid">
                                                             {% for db in databases %}
                                                             <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
                                                                 <input class="database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                    id="db-person-{{ db }}" name="databases" 
+                                                                    id="db-person-{{ db }}" name="person_databases" 
                                                                     {% if db == 'PubMed' %}checked{% endif %}>
                                                                 <div class="database-status-indicator">
                                                                     <i class="fas fa-check"></i>
@@ -1247,6 +1246,45 @@
 
         if (searchForm) {
             searchForm.addEventListener('submit', function(event) {
+                // First, handle database selection based on active tab
+                const activeTab = document.querySelector('.tab-pane.active');
+                let selectedDatabases = [];
+                
+                if (activeTab) {
+                    // For simple search - use the simple search checkboxes
+                    if (activeTab.id === 'simple-search') {
+                        const simpleCheckboxes = activeTab.querySelectorAll('input[name="databases"]:checked');
+                        selectedDatabases = Array.from(simpleCheckboxes).map(cb => cb.value);
+                    }
+                    // For person search - use person_databases checkboxes and copy to databases
+                    else if (activeTab.id === 'person-search') {
+                        const personCheckboxes = activeTab.querySelectorAll('input[name="person_databases"]:checked');
+                        selectedDatabases = Array.from(personCheckboxes).map(cb => cb.value);
+                        
+                        // Clear any existing databases checkboxes and create new hidden ones
+                        document.querySelectorAll('input[name="databases"]').forEach(cb => {
+                            if (cb.type === 'hidden' && cb.classList.contains('auto-generated')) {
+                                cb.remove();
+                            }
+                        });
+                        
+                        // Add hidden inputs for selected databases
+                        selectedDatabases.forEach(dbValue => {
+                            const hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'databases';
+                            hiddenInput.value = dbValue;
+                            hiddenInput.classList.add('auto-generated');
+                            searchForm.appendChild(hiddenInput);
+                        });
+                    }
+                    // For advanced search and saved queries - handle differently if needed
+                    else {
+                        const advancedCheckboxes = activeTab.querySelectorAll('input[name="databases"]:checked, input[name="person_databases"]:checked');
+                        selectedDatabases = Array.from(advancedCheckboxes).map(cb => cb.value);
+                    }
+                }
+                
                 // Validate form
                 if (!searchForm.checkValidity()) {
                     event.preventDefault();
@@ -1263,7 +1301,6 @@
                 }
 
                 // Verify database selection
-                const selectedDatabases = document.querySelectorAll('input[name="databases"]:checked');
                 if (selectedDatabases.length === 0) {
                     event.preventDefault();
                     alert('Bitte wählen Sie mindestens eine Datenbank aus.');
@@ -1290,18 +1327,38 @@
                 `;
                 document.body.appendChild(loadingOverlay);
             });
-        }
-
-        // Add database selection handler
-        const databaseCheckboxes = document.querySelectorAll('input[name="databases"]');
-        databaseCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const anyChecked = Array.from(databaseCheckboxes).some(cb => cb.checked);
-                submitButtons.forEach(button => {
-                    button.disabled = !anyChecked;
-                });
+        }        // Add database selection handler
+        const updateSubmitButtons = () => {
+            const activeTab = document.querySelector('.tab-pane.active');
+            let hasSelection = false;
+            
+            if (activeTab) {
+                if (activeTab.id === 'simple-search') {
+                    hasSelection = activeTab.querySelectorAll('input[name="databases"]:checked').length > 0;
+                } else if (activeTab.id === 'person-search') {
+                    hasSelection = activeTab.querySelectorAll('input[name="person_databases"]:checked').length > 0;
+                } else {
+                    hasSelection = activeTab.querySelectorAll('input[name="databases"]:checked, input[name="person_databases"]:checked').length > 0;
+                }
+            }
+            
+            submitButtons.forEach(button => {
+                button.disabled = !hasSelection;
             });
+        };
+        
+        const databaseCheckboxes = document.querySelectorAll('input[name="databases"], input[name="person_databases"]');
+        databaseCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSubmitButtons);
         });
+        
+        // Update on tab change
+        document.querySelectorAll('#searchModeTabs .nav-link').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', updateSubmitButtons);
+        });
+        
+        // Initial update
+        updateSubmitButtons();
     });
 </script>
 {% endblock %}
