@@ -804,38 +804,3 @@ class PubMedConnector(DatabaseConnector):
 
         logger.error(f"PubMed: Max retries ({max_retries}) exceeded for PMID {pmid}")
         return "Fehler 429"
-
-
-def get_connector_for_database(database_name, api_key=None):
-    """
-    Get a connector for the specified database.
-
-    Args:
-        database_name (str): The name of the database
-        api_key (str, optional): API key for the database (deprecated, use app.config instead)
-
-    Returns:
-        DatabaseConnector: A connector for the specified database
-
-    Raises:
-        ValueError: If the database is not supported
-    """
-    # Get API keys from Flask app config if available, otherwise use None
-    pubmed_api_key = None
-    dnb_api_key = None
-    try:
-        if current_app:
-            pubmed_api_key = current_app.config.get("PUBMED_API_KEY")
-            dnb_api_key = current_app.config.get("DNB_API_KEY")
-    except RuntimeError:
-        # Not in application context, use provided key (if any)
-        logger.warning("Not in application context, can't get API keys from config")
-
-    if database_name == "PubMed":
-        # Use pubmed_api_key from app.config, fall back to provided api_key
-        return PubMedConnector(api_key=pubmed_api_key or api_key)
-    elif database_name == "Deutsche Nationalbibliothek":
-        # Use dnb_api_key from app.config, fall back to provided api_key
-        return DNBConnector(api_key=dnb_api_key or api_key)
-    else:
-        raise ValueError(f"Unsupported database: {database_name}")

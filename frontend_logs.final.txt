@@ -1,0 +1,79 @@
+--- Simulated JavaScript Console Logs (frontend_logs.txt) ---
+--- Simulated JavaScript Console Logs ---
+DOMContentLoaded - initializing search functionality
+CSRF meta tag found with content. (Simulated - actual token from input field)
+Initial CSRF token sync: successful (token: )
+Search functionality initialization complete
+Form submission initiated.
+CSRF token check before submission: valid (token: )
+Validating form before submission...
+Validating tab: simple-search-tab
+Form validation successful.
+Form data to be submitted:
+  csrf_token: 
+  search_mode: simple
+  simple_query_content: anette melk
+  databases: PubMed
+  databases: Deutsche Nationalbibliothek
+Calling startSearchStatusPolling().
+Form submission proceeding.
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 
+Full search status response data: 
+Received search status: 

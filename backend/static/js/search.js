@@ -131,11 +131,18 @@ function checkSearchStatus() {
         credentials: 'same-origin'
     })
     .then(response => {
-        if (!response.ok) throw new Error('Network response was not ok');
+        if (!response.ok) {
+            const errorText = `Network response was not ok. Status: ${response.status} ${response.statusText}`;
+            console.error('Error in checkSearchStatus fetch (response not ok):', errorText);
+            throw new Error(errorText);
+        }
         return response.json();
     })
     .then(data => {
-        console.log('Search status:', data);
+        console.log('Full search status response data:', data); // Log full response data
+        console.log('Received search status:', data.status);
+        if(data.redirect_url) console.log('Received redirect_url:', data.redirect_url);
+        if(data.errors && data.errors.length > 0) console.log('Received errors:', data.errors);
         
         switch (data.status) {
             case 'searching':
@@ -146,6 +153,7 @@ function checkSearchStatus() {
                 stopSearchStatusPolling();
                 updateSearchUI('completed', 'Suche abgeschlossen.');
                 if (data.redirect_url) {
+                    console.log(`Redirecting to results page: ${data.redirect_url}`);
                     window.location.href = data.redirect_url;
                 }
                 break;
@@ -291,7 +299,7 @@ function initializeSearchForm() {
     }
       // Handle form submission
     searchForm.addEventListener('submit', function(event) {
-        console.log('Form submission started - validating');
+        console.log('Form submission initiated.'); // Log form submission initiation
         
         // First sync the CSRF token from cookie to form
         const csrfToken = syncCsrfToken();
@@ -299,15 +307,29 @@ function initializeSearchForm() {
         // Verify CSRF token exists after synchronizing
         if (!csrfToken) {
             event.preventDefault();
-            console.error('Missing CSRF token even after sync attempt');
+            console.error('Missing CSRF token even after sync attempt. Preventing form submission.');
             showToast('Sicherheitstoken fehlt. Bitte laden Sie die Seite neu.', 'error');
             return false;
         }
         
         // Validate form based on active search mode
+        console.log('Validating form before submission...');
         if (!validateSearchForm()) {
             event.preventDefault();
+            console.warn('Form validation failed. Preventing form submission.');
             return false;
+        }
+        console.log('Form validation successful.');
+
+        // Log form data
+        try {
+            const formData = new FormData(searchForm);
+            console.log('Form data to be submitted:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+        } catch (e) {
+            console.error('Error constructing or logging FormData:', e);
         }
         
         // Show loading state
@@ -315,9 +337,11 @@ function initializeSearchForm() {
         
         // Start polling for search status after a short delay
         setTimeout(() => {
+            console.log('Calling startSearchStatusPolling().'); // Log when startSearchStatusPolling is called
             startSearchStatusPolling();
         }, 500);
         
+        console.log('Form submission proceeding.');
         // Let the form submit
         return true;
     });

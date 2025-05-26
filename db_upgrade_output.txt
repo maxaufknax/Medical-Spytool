@@ -1,0 +1,91 @@
+2025-05-26 11:30:22,987 INFO backend.config : PROJECT_ROOT: /app
+2025-05-26 11:30:22,987 INFO backend.config : Instance path ensured at /app/instance
+2025-05-26 11:30:22,988 INFO backend.config : Session file directory ensured at /app/instance/flask_session
+2025-05-26 11:30:22,988 INFO backend.config : Logs directory ensured at /app/logs
+2025-05-26 11:30:22,988 INFO backend.config : Default DB path: /app/instance/medicalspy.db
+2025-05-26 11:30:22,988 INFO backend.config : App output path ensured at /app/output
+2025-05-26 11:30:22,988 INFO backend.config : App person list path ensured at /app/person_lists
+2025-05-26 11:30:22,988 INFO backend.config : .env file not found at /app/.env.
+2025-05-26 11:30:22,988 WARNING backend.config : PRODUCTION WARNING: Default SECRET_KEY is used. Set a strong SECRET_KEY environment variable for production.
+2025-05-26 11:30:22,988 INFO backend.config : backend.config module loaded and processed.
+2025-05-26 11:30:23,352 INFO backend.app : Instance directory ensured at: /app/instance
+2025-05-26 11:30:23,352 INFO backend.app : Loaded development config via FLASK_ENV or default.
+2025-05-26 11:30:23,352 INFO backend.app : Attempted to load instance/config.py. Silent: True
+2025-05-26 11:30:23,363 INFO backend.app : Flask-Session initialized with type: filesystem
+2025-05-26 11:30:23,363 INFO backend.app : Database URL: sqlite:////app/instance/medicalspy.db
+2025-05-26 11:30:23,373 INFO backend.app : SQLAlchemy initialized.
+2025-05-26 11:30:23,375 INFO backend.app : Migrate initialized.
+2025-05-26 11:30:23,375 INFO backend.csrf_config : CSRF protection exempted for static
+2025-05-26 11:30:23,375 WARNING backend.csrf_config : Could not find endpoint main.health_check to exempt from CSRF
+2025-05-26 11:30:23,375 WARNING backend.csrf_config : Could not find endpoint api.get_persons to exempt from CSRF
+2025-05-26 11:30:23,375 WARNING backend.csrf_config : Could not find endpoint logs.api_logs to exempt from CSRF
+2025-05-26 11:30:23,375 INFO backend.app : Custom CSRF protection initialized.
+2025-05-26 11:30:23,376 INFO backend.app : Babel initialization via backend.i18n.init_babel is TEMPORARILY DISABLED.
+2025-05-26 11:30:23,376 INFO backend.app : LoginManager initialized.
+2025-05-26 11:30:23,376 INFO backend.app : WTF_CSRF_TIME_LIMIT set to None for testing.
+2025-05-26 11:30:23,376 INFO backend.app: Flask logging configured. App logger effective level: DEBUG [in /app/backend/app.py:149]
+2025-05-26 11:30:23,376 DEBUG backend.app: This is a DEBUG message from create_app. [in /app/backend/app.py:150]
+2025-05-26 11:30:23,376 INFO backend.app: Babel localeselector handling is skipped as Babel is disabled. [in /app/backend/app.py:158]
+2025-05-26 11:30:23,745 INFO backend.connectors: Successfully imported DatabaseConnector, PubMedConnector, DNBConnector from ..connectors_module. [in /app/backend/connectors/__init__.py:27]
+2025-05-26 11:30:23,745 INFO backend.connectors: backend.connectors package initialized. Available exports: ['get_connector_for_database', 'DatabaseConnector', 'PubMedConnector', 'DNBConnector'] [in /app/backend/connectors/__init__.py:48]
+2025-05-26 11:30:23,751 INFO backend.blueprints: Blueprints initialized and collected. [in /app/backend/blueprints/__init__.py:48]
+2025-05-26 11:30:23,751 INFO backend.app: Registering blueprints... [in /app/backend/app.py:161]
+2025-05-26 11:30:23,752 INFO backend.app: Registered blueprint: main with prefix: / [in /app/backend/app.py:164]
+2025-05-26 11:30:23,755 INFO backend.app: Registered blueprint: auth with prefix: /auth [in /app/backend/app.py:164]
+2025-05-26 11:30:23,756 INFO backend.app: Registered blueprint: search with prefix: /search [in /app/backend/app.py:164]
+2025-05-26 11:30:23,759 INFO backend.app: Registered blueprint: persons with prefix: /persons [in /app/backend/app.py:164]
+2025-05-26 11:30:23,760 INFO backend.app: Registered blueprint: settings with prefix: /settings [in /app/backend/app.py:164]
+2025-05-26 11:30:23,761 INFO backend.app: Registered blueprint: analysis with prefix: /analysis [in /app/backend/app.py:164]
+2025-05-26 11:30:23,761 INFO backend.app: Registered blueprint: export with prefix: /export [in /app/backend/app.py:164]
+2025-05-26 11:30:23,763 INFO backend.app: Registered blueprint: logs with prefix: /logs [in /app/backend/app.py:164]
+2025-05-26 11:30:23,765 INFO backend.app: Database tables created successfully or already exist via db.create_all(). [in /app/backend/app.py:169]
+2025-05-26 11:30:23,765 INFO backend.app: init-db CLI command registered. [in /app/backend/app.py:175]
+2025-05-26 11:30:23,767 INFO backend.app: create_app function finished successfully. [in /app/backend/app.py:219]
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.env] No changes in schema detected.
+2025-05-26 11:30:24,729 INFO backend.config : PROJECT_ROOT: /app
+2025-05-26 11:30:24,729 INFO backend.config : Instance path ensured at /app/instance
+2025-05-26 11:30:24,729 INFO backend.config : Session file directory ensured at /app/instance/flask_session
+2025-05-26 11:30:24,729 INFO backend.config : Logs directory ensured at /app/logs
+2025-05-26 11:30:24,730 INFO backend.config : Default DB path: /app/instance/medicalspy.db
+2025-05-26 11:30:24,730 INFO backend.config : App output path ensured at /app/output
+2025-05-26 11:30:24,730 INFO backend.config : App person list path ensured at /app/person_lists
+2025-05-26 11:30:24,730 INFO backend.config : .env file not found at /app/.env.
+2025-05-26 11:30:24,730 WARNING backend.config : PRODUCTION WARNING: Default SECRET_KEY is used. Set a strong SECRET_KEY environment variable for production.
+2025-05-26 11:30:24,730 INFO backend.config : backend.config module loaded and processed.
+2025-05-26 11:30:25,084 INFO backend.app : Instance directory ensured at: /app/instance
+2025-05-26 11:30:25,084 INFO backend.app : Loaded development config via FLASK_ENV or default.
+2025-05-26 11:30:25,084 INFO backend.app : Attempted to load instance/config.py. Silent: True
+2025-05-26 11:30:25,095 INFO backend.app : Flask-Session initialized with type: filesystem
+2025-05-26 11:30:25,095 INFO backend.app : Database URL: sqlite:////app/instance/medicalspy.db
+2025-05-26 11:30:25,104 INFO backend.app : SQLAlchemy initialized.
+2025-05-26 11:30:25,106 INFO backend.app : Migrate initialized.
+2025-05-26 11:30:25,106 INFO backend.csrf_config : CSRF protection exempted for static
+2025-05-26 11:30:25,106 WARNING backend.csrf_config : Could not find endpoint main.health_check to exempt from CSRF
+2025-05-26 11:30:25,106 WARNING backend.csrf_config : Could not find endpoint api.get_persons to exempt from CSRF
+2025-05-26 11:30:25,106 WARNING backend.csrf_config : Could not find endpoint logs.api_logs to exempt from CSRF
+2025-05-26 11:30:25,107 INFO backend.app : Custom CSRF protection initialized.
+2025-05-26 11:30:25,107 INFO backend.app : Babel initialization via backend.i18n.init_babel is TEMPORARILY DISABLED.
+2025-05-26 11:30:25,107 INFO backend.app : LoginManager initialized.
+2025-05-26 11:30:25,107 INFO backend.app : WTF_CSRF_TIME_LIMIT set to None for testing.
+2025-05-26 11:30:25,107 INFO backend.app: Flask logging configured. App logger effective level: DEBUG [in /app/backend/app.py:149]
+2025-05-26 11:30:25,107 DEBUG backend.app: This is a DEBUG message from create_app. [in /app/backend/app.py:150]
+2025-05-26 11:30:25,107 INFO backend.app: Babel localeselector handling is skipped as Babel is disabled. [in /app/backend/app.py:158]
+2025-05-26 11:30:25,472 INFO backend.connectors: Successfully imported DatabaseConnector, PubMedConnector, DNBConnector from ..connectors_module. [in /app/backend/connectors/__init__.py:27]
+2025-05-26 11:30:25,472 INFO backend.connectors: backend.connectors package initialized. Available exports: ['get_connector_for_database', 'DatabaseConnector', 'PubMedConnector', 'DNBConnector'] [in /app/backend/connectors/__init__.py:48]
+2025-05-26 11:30:25,477 INFO backend.blueprints: Blueprints initialized and collected. [in /app/backend/blueprints/__init__.py:48]
+2025-05-26 11:30:25,477 INFO backend.app: Registering blueprints... [in /app/backend/app.py:161]
+2025-05-26 11:30:25,479 INFO backend.app: Registered blueprint: main with prefix: / [in /app/backend/app.py:164]
+2025-05-26 11:30:25,482 INFO backend.app: Registered blueprint: auth with prefix: /auth [in /app/backend/app.py:164]
+2025-05-26 11:30:25,483 INFO backend.app: Registered blueprint: search with prefix: /search [in /app/backend/app.py:164]
+2025-05-26 11:30:25,485 INFO backend.app: Registered blueprint: persons with prefix: /persons [in /app/backend/app.py:164]
+2025-05-26 11:30:25,486 INFO backend.app: Registered blueprint: settings with prefix: /settings [in /app/backend/app.py:164]
+2025-05-26 11:30:25,487 INFO backend.app: Registered blueprint: analysis with prefix: /analysis [in /app/backend/app.py:164]
+2025-05-26 11:30:25,488 INFO backend.app: Registered blueprint: export with prefix: /export [in /app/backend/app.py:164]
+2025-05-26 11:30:25,489 INFO backend.app: Registered blueprint: logs with prefix: /logs [in /app/backend/app.py:164]
+2025-05-26 11:30:25,491 INFO backend.app: Database tables created successfully or already exist via db.create_all(). [in /app/backend/app.py:169]
+2025-05-26 11:30:25,491 INFO backend.app: init-db CLI command registered. [in /app/backend/app.py:175]
+2025-05-26 11:30:25,493 INFO backend.app: create_app function finished successfully. [in /app/backend/app.py:219]
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.

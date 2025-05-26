@@ -28,9 +28,16 @@ def check_search_status():
     AJAX endpoint to check the current search status
     Returns JSON with search status information
     """
+    logger.info("Entering check_search_status endpoint")
     search_status = session.get('search_status', 'idle')
     start_time_str = session.get('search_start_time')
     current_query_id = session.get('current_query_id')
+    search_errors_session = session.get('search_errors', [])
+
+    logger.info(f"Session search_status: {search_status}")
+    logger.info(f"Session current_query_id: {current_query_id}")
+    logger.info(f"Session search_errors: {search_errors_session}")
+    logger.info(f"Session search_start_time: {start_time_str}")
     
     # Check if search has been running too long
     if start_time_str and search_status == 'searching':
@@ -49,7 +56,7 @@ def check_search_status():
             logger.error(f"Error calculating search duration: {str(e)}")
     
     # Get any errors from the session
-    errors = session.get('search_errors', [])
+    # errors = session.get('search_errors', []) # Already fetched as search_errors_session
     redirect_url = None
     
     # Add redirect URL if search is complete and we have results
@@ -59,9 +66,16 @@ def check_search_status():
         redirect_url = url_for('search.index')
     
     # Use the standardized API response
+    response_data = {
+        "status": search_status,
+        "errors": search_errors_session, # Use the variable already fetched
+        "redirect_url": redirect_url,
+        "query_id": current_query_id
+    }
+    logger.info(f"Returning search status response: {response_data}")
     return search_status_response(
         status=search_status,
-        errors=errors,
+        errors=search_errors_session, # Use the variable already fetched
         redirect_url=redirect_url,
         query_id=current_query_id
     )
@@ -187,6 +201,7 @@ def index():
     
     if request.method == "POST":
         logger.info("Processing POST request for search")
+        logger.info(f"Request form data: {request.form.to_dict(flat=False)}")
         try:
             # CSRF validation
             csrf_token = request.form.get('csrf_token')
@@ -219,35 +234,48 @@ def index():
                 selected_databases = list(set(all_db_fields))  # Remove duplicates
             
             # Debug logging
-            logger.info(f"Search request: mode={search_mode}")
-            logger.info(f"Form data: {dict(request.form.lists())}")
-            logger.info(f"Selected databases: {selected_databases}")
+            # logger.info(f"Search request: mode={search_mode}") # Will be logged later with query
+            # logger.info(f"Form data: {dict(request.form.lists())}") # Already logged as request.form.to_dict(flat=False)
+            # logger.info(f"Selected databases: {selected_databases}") # Will be logged later with query
             
             # Determine query based on search mode
             query = None
+            main_search_term = None # For advanced search logging
             if search_mode == 'simple':
                 query = request.form.get('simple_query_content', '').strip()
             elif search_mode == 'person':
                 query = _construct_person_search_query(request.form)
             elif search_mode == 'advanced':
                 # Main search terms for advanced search
-                query = request.form.get('search_query', '').strip()
+                query = request.form.get('search_query', '').strip() # This will be the base for advanced_query_str
+                main_search_term = query # Store the original main term for logging
             else:
                 logger.error(f"Invalid search mode: {search_mode}")
                 flash('Unbekannter Suchmodus.', 'error')
                 return redirect(url_for('search.index'))
 
             # Validate query and database selection
-            if not query:
-                logger.warning("Empty search query submitted")
+            # For advanced search, the main query might be empty if only other fields are used,
+            # but _construct_advanced_query_string handles this.
+            # However, for simple/person, the constructed query must be non-empty.
+            if search_mode != 'advanced' and not query:
+                logger.warning(f"Empty search query submitted for {search_mode} mode.")
                 flash('Bitte geben Sie einen Suchbegriff ein.', 'warning')
                 return redirect(url_for('search.index'))
-                
+            elif search_mode == 'advanced' and not main_search_term and not request.form.get('additional_terms') and not request.form.get('advanced_selected_person_ids') and not request.form.get('author') and not request.form.get('year_from') and not request.form.get('year_to') and not request.form.get('title'):
+                logger.warning("Empty search query and no advanced criteria submitted for advanced mode.")
+                flash('Bitte geben Sie mindestens einen Suchbegriff oder ein Suchkriterium ein.', 'warning')
+                return redirect(url_for('search.index'))
+
             if not selected_databases:
                 logger.warning("No databases selected for search")
                 flash('Bitte wählen Sie mindestens eine Datenbank aus.', 'warning')
                 return redirect(url_for('search.index'))
             
+            # Log determined parameters
+            log_query_identifier = main_search_term if search_mode == 'advanced' else query
+            logger.info(f"Search parameters determined: search_mode='{search_mode}', query='{log_query_identifier}', selected_databases={selected_databases}")
+
             # Clear any existing search status
             _clear_search_session_data()
             
@@ -256,84 +284,93 @@ def index():
             session['search_start_time'] = get_utc_now().isoformat()
             session.modified = True
             
-            logger.info(f"Starting search: mode={search_mode}, databases={selected_databases}")
-            
+            # logger.info(f"Starting search: mode={search_mode}, databases={selected_databases}") # Covered by the more detailed log above
+
             # Store the main search term for display and for SearchQuery record
-            main_search_term = query # query is from request.form.get('search_query') if advanced
+            # main_search_term is already set for advanced, query holds the value for simple/person
+            term_for_storage = main_search_term if search_mode == 'advanced' else query
 
             try:
-                if search_mode == 'advanced':
-                    all_results = []
-                    search_errors = {}
-                    search_summary = {}
-                    
-                    # Use a consistent start time for all database searches in this session
-                    # search_start_time_for_timeout = get_utc_now()
+                results = []
+                search_errors = {}
+                search_summary = {}
 
+                if search_mode == 'advanced':
+                    all_results_advanced = [] # Renamed to avoid conflict with outer 'results'
+                    logger.info(f"Preparing for advanced search. Main search term: '{main_search_term}'. Databases: {selected_databases}")
                     for db_name in selected_databases:
                         advanced_query_str = _construct_advanced_query_string(request.form, db_name)
-                        if not advanced_query_str: # Skip if no query could be constructed (e.g. no main term)
-                            logger.warning(f"Skipping {db_name} for advanced search as no query was constructed.")
-                            search_summary[db_name] = 0
+                        if not advanced_query_str:
+                            logger.warning(f"Skipping {db_name} for advanced search as no query was constructed (main term: '{main_search_term}').")
+                            search_summary[db_name] = {"count": 0, "error": "No query constructed"}
                             continue
 
-                        logger.info(f"Executing advanced search for {db_name} with query: {advanced_query_str}")
-                        # Timeout for each single database call (e.g., 25 seconds)
-                        # The overall timeout for the request will be implicitly handled by Flask/Gunicorn
-                        single_db_search_timeout = 25 
-                        
-                        # Call search_single_database directly
-                        # search_single_database returns a dict: {"database": db_name, "results": [], "error": None, "duration": seconds, "count": num_results}
+                        logger.info(f"Calling search_single_database for '{db_name}' with query: '{advanced_query_str}', mode: '{search_mode}'")
+                        single_db_search_timeout = 25
                         db_search_result = search_single_database(
                             query=advanced_query_str,
                             db_name=db_name,
-                            search_mode=search_mode, # Pass 'advanced' mode
+                            search_mode=search_mode,
                             db_timeout=single_db_search_timeout
                         )
+                        logger.info(f"Raw result from search_single_database for '{db_name}': {db_search_result}")
                         
-                        all_results.extend(db_search_result.get("results", []))
+                        all_results_advanced.extend(db_search_result.get("results", []))
                         if db_search_result.get("error"):
                             search_errors[db_name] = db_search_result.get("error")
-                        search_summary[db_name] = db_search_result.get("count", 0)
-
-                    # Add overall summary stats if needed by _process_search_results
-                    search_summary['total_results'] = sum(search_summary.values())
+                        search_summary[db_name] = { # Store more info for summary
+                            "count": db_search_result.get("count", 0),
+                            "duration": db_search_result.get("duration", 0),
+                            "error": db_search_result.get("error")
+                        }
+                    
+                    results = all_results_advanced # Assign to outer results
+                    # search_summary already populated with details per DB
+                    search_summary['total_results'] = sum(item.get("count", 0) for item in search_summary.values() if isinstance(item, dict))
                     search_summary['databases_with_errors'] = len(search_errors)
+                    logger.info(f"Advanced search raw results: {results}")
+                    logger.info(f"Advanced search errors: {search_errors}")
+                    logger.info(f"Advanced search summary: {search_summary}")
 
-                    results = all_results
                 else: # Simple or Person search
-                    # Original query is used for simple/person search
-                    logger.info(f"Executing {search_mode} search with query='{query}' for databases: {selected_databases}")
+                    logger.info(f"Calling enhanced_search_database with query='{query}', databases={selected_databases}, mode='{search_mode}'")
                     results, search_errors, search_summary = enhanced_search_database(
-                        query=query, # This is main_search_term for simple, or constructed person query
+                        query=query,
                         databases=selected_databases,
                         search_mode=search_mode,
-                        timeout=30  # Global timeout in seconds
+                        timeout=30
                     )
+                    logger.info(f"Raw results from enhanced_search_database: {results}")
+                    logger.info(f"Search errors from enhanced_search_database: {search_errors}")
+                    logger.info(f"Search summary from enhanced_search_database: {search_summary}")
                 
                 # Process and save search results
-                # For advanced search, 'query' parameter to _process_search_results should be the main search term
-                term_for_logging_and_storage = main_search_term if search_mode == 'advanced' else query
-                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, term_for_logging_and_storage, selected_databases, search_mode)
+                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, term_for_storage, selected_databases, search_mode)
                 
+                query_obj_id = query_obj.id if query_obj else None
+                logger.info(f"Processing complete. saved_count: {saved_count}, query_obj.id: {query_obj_id}")
+
                 # Update search status based on results
                 if saved_count > 0:
                     session['search_status'] = 'completed'
                     flash(f'{saved_count} Ergebnisse gefunden.', 'success')
-                    logger.info(f"Search completed successfully with {saved_count} results")
+                    logger.info(f"Redirecting to results page. saved_count: {saved_count}, query_obj.id: {query_obj_id}")
                     return redirect(url_for('search.results'))
                 else:
                     session['search_status'] = 'no_results'
                     flash('Keine Ergebnisse gefunden.', 'info')
-                    logger.info("Search completed with no results")
+                    logger.info(f"Redirecting to search index (no results). saved_count: {saved_count}, query_obj.id: {query_obj_id}")
                     return redirect(url_for('search.index'))
                     
             except Exception as e:
-                logger.error(f"Error during search execution: {str(e)}", exc_info=True)
+                logger.error("Error during search execution: %s", str(e), exc_info=True)
                 session['search_status'] = 'error'
-                # Store the raw error for debugging or more detailed views if needed, but not for flash.
                 session['search_error_internal'] = str(e) 
                 flash('Ein Fehler ist während des Suchvorgangs aufgetreten. Möglicherweise sind nicht alle Datenbanken durchsucht worden oder Ergebnisse unvollständig. Bitte versuchen Sie es später erneut oder überprüfen Sie Ihre Suchanfrage.', 'error')
+                # Log values before redirect in exception case as well
+                # query_obj might not be defined here if error happened before _process_search_results
+                # saved_count might also not be defined.
+                logger.info(f"Redirecting to search index due to error. Session status: {session.get('search_status')}")
                 return redirect(url_for('search.index'))
             finally:
                 session.modified = True
