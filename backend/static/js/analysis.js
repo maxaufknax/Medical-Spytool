@@ -14,11 +14,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load top authors data
     fetchTopAuthors();
     
-    // Register charts for dark mode compatibility
+    // Register charts for theme updates - verwendet das zentrale Theme-Management
+    window.addEventListener('themeChanged', function(event) {
+        const { isDarkMode } = event.detail;
+        updateAllCharts(isDarkMode);
+    });
+    
+    // Fallback für direkte DOM-Änderungen (für Rückwärtskompatibilität)
     const observer = new MutationObserver(mutations => {
         mutations.forEach(mutation => {
             if (mutation.attributeName === 'data-bs-theme') {
-                updateAllCharts();
+                // Verwende das zentrale Theme-Management, falls verfügbar
+                if (!window.medicalSpyThemeManager || !window.medicalSpyThemeManager.isChanging) {
+                    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                    updateAllCharts(isDark);
+                }
             }
         });
     });
@@ -331,35 +341,47 @@ function showChartError(chartId) {
     container.replaceChild(errorDiv, canvas);
 }
 
-// Update all charts for dark/light mode
-function updateAllCharts() {
-    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+// Update all charts for dark/light mode - verwendet zentrales Theme-Management
+function updateAllCharts(isDark = null) {
+    // Verwende das zentrale Theme-Management, wenn verfügbar
+    if (window.medicalSpyThemeManager) {
+        window.medicalSpyThemeManager.updateChartTheme();
+        return;
+    }
+    
+    // Fallback für direktes Update
+    if (isDark === null) {
+        isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    }
+    
     const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     const textColor = isDark ? '#f8f9fa' : '#343a40';
     
-    window.charts.forEach(chart => {
-        if (chart.instance) {
-            // Update scales if they exist
-            if (chart.instance.options.scales) {
-                Object.keys(chart.instance.options.scales).forEach(axisKey => {
-                    const axis = chart.instance.options.scales[axisKey];
-                    if (axis.grid) axis.grid.color = gridColor;
-                    if (axis.ticks) axis.ticks.color = textColor;
-                    if (axis.title) axis.title.color = textColor;
-                });
+    if (window.charts && window.charts.length) {
+        window.charts.forEach(chart => {
+            if (chart.instance) {
+                // Update scales if they exist
+                if (chart.instance.options.scales) {
+                    Object.keys(chart.instance.options.scales).forEach(axisKey => {
+                        const axis = chart.instance.options.scales[axisKey];
+                        if (axis.grid) axis.grid.color = gridColor;
+                        if (axis.ticks) axis.ticks.color = textColor;
+                        if (axis.title) axis.title.color = textColor;
+                    });
+                }
+                
+                // Update legend
+                if (chart.instance.options.plugins.legend) {
+                    chart.instance.options.plugins.legend.labels.color = textColor;
+                }
+                
+                // Update title
+                if (chart.instance.options.plugins.title) {
+                    chart.instance.options.plugins.title.color = textColor;
+                }
+                
+                chart.instance.update();
             }
-            
-            // Update legend
-            if (chart.instance.options.plugins.legend) {
-                chart.instance.options.plugins.legend.labels.color = textColor;
-            }
-            
-            // Update title
-            if (chart.instance.options.plugins.title) {
-                chart.instance.options.plugins.title.color = textColor;
-            }
-            
-            chart.instance.update();
-        }
-    });
+        });
+    }
 }

@@ -180,6 +180,10 @@ def search_database(query, databases, search_mode="simple", person_name="", **kw
     return all_results
 
 
+# Alias for backwards compatibility
+search_databases = search_database
+
+
 def parse_date_range(start_date, end_date):
     """
     Parse and validate a date range.

@@ -579,27 +579,41 @@ class PubMedConnector(DatabaseConnector):
 
                 logger.info(f"PubMed: Found {len(id_list)} results")
                 
-                # Step 2: Use EFetch to get full records
-                efetch_url = self.base_url + "efetch.fcgi"
-                efetch_params = {
-                    "db": "pubmed",
-                    "id": ",".join(id_list),
-                    "retmode": "xml",  # Keep XML for detailed data
-                    "retmax": max_results
-                }
+                # Step 2: Use EFetch to get full records in batches to avoid URL length issues
+                results = []
+                batch_size = 200  # Reduced batch size to avoid URL length problems
+                
+                for i in range(0, len(id_list), batch_size):
+                    batch_ids = id_list[i:i + batch_size]
+                    logger.info(f"PubMed: Fetching batch {i//batch_size + 1}/{(len(id_list)-1)//batch_size + 1} ({len(batch_ids)} IDs)")
+                    
+                    efetch_url = self.base_url + "efetch.fcgi"
+                    efetch_params = {
+                        "db": "pubmed",
+                        "id": ",".join(batch_ids),
+                        "retmode": "xml",  # Keep XML for detailed data
+                        "retmax": len(batch_ids)
+                    }
 
-                if self.api_key:
-                    efetch_params["api_key"] = self.api_key
+                    if self.api_key:
+                        efetch_params["api_key"] = self.api_key
 
-                response = requests.get(
-                    efetch_url,
-                    params=efetch_params,
-                    timeout=DEFAULT_TIMEOUT
-                )
-                response.raise_for_status()
+                    batch_response = requests.get(
+                        efetch_url,
+                        params=efetch_params,
+                        timeout=DEFAULT_TIMEOUT
+                    )
+                    batch_response.raise_for_status()
 
-                results = self.parse_results(response.content)
-                logger.info(f"PubMed: Successfully parsed {len(results)} records")
+                    batch_results = self.parse_results(batch_response.content)
+                    results.extend(batch_results)
+                    logger.info(f"PubMed: Batch {i//batch_size + 1} returned {len(batch_results)} records")
+                    
+                    # Add delay between batches to respect rate limits
+                    if i + batch_size < len(id_list):
+                        time.sleep(0.34 if self.api_key else 1.0)  # 3/sec with API key, 1/sec without
+
+                logger.info(f"PubMed: Successfully parsed {len(results)} total records")
                 return results
 
             except requests.exceptions.Timeout:
@@ -804,3 +818,41 @@ class PubMedConnector(DatabaseConnector):
 
         logger.error(f"PubMed: Max retries ({max_retries}) exceeded for PMID {pmid}")
         return "Fehler 429"
+
+
+def get_connector_for_database(database_name, api_key=None):
+    """
+    Get a connector for the specified database.
+
+    Args:
+        database_name (str): The name of the database
+        api_key (str, optional): API key for the database (deprecated, use app.config instead)
+
+    Returns:
+        DatabaseConnector: A connector for the specified database
+
+    Raises:
+        ValueError: If the database is not supported
+    """
+    # Get API keys from Flask app config if available, otherwise use None
+    pubmed_api_key = None
+    dnb_api_key = None
+    try:
+        if current_app:
+            pubmed_api_key = current_app.config.get("PUBMED_API_KEY")
+            dnb_api_key = current_app.config.get("DNB_API_KEY")
+    except RuntimeError:
+        # Not in application context, use provided key (if any)
+        logger.warning("Not in application context, can't get API keys from config")
+
+    if database_name == "PubMed":
+        # Use pubmed_api_key from app.config, fall back to provided api_key
+        return PubMedConnector(api_key=pubmed_api_key or api_key)
+    elif database_name == "Deutsche Nationalbibliothek":
+        # Use dnb_api_key from app.config, fall back to provided api_key
+        return DNBConnector(api_key=dnb_api_key or api_key)
+    elif database_name == "DNB":
+        # Support DNB as alias for Deutsche Nationalbibliothek 
+        return DNBConnector(api_key=dnb_api_key or api_key)
+    else:
+        raise ValueError(f"Unsupported database: {database_name}")

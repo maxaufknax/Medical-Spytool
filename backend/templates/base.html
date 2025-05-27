@@ -10,7 +10,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Chart.js for visualizations -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Theme Manager - muss vor anderen Scripts geladen werden -->
+    <script src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
     <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/search-tabs.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/accessibility.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/keyboard-navigation.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/results.css') }}" rel="stylesheet">
     <script>
         // Global CSRF helper
@@ -505,116 +511,8 @@
                 return new bootstrap.Tooltip(tooltipTriggerEl);
             });
             
-            // Dark Mode Funktionalität
-            const themeToggle = document.getElementById('theme-toggle');
-            const htmlElement = document.documentElement;
-            const themeIcon = document.getElementById('theme-icon');
-            
-            // Prüfe gespeicherte Benutzereinstellung oder bevorzugtes System-Farbschema
-            const savedTheme = localStorage.getItem('medicalspy-theme');
-            const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            
-            // Setze anfänglichen Zustand
-            if (savedTheme === 'dark' || (savedTheme === null && prefersDarkMode)) {
-                htmlElement.setAttribute('data-bs-theme', 'dark');
-                themeToggle.checked = true;
-                updateThemeIcon(true);
-            } else {
-                htmlElement.setAttribute('data-bs-theme', 'light');
-                themeToggle.checked = false;
-                updateThemeIcon(false);
-            }
-            
-            // Event-Listener für den Theme-Toggle
-            themeToggle.addEventListener('change', function() {
-                const isDarkMode = this.checked;
-                
-                // Update HTML data-attribute
-                htmlElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
-                
-                // Speichere Einstellung
-                localStorage.setItem('medicalspy-theme', isDarkMode ? 'dark' : 'light');
-                
-                // Update the theme icon
-                updateThemeIcon(isDarkMode);
-            });
-            
-            function updateThemeIcon(isDarkMode) {
-                // Text für den Theme-Modus aktualisieren
-                const themeText = document.getElementById('theme-mode-text');
-                if (themeText) {
-                    themeText.textContent = isDarkMode ? 'Dark' : 'Light';
-                }
-                
-                // Chart.js Anpassungen für Dark Mode
-                updateChartTheme(isDarkMode);
-            }
-            
-            // Hilfsfunktion für Chart.js Dark Mode Anpassungen
-            function updateChartTheme(isDarkMode) {
-                // Erstelle Standardoptionen für Charts basierend auf dem aktuellen Theme
-                if (window.Chart) {
-                    Chart.defaults.color = isDarkMode ? '#f8f9fa' : '#343a40';
-                    Chart.defaults.borderColor = isDarkMode ? '#495057' : '#dee2e6';
-                    
-                    // Setze globale Chart-Optionen
-                    const chartOptions = {
-                        plugins: {
-                            legend: {
-                                labels: {
-                                    color: isDarkMode ? '#f8f9fa' : '#343a40'
-                                }
-                            },
-                            tooltip: {
-                                bodyColor: isDarkMode ? '#f8f9fa' : '#343a40',
-                                backgroundColor: isDarkMode ? '#343a40' : '#ffffff',
-                                borderColor: isDarkMode ? '#495057' : '#dee2e6'
-                            }
-                        },
-                        scales: {
-                            x: {
-                                grid: {
-                                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                                },
-                                ticks: {
-                                    color: isDarkMode ? '#adb5bd' : '#6c757d'
-                                }
-                            },
-                            y: {
-                                grid: {
-                                    color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-                                },
-                                ticks: {
-                                    color: isDarkMode ? '#adb5bd' : '#6c757d'
-                                }
-                            }
-                        }
-                    };
-                    
-                    // Aktualisiere vorhandene Charts
-                    if (window.charts && window.charts.length) {
-                        window.charts.forEach(chart => {
-                            // Tiefer Merge der Optionen
-                            Object.assign(chart.options.plugins.legend, chartOptions.plugins.legend);
-                            Object.assign(chart.options.plugins.tooltip, chartOptions.plugins.tooltip);
-                            if (chart.options.scales.x) Object.assign(chart.options.scales.x, chartOptions.scales.x);
-                            if (chart.options.scales.y) Object.assign(chart.options.scales.y, chartOptions.scales.y);
-                            chart.update();
-                        });
-                    }
-                }
-            }
-            
-            // System-Theme-Änderung
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-                // Nur anwenden, wenn keine benutzerdefinierte Einstellung vorhanden ist
-                if (!localStorage.getItem('medicalspy-theme')) {
-                    const newTheme = e.matches ? 'dark' : 'light';
-                    htmlElement.setAttribute('data-bs-theme', newTheme);
-                    themeToggle.checked = e.matches;
-                    updateThemeIcon(e.matches);
-                }
-            });
+            // Theme-Management wird jetzt von theme-manager.js übernommen
+            console.log('Bootstrap Tooltips initialisiert');
         });
     </script>
     

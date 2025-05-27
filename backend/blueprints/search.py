@@ -13,7 +13,6 @@ from flask_wtf.csrf import validate_csrf, ValidationError
 from backend.models import db, SearchQuery, SearchResult, Person
 from backend.search import search_database, parse_date_range
 from backend.connectors import get_connector_for_database
-from backend.search_fix import enhanced_search_database, search_single_database  # Import the enhanced search
 from backend.utils import log_message
 from backend.api_utils import search_status_response
 import logging
@@ -333,16 +332,16 @@ def index():
                     logger.info(f"Advanced search summary: {search_summary}")
 
                 else: # Simple or Person search
-                    logger.info(f"Calling enhanced_search_database with query='{query}', databases={selected_databases}, mode='{search_mode}'")
-                    results, search_errors, search_summary = enhanced_search_database(
+                    logger.info(f"Calling search_database with query='{query}', databases={selected_databases}, mode='{search_mode}'")
+                    results, search_errors, search_summary = search_database(
                         query=query,
                         databases=selected_databases,
                         search_mode=search_mode,
                         timeout=30
                     )
-                    logger.info(f"Raw results from enhanced_search_database: {results}")
-                    logger.info(f"Search errors from enhanced_search_database: {search_errors}")
-                    logger.info(f"Search summary from enhanced_search_database: {search_summary}")
+                    logger.info(f"Raw results from search_database: {results}")
+                    logger.info(f"Search errors from search_database: {search_errors}")
+                    logger.info(f"Search summary from search_database: {search_summary}")
                 
                 # Process and save search results
                 saved_count, query_obj = _process_search_results(results, search_errors, search_summary, term_for_storage, selected_databases, search_mode)

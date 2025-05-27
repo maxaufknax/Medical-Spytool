@@ -17,9 +17,9 @@ from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 
 # Import configuration classes
-from config import Config, DevelopmentConfig, ProductionConfig, TestingConfig
-from models import db
-from csrf_config import init_csrf_protection
+from .config import Config, DevelopmentConfig, ProductionConfig, TestingConfig
+from .models import db
+from .csrf_config import init_csrf_protection
 
 # Initialize extensions
 csrf = CSRFProtect()
@@ -29,7 +29,7 @@ login_manager = LoginManager()
 @click.command()
 def init_db_command():
     """Initialize the database."""
-    from models import db
+    from .models import db
     db.drop_all()
     db.create_all()
     click.echo('Initialized the database.')
@@ -104,7 +104,7 @@ def create_app(config_class=None):
     # User loader for Flask-Login
     @login_manager.user_loader
     def load_user(user_id):
-        from models import User
+        from .models import User
         return User.query.get(int(user_id))
     
     app.logger.info("LoginManager initialized.")
@@ -116,14 +116,14 @@ def create_app(config_class=None):
         return dict(csrf_token=generate_csrf)
 
     # Register blueprints
-    from blueprints.main import main_bp
-    from blueprints.auth import auth_bp
-    from blueprints.search import search_bp
-    from blueprints.persons import persons_bp
-    from blueprints.settings import settings_bp
-    from blueprints.analysis import analysis_bp
-    from blueprints.export import export_bp
-    from blueprints.logs import logs_bp
+    from .blueprints.main import main_bp
+    from .blueprints.auth import auth_bp
+    from .blueprints.search import search_bp
+    from .blueprints.persons import persons_bp
+    from .blueprints.settings import settings_bp
+    from .blueprints.analysis import analysis_bp
+    from .blueprints.export import export_bp
+    from .blueprints.logs import logs_bp
 
     app.register_blueprint(main_bp, url_prefix='/')
     app.register_blueprint(auth_bp, url_prefix='/auth')

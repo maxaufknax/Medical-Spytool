@@ -813,3 +813,29 @@ button:hover .search-icon-container {
     color: var(--bs-secondary);
     font-style: italic;
 }
+
+/* Theme-Transition Verbesserungen für stabileres Switching */
+html {
+    transition: none !important;
+}
+
+html[data-bs-theme] {
+    transition: none !important;
+}
+
+/* Verhindere Theme-Flackern während des Seitenwechsels */
+*,
+*::before,
+*::after {
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-in-out;
+}
+
+/* Spezielle Regeln für sofortige Theme-Anwendung */
+.no-transition,
+.no-transition *,
+.no-transition *::before,
+.no-transition *::after {
+    transition: none !important;
+}
