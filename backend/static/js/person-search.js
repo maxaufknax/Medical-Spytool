@@ -5,6 +5,8 @@ class PersonSearch {
         this.selectedPersons = new Set();
         this.initializeFromWindow();
         this.setupEventListeners();
+        this.focusedSuggestionIndex = -1; // For keyboard navigation
+        this.currentMatches = []; // To store current suggestion matches
     }
 
     initializeFromWindow() {
@@ -44,151 +46,215 @@ class PersonSearch {
         const resultsContainerId = isAdvanced ? 'advancedPersonSearchResults' : 'personSearchResults';
         const resultsContainer = document.getElementById(resultsContainerId);
 
-        console.log('Handling search:', {
-            query: query,
-            isAdvanced: isAdvanced,
-            containerId: resultsContainerId,
-            containerExists: !!resultsContainer
-        });
+        input.setAttribute('aria-expanded', 'false'); // Reset aria-expanded
 
         if (!query || !resultsContainer) {
-            if (resultsContainer) {
-                resultsContainer.style.display = 'none';
-            }
+            if (resultsContainer) this.hideSuggestions(resultsContainer, input);
+            this.currentMatches = [];
+            this.focusedSuggestionIndex = -1;
             return;
         }
 
-        // Filter persons
-        const matches = this.persons.filter(person => 
+        this.currentMatches = this.persons.filter(person => 
             person.name.toLowerCase().includes(query) ||
             (person.first_name && person.first_name.toLowerCase().includes(query)) ||
             (person.last_name && person.last_name.toLowerCase().includes(query))
         );
 
-        console.log('Found matches:', matches.length);
-
-        this.showSuggestions(matches, input, resultsContainer, isAdvanced);
+        this.showSuggestions(this.currentMatches, input, resultsContainer, isAdvanced);
     }
 
     showSuggestions(matches, input, container, isAdvanced) {
-        // Clear previous suggestions
         container.innerHTML = '';
+        this.focusedSuggestionIndex = -1; // Reset focus index
+        input.removeAttribute('aria-activedescendant');
+
 
         if (matches.length === 0) {
-            container.innerHTML = `
-                <div class="list-group-item text-muted">
-                    <i class="fas fa-info-circle me-2"></i>Keine Personen gefunden
-                </div>`;
+            container.innerHTML = `<div class="list-group-item text-muted" role="option"><i class="fas fa-info-circle me-2"></i>Keine Personen gefunden</div>`;
             container.style.display = 'block';
+            input.setAttribute('aria-expanded', 'true');
             return;
         }
 
-        // Create suggestions
-        matches.forEach(person => {
+        matches.forEach((person, index) => {
             const item = document.createElement('div');
-            item.className = 'list-group-item list-group-item-action';
+            item.className = 'list-group-item list-group-item-action person-suggestion-item';
+            item.id = `${container.id}-item-${index}`;
+            item.setAttribute('role', 'option');
+            // Store person data directly on the element for easier access
+            item.dataset.person = JSON.stringify(person); 
+
             item.innerHTML = `
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-user me-2 text-primary"></i>
+                    <i class="fas fa-user me-2 text-primary" aria-hidden="true"></i>
                     <div>
                         <div class="fw-bold">${person.name}</div>
-                        <small class="text-muted">${person.first_name} ${person.last_name}</small>
+                        <small class="text-muted">${person.first_name || ''} ${person.last_name || ''}</small>
                     </div>
                 </div>`;
 
             item.addEventListener('click', () => {
                 this.selectPerson(person, input, isAdvanced);
-                container.style.display = 'none';
+                this.hideSuggestions(container, input);
+            });
+            
+            item.addEventListener('mouseover', () => {
+                if (this.focusedSuggestionIndex !== -1 && container.children[this.focusedSuggestionIndex]) {
+                     container.children[this.focusedSuggestionIndex].classList.remove('suggestion-focused');
+                }
+                this.focusedSuggestionIndex = index;
+                item.classList.add('suggestion-focused');
+                input.setAttribute('aria-activedescendant', item.id);
             });
 
             container.appendChild(item);
         });
 
-        // Show suggestions
         container.style.display = 'block';
+        input.setAttribute('aria-expanded', 'true');
     }
+    
+    updateFocusedSuggestion(container, input) {
+        Array.from(container.children).forEach((child, idx) => {
+            if (idx === this.focusedSuggestionIndex) {
+                child.classList.add('suggestion-focused');
+                input.setAttribute('aria-activedescendant', child.id);
+                child.scrollIntoView({ block: 'nearest' });
+            } else {
+                child.classList.remove('suggestion-focused');
+            }
+        });
+    }
+
 
     selectPerson(person, input, isAdvanced) {
-        const container = document.getElementById(isAdvanced ? 'advancedSelectedPersonsContainer' : 'selectedPersonsContainer');
-        const hiddenInput = document.getElementById(isAdvanced ? 'advancedSelectedPersonIds' : 'selectedPersonIds');
-        const noPersonsAlert = document.getElementById(isAdvanced ? 'advancedNoPersonsSelectedAlert' : 'noPersonsSelectedAlert');
+        const containerIdSuffix = isAdvanced ? 'advanced' : '';
+        const container = document.getElementById(`${containerIdSuffix}SelectedPersonsContainer`);
+        const hiddenInput = document.getElementById(`${containerIdSuffix}SelectedPersonIds`);
+        const noPersonsAlert = document.getElementById(`${containerIdSuffix}NoPersonsSelectedAlert`);
 
-        if (!container || !hiddenInput) return;
+        if (!container || !hiddenInput) {
+            console.error("Required elements for selecting person not found:", {container, hiddenInput});
+            return;
+        }
+        
+        // Ensure person.id is a number before adding to Set for consistency, though Set handles mixed types.
+        const personIdNum = Number(person.id);
+        if (isNaN(personIdNum)) {
+            console.error("Invalid person ID:", person.id);
+            return;
+        }
 
-        // Add to selected persons
-        this.selectedPersons.add(person.id);
-
-        // Update hidden input
+        this.selectedPersons.add(personIdNum);
         hiddenInput.value = Array.from(this.selectedPersons).join(',');
 
-        // Create person tag
         const tag = document.createElement('span');
-        tag.className = 'badge bg-primary me-2 mb-2';
+        tag.className = 'badge bg-primary me-2 mb-2 selected-person-tag';
+        tag.setAttribute('role', 'listitem');
         tag.innerHTML = `
             ${person.name}
-            <button type="button" class="btn-close btn-close-white ms-2" aria-label="Remove"
-                data-id="${person.id}" style="font-size: 0.5rem;"></button>
+            <button type="button" class="btn-close btn-close-white ms-2" 
+                    aria-label="Remove ${person.name}" data-id="${personIdNum}" 
+                    style="font-size: 0.65em;"></button>
         `;
 
-        // Add remove button listener
         tag.querySelector('.btn-close').addEventListener('click', (e) => {
-            this.removePerson(person.id, isAdvanced);
-            e.stopPropagation();
+            this.removePerson(personIdNum, isAdvanced);
+            e.stopPropagation(); // Prevent tag click event if any
         });
 
-        // Hide no persons alert if present
-        if (noPersonsAlert) {
-            noPersonsAlert.style.display = 'none';
-        }
+        if (noPersonsAlert) noPersonsAlert.style.display = 'none';
+        container.insertBefore(tag, noPersonsAlert || container.firstChild); // Insert before alert or as first child
 
-        // Add tag to container
-        container.insertBefore(tag, noPersonsAlert || null);
-
-        // Clear input
-        input.value = '';
+        input.value = ''; // Clear input
+        this.currentMatches = []; // Clear matches
+        this.focusedSuggestionIndex = -1; // Reset focus
+        input.focus(); // Return focus to the input field
     }
 
-    removePerson(personId, isAdvanced) {
+    removePerson(personId, isAdvanced) { // personId is expected to be a number here
         const container = document.getElementById(isAdvanced ? 'advancedSelectedPersonsContainer' : 'selectedPersonsContainer');
-        const hiddenInput = document.getElementById(isAdvanced ? 'advancedSelectedPersonIds' : 'selectedPersonIds');
-        const noPersonsAlert = document.getElementById(isAdvanced ? 'advancedNoPersonsSelectedAlert' : 'noPersonsSelectedAlert');
+        const containerIdSuffix = isAdvanced ? 'advanced' : '';
+        const container = document.getElementById(`${containerIdSuffix}SelectedPersonsContainer`);
+        const hiddenInput = document.getElementById(`${containerIdSuffix}SelectedPersonIds`);
+        const noPersonsAlert = document.getElementById(`${containerIdSuffix}NoPersonsSelectedAlert`);
 
         if (!container || !hiddenInput) return;
 
-        // Remove from selected persons
-        this.selectedPersons.delete(personId);
-
-        // Update hidden input
+        this.selectedPersons.delete(personId); // personId should be a number
         hiddenInput.value = Array.from(this.selectedPersons).join(',');
 
-        // Remove tag
-        const tag = container.querySelector(`[data-id="${personId}"]`).closest('.badge');
-        if (tag) {
-            tag.remove();
-        }
+        const tag = container.querySelector(`.selected-person-tag button[data-id="${personId}"]`)?.closest('.selected-person-tag');
+        if (tag) tag.remove();
 
-        // Show no persons alert if no persons selected
         if (noPersonsAlert && this.selectedPersons.size === 0) {
-            noPersonsAlert.style.display = 'block';
+            noPersonsAlert.style.display = 'flex'; // Assuming it's a flex container
         }
     }
 
-    hideSuggestions() {
-        const containers = [
-            document.getElementById('personSearchResults'),
-            document.getElementById('advancedPersonSearchResults')
+    hideSuggestions(containerElement, inputElement) {
+        if (containerElement) containerElement.style.display = 'none';
+        if (inputElement) {
+             inputElement.removeAttribute('aria-activedescendant');
+             inputElement.setAttribute('aria-expanded', 'false');
+        }
+        this.focusedSuggestionIndex = -1;
+        this.currentMatches = [];
+    }
+
+    setupEventListeners() {
+        const inputs = [
+            { el: document.getElementById('personSearchInput'), advanced: false, containerId: 'personSearchResults' },
+            { el: document.getElementById('advancedPersonSearchInput'), advanced: true, containerId: 'advancedPersonSearchResults' }
         ];
 
-        containers.forEach(container => {
-            if (container) {
-                container.style.display = 'none';
+        inputs.forEach(obj => {
+            if (obj.el) {
+                obj.el.addEventListener('input', (e) => this.handleSearch(e, obj.advanced));
+                obj.el.addEventListener('keydown', (e) => {
+                    const container = document.getElementById(obj.containerId);
+                    if (!container || container.style.display === 'none' || this.currentMatches.length === 0) return;
+
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        this.focusedSuggestionIndex = (this.focusedSuggestionIndex + 1) % this.currentMatches.length;
+                        this.updateFocusedSuggestion(container, obj.el);
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        this.focusedSuggestionIndex = (this.focusedSuggestionIndex - 1 + this.currentMatches.length) % this.currentMatches.length;
+                        this.updateFocusedSuggestion(container, obj.el);
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (this.focusedSuggestionIndex !== -1 && container.children[this.focusedSuggestionIndex]) {
+                            const selectedPersonData = JSON.parse(container.children[this.focusedSuggestionIndex].dataset.person);
+                            this.selectPerson(selectedPersonData, obj.el, obj.advanced);
+                            this.hideSuggestions(container, obj.el);
+                        }
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.hideSuggestions(container, obj.el);
+                    }
+                });
             }
+        });
+
+        document.addEventListener('click', (e) => {
+            inputs.forEach(obj => {
+                const inputEl = obj.el;
+                const containerEl = document.getElementById(obj.containerId);
+                if (inputEl && containerEl && !inputEl.contains(e.target) && !containerEl.contains(e.target)) {
+                    this.hideSuggestions(containerEl, inputEl);
+                }
+            });
         });
     }
 }
 
 // Initialize person search when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Initializing PersonSearch module');
-    window.personSearch = new PersonSearch();
+    if (document.getElementById('personSearchInput') || document.getElementById('advancedPersonSearchInput')) {
+        console.log('Initializing PersonSearch module');
+        window.personSearchInstance = new PersonSearch(); // Ensure it's assigned to a unique global var or managed within scope
+    }
 });

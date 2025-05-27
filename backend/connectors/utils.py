@@ -78,7 +78,8 @@ def get_connector_for_database(database_name, api_key_override=None):
                 if database_name == "PubMed":
                     api_key = current_app.config.get("PUBMED_API_KEY")
                 elif database_name == "Deutsche Nationalbibliothek":
-                    api_key = current_app.config.get("DNB_ACCESS_TOKEN") 
+                    # Ensure consistency, use DNB_API_KEY as the standard
+                    api_key = current_app.config.get("DNB_API_KEY") 
                 logger.debug(f"API key for '{database_name}' from app.config: {'SET' if api_key else 'NOT SET'}")
         except RuntimeError: 
             logger.warning(f"Not in Flask application context for API key retrieval for '{database_name}'.")

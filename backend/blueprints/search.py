@@ -9,6 +9,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, current_app, make_response
 from flask_wtf.csrf import validate_csrf, ValidationError
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from backend.models import db, SearchQuery, SearchResult, Person
 from backend.search import search_database, parse_date_range
@@ -290,361 +291,498 @@ def index():
             term_for_storage = main_search_term if search_mode == 'advanced' else query
 
             try:
-                results = []
-                search_errors = {}
-                search_summary = {}
+                # `search_database` now returns a list of outcome dictionaries, one for each DB.
+                # Each outcome: {"database": str, "results": list, "count": int, "error": str|None, "duration": float}
+                
+                db_outcomes = []
+                aggregated_results = []
+                search_errors_dict = {} # Collect errors by db_name
+                search_summary_dict = {} # Collect summary by db_name
+
+                # Default per-database timeout
+                # For advanced search, it's 25s. For simple/person, it was 30s implicitly.
+                # The refactored search_database takes db_timeout.
+                per_db_timeout = 25 if search_mode == 'advanced' else 30
 
                 if search_mode == 'advanced':
-                    all_results_advanced = [] # Renamed to avoid conflict with outer 'results'
-                    logger.info(f"Preparing for advanced search. Main search term: '{main_search_term}'. Databases: {selected_databases}")
-                    for db_name in selected_databases:
-                        advanced_query_str = _construct_advanced_query_string(request.form, db_name)
-                        if not advanced_query_str:
-                            logger.warning(f"Skipping {db_name} for advanced search as no query was constructed (main term: '{main_search_term}').")
-                            search_summary[db_name] = {"count": 0, "error": "No query constructed"}
-                            continue
-
-                        logger.info(f"Calling search_single_database for '{db_name}' with query: '{advanced_query_str}', mode: '{search_mode}'")
-                        single_db_search_timeout = 25
-                        db_search_result = search_single_database(
-                            query=advanced_query_str,
-                            db_name=db_name,
-                            search_mode=search_mode,
-                            db_timeout=single_db_search_timeout
-                        )
-                        logger.info(f"Raw result from search_single_database for '{db_name}': {db_search_result}")
-                        
-                        all_results_advanced.extend(db_search_result.get("results", []))
-                        if db_search_result.get("error"):
-                            search_errors[db_name] = db_search_result.get("error")
-                        search_summary[db_name] = { # Store more info for summary
-                            "count": db_search_result.get("count", 0),
-                            "duration": db_search_result.get("duration", 0),
-                            "error": db_search_result.get("error")
-                        }
+                    logger.info(f"Preparing for advanced search (parallel). Main search term: '{main_search_term}'. Databases: {selected_databases}")
                     
-                    results = all_results_advanced # Assign to outer results
-                    # search_summary already populated with details per DB
-                    search_summary['total_results'] = sum(item.get("count", 0) for item in search_summary.values() if isinstance(item, dict))
-                    search_summary['databases_with_errors'] = len(search_errors)
-                    logger.info(f"Advanced search raw results: {results}")
-                    logger.info(f"Advanced search errors: {search_errors}")
-                    logger.info(f"Advanced search summary: {search_summary}")
+                    # Extract common advanced search parameters from the form
+                    adv_main_query_term = request.form.get('search_query', '').strip()
+                    # search_field for the main query term (assuming new HTML field name 'search_field_advanced')
+                    adv_field_for_main_query = request.form.get('search_field_advanced', 'All Fields') 
+                    
+                    adv_additional_terms = request.form.get('additional_terms', '').strip()
+                    # General author, title, journal filters (assuming new HTML field names)
+                    adv_author_filter_form = request.form.get('author_advanced', '').strip() 
+                    adv_title_filter_form = request.form.get('title_advanced', '').strip()
+                    adv_journal_filter_form = request.form.get('journal_advanced', '').strip()
 
-                else: # Simple or Person search
-                    logger.info(f"Calling search_database with query='{query}', databases={selected_databases}, mode='{search_mode}'")
-                    results, search_errors, search_summary = search_database(
-                        query=query,
+                    # Date range, language, pub_type from Step 3 of advanced search form
+                    adv_year_from = request.form.get('start_date', '').strip() # HTML uses 'start_date'
+                    adv_year_to = request.form.get('end_date', '').strip()     # HTML uses 'end_date'
+                    adv_language_form = request.form.get('language', '').strip() # HTML uses 'language'
+                    adv_pub_type_form = request.form.get('publication_type', '').strip() # HTML uses 'publication_type'
+
+                    # Database-specific filters from Step 4 of advanced search form
+                    adv_pubmed_full_text_only = request.form.get('full_text_only') == 'on'
+                    adv_pubmed_free_access_only = request.form.get('free_access_only') == 'on'
+                    adv_dnb_online_only = request.form.get('online_only') == 'on'
+                    adv_dnb_academic_only = request.form.get('academic_only') == 'on'
+                    
+                    # Consolidate author information from selected persons and general author field
+                    final_author_filter = adv_author_filter_form
+                    adv_selected_person_ids_str = request.form.get('advanced_selected_person_ids', '')
+                    if adv_selected_person_ids_str:
+                        try:
+                            person_ids = [int(pid) for pid in adv_selected_person_ids_str.split(',') if pid.isdigit()]
+                            if person_ids:
+                                persons_selected = Person.query.filter(Person.id.in_(person_ids)).all()
+                                if persons_selected:
+                                    # Create a combined author string for the connectors.
+                                    # This is a simplified approach. Connectors might need to parse "OR" or expect lists.
+                                    # Example for PubMed: "Doe J OR Smith A"
+                                    # Example for DNB: 'dc.creator all "Doe J" OR dc.creator all "Smith A"' (handled by connector)
+                                    person_author_strings = []
+                                    for p in persons_selected:
+                                        # Basic name format, connectors can refine this with specific field tags if needed
+                                        name_str = f"{p.last_name} {p.first_name[0] if p.first_name else ''}".strip()
+                                        if name_str:
+                                            person_author_strings.append(name_str)
+                                    
+                                    if person_author_strings:
+                                        selected_persons_as_authors = " OR ".join(f'"{name}"' for name in person_author_strings)
+                                        if final_author_filter: # If general author field also has input
+                                            final_author_filter = f"({final_author_filter}) OR ({selected_persons_as_authors})"
+                                        else:
+                                            final_author_filter = selected_persons_as_authors
+                        except Exception as e:
+                            logger.error(f"Error processing advanced_selected_person_ids: {e}", exc_info=True)
+                            # Don't let this break the search; proceed with any typed author_filter
+
+                    # Prepare filter_kwargs to be passed to each thread task
+                    filter_kwargs_for_advanced = {
+                        "additional_terms": adv_additional_terms,
+                        "date_range": parse_date_range(adv_year_from, adv_year_to),
+                        "language": adv_language_form if adv_language_form else None,
+                        "pub_type": adv_pub_type_form if adv_pub_type_form else None,
+                        "field": adv_field_for_main_query, # Pass the field for the main query
+                        "author_filter": final_author_filter if final_author_filter else None,
+                        "title_filter": adv_title_filter_form if adv_title_filter_form else None,
+                        "journal_filter": adv_journal_filter_form if adv_journal_filter_form else None,
+                        # Database-specific flags (connectors need to be updated to accept these in **kwargs)
+                        "pubmed_full_text_only": adv_pubmed_full_text_only,
+                        "pubmed_free_access_only": adv_pubmed_free_access_only,
+                        "dnb_online_only": adv_dnb_online_only,
+                        "dnb_academic_only": adv_dnb_academic_only,
+                    }
+
+                    # Use ThreadPoolExecutor to run searches in parallel
+                    # The number of workers can be adjusted. Max workers = number of DBs or a fixed pool size.
+                    # Using up to len(selected_databases) workers, but ThreadPoolExecutor default is often reasonable (e.g., min(32, os.cpu_count() + 4))
+                    max_workers = min(len(selected_databases), current_app.config.get('MAX_SEARCH_WORKERS', 5)) # Configurable max workers
+                    
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_to_db = {
+                            executor.submit(
+                                search_database, # Target function
+                                query=adv_main_query_term,
+                                databases=[db_name], # search_database expects a list
+                                search_mode=search_mode,
+                                db_timeout=per_db_timeout,
+                                **filter_kwargs_for_advanced # Pass all collected advanced filters
+                            ): db_name for db_name in selected_databases
+                        }
+                        
+                        for future in as_completed(future_to_db):
+                            db_name_completed = future_to_db[future]
+                            try:
+                                # search_database returns a list of outcomes; for a single DB, it's a list with one item.
+                                outcome_list = future.result() 
+                                if outcome_list:
+                                    db_outcomes.append(outcome_list[0])
+                                else: # Should ideally not happen if search_database is robust
+                                    logger.error(f"Parallel search for {db_name_completed} returned empty or invalid outcome list.")
+                                    db_outcomes.append({
+                                        "database": db_name_completed, "results": [], "count": 0,
+                                        "error": f"Search task for {db_name_completed} failed to produce a valid outcome.", 
+                                        "duration": 0.0
+                                    })
+                            except Exception as exc:
+                                logger.error(f"Parallel search for {db_name_completed} generated an exception: {exc}", exc_info=True)
+                                db_outcomes.append({
+                                    "database": db_name_completed, "results": [], "count": 0,
+                                    "error": f"Exception during search for {db_name_completed}: {str(exc)}", 
+                                    "duration": 0.0 # Duration might be unknown or partial
+                                })
+                else: # Simple or Person search - executed sequentially as before, or could also be parallelized if needed.
+                      # For now, keeping simple/person search sequential as per original structure unless specified.
+                    # `query` is already set (simple_query_content or from _construct_person_search_query)
+                    # `term_for_storage` is also set.
+                    # We might have additional common filters for simple/person search from the UI
+                    # (e.g. date range). These should be extracted from request.form.
+                    
+                    simple_person_additional_terms = request.form.get('simple_person_additional_terms', '') # Example name
+                    simple_person_date_from = request.form.get('simple_person_date_from', '')
+                    simple_person_date_to = request.form.get('simple_person_date_to', '')
+                    simple_person_language = request.form.get('simple_person_language', '')
+                    simple_person_pub_type = request.form.get('simple_person_pub_type', '')
+                    simple_person_field = request.form.get('simple_person_field', 'All Fields')
+
+
+                    logger.info(f"Calling search_database (mode: {search_mode}) with query='{query}', databases={selected_databases}")
+                    db_outcomes = search_database(
+                        query=query, # This is simple_query_content or _construct_person_search_query output
                         databases=selected_databases,
                         search_mode=search_mode,
-                        timeout=30
+                        person_name=request.form.get('person_name_for_association', '') if search_mode == 'person' else '', # For result association
+                        db_timeout=per_db_timeout,
+                        # Pass relevant kwargs from form for simple/person searches
+                        additional_terms=simple_person_additional_terms,
+                        date_range=parse_date_range(simple_person_date_from, simple_person_date_to),
+                        language=simple_person_language if simple_person_language else None,
+                        pub_type=simple_person_pub_type if simple_person_pub_type else None,
+                        field=simple_person_field
                     )
-                    logger.info(f"Raw results from search_database: {results}")
-                    logger.info(f"Search errors from search_database: {search_errors}")
-                    logger.info(f"Search summary from search_database: {search_summary}")
+
+                # Process all outcomes (common for all search modes)
+                for outcome in db_outcomes:
+                    db_name = outcome["database"]
+                    aggregated_results.extend(outcome["results"]) # Collect all results
+                    if outcome["error"]:
+                        search_errors_dict[db_name] = outcome["error"]
+                    search_summary_dict[db_name] = {
+                        "count": outcome["count"],
+                        "duration": outcome["duration"],
+                        "error": outcome["error"]
+                    }
+                
+                search_summary_dict['total_results'] = sum(item.get("count", 0) for item in search_summary_dict.values() if isinstance(item, dict))
+                search_summary_dict['databases_with_errors'] = len(search_errors_dict)
+
+                logger.info(f"Aggregated results count: {len(aggregated_results)}")
+                logger.info(f"Aggregated search errors: {search_errors_dict}")
+                logger.info(f"Aggregated search summary: {search_summary_dict}")
                 
                 # Process and save search results
-                saved_count, query_obj = _process_search_results(results, search_errors, search_summary, term_for_storage, selected_databases, search_mode)
-                
-                query_obj_id = query_obj.id if query_obj else None
+                # _process_search_results expects: results (list), search_errors (dict), search_summary (dict)
+                saved_count, query_obj = _process_search_results(
+                    aggregated_results, 
+                    search_errors_dict, 
+                    search_summary_dict, 
+                    term_for_storage, 
+                    selected_databases, 
+                    search_mode
+                )
+
+                query_obj_id = query_obj.id if query_obj else None # query_obj can be None if _process_search_results fails
                 logger.info(f"Processing complete. saved_count: {saved_count}, query_obj.id: {query_obj_id}")
 
                 # Update search status based on results
                 if saved_count > 0:
                     session['search_status'] = 'completed'
+                    session['current_query_id'] = query_obj_id # Ensure this is set for redirect
                     flash(f'{saved_count} Ergebnisse gefunden.', 'success')
-                    logger.info(f"Redirecting to results page. saved_count: {saved_count}, query_obj.id: {query_obj_id}")
+                    logger.info(f"Redirecting to results page. query_id: {query_obj_id}")
                     return redirect(url_for('search.results'))
                 else:
                     session['search_status'] = 'no_results'
+                    if query_obj_id: # If query was saved but no results
+                         session['current_query_id'] = query_obj_id
                     flash('Keine Ergebnisse gefunden.', 'info')
-                    logger.info(f"Redirecting to search index (no results). saved_count: {saved_count}, query_obj.id: {query_obj_id}")
+                    logger.info(f"Redirecting to search index (no results). query_id: {query_obj_id}")
                     return redirect(url_for('search.index'))
                     
             except Exception as e:
                 logger.error("Error during search execution: %s", str(e), exc_info=True)
                 session['search_status'] = 'error'
-                session['search_error_internal'] = str(e) 
+                # Use a more generic error key for session unless specific internal needed
+                session['search_errors_summary'] = str(e) # search_error_internal was used before
                 flash('Ein Fehler ist während des Suchvorgangs aufgetreten. Möglicherweise sind nicht alle Datenbanken durchsucht worden oder Ergebnisse unvollständig. Bitte versuchen Sie es später erneut oder überprüfen Sie Ihre Suchanfrage.', 'error')
-                # Log values before redirect in exception case as well
-                # query_obj might not be defined here if error happened before _process_search_results
-                # saved_count might also not be defined.
                 logger.info(f"Redirecting to search index due to error. Session status: {session.get('search_status')}")
                 return redirect(url_for('search.index'))
             finally:
-                session.modified = True
+                session.modified = True # Ensure session changes are saved
                 
-        except Exception as e:
-            logger.error(f"Unexpected error in search route: {str(e)}", exc_info=True)
+        except Exception as e: # Outer try-except for general errors like CSRF issues
+            logger.error(f"Unexpected error in search POST route: {str(e)}", exc_info=True)
             session['search_status'] = 'error'
-            session['search_error'] = str(e)
-            flash('Ein unerwarteter Fehler ist aufgetreten.', 'error')
+            session['search_errors_summary'] = f"Unerwarteter Systemfehler: {str(e)}"
+            flash('Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.', 'error')
             return redirect(url_for('search.index'))
     
     # GET request - show search form
-    return render_template('search.html', 
-                         databases=['PubMed', 'Deutsche Nationalbibliothek'],
+    # Clear previous search status from session to avoid showing old messages on new GET
+    # _clear_search_session_data() # Or selectively clear, e.g. session.pop('search_status', None)
+    return render_template('search.html',
+                         databases=current_app.config.get('SUPPORTED_DATABASES', ['PubMed', 'Deutsche Nationalbibliothek']),
                          search_status=session.get('search_status', 'idle'))
 
-def _construct_advanced_query_string(form_data, database_name):
-    """Helper function to construct advanced search query string."""
-    query_parts = []
-    
-    # Main search query
-    main_query = form_data.get('search_query', '').strip()
-    if main_query:
-        query_parts.append(f"({main_query})")
-        
-    # Additional terms
-    additional_terms = form_data.get('additional_terms', '').strip()
-    if additional_terms:
-        query_parts.append(f"AND ({additional_terms})")
-        
-    # Selected persons
-    selected_person_ids_str = form_data.get('advanced_selected_person_ids', '')
-    if selected_person_ids_str:
-        try:
-            selected_person_ids = [int(pid) for pid in selected_person_ids_str.split(',') if pid.isdigit()]
-            persons = Person.query.filter(Person.id.in_(selected_person_ids)).all()
-            if persons:
-                person_queries = []
-                for p in persons:
-                    if database_name == 'PubMed':
-                        person_queries.append(f"{p.last_name} {p.first_name[0]}[AU]")
-                    elif database_name == 'Deutsche Nationalbibliothek':
-                        person_queries.append(f"per={p.first_name} {p.last_name}")
-                    else:
-                        person_queries.append(f"{p.first_name} {p.last_name}")
-                
-                if person_queries:
-                    query_parts.append(f"AND ({' OR '.join(person_queries)})")
-        except Exception as e:
-            logger.error(f"Error processing person IDs for advanced search: {str(e)}")
-    
-    # Author
-    author = form_data.get('author', '').strip()
-    if author:
-        if database_name == 'PubMed':
-            query_parts.append(f"AND ({author}[AU])")
-        else:
-            query_parts.append(f"AND (author:{author})")
-    
-    # Year range
-    year_from = form_data.get('year_from', '').strip()
-    year_to = form_data.get('year_to', '').strip()
-    if year_from or year_to:
-        if database_name == 'PubMed':
-            if year_from and year_to:
-                query_parts.append(f"AND (\"{year_from}\"[Date - Publication] : \"{year_to}\"[Date - Publication])")
-            elif year_from:
-                query_parts.append(f"AND (\"{year_from}\"[Date - Publication] : 3000[Date - Publication])")
-            elif year_to:
-                query_parts.append(f"AND (1800[Date - Publication] : \"{year_to}\"[Date - Publication])")
-        else:
-            if year_from and year_to:
-                query_parts.append(f"AND (year:{year_from}-{year_to})")
-            elif year_from:
-                query_parts.append(f"AND (year:>={year_from})")
-            elif year_to:
-                query_parts.append(f"AND (year:<={year_to})")
-    
-    # Title keywords
-    title = form_data.get('title', '').strip()
-    if title:
-        if database_name == 'PubMed':
-            query_parts.append(f"AND ({title}[TI])")
-        else:
-            query_parts.append(f"AND (title:{title})")
-    
-    # Join all parts
-    if not query_parts:
-        return ""
-    
-    # Remove the first "AND" if the query starts with it
-    query_string = " ".join(query_parts)
-    if query_string.startswith("AND "):
-        query_string = query_string[4:]
-    
-    return query_string
+# Removed _construct_advanced_query_string as its logic for building database-specific
+# queries is now handled by the individual connector's `construct_query` method.
+# The main `index` route now directly extracts raw parameters from the form for advanced search
+# and passes them to the `search_database` function.
 
 @search_bp.before_request
 def log_request_info():
-    """Log request information and ensure session validity"""
-    logger.debug(f"Request path: {request.path}")
-    session.permanent = True  # Ensure session stays alive during search
+    """Log request information and ensure session validity."""
+    logger.debug(f"Request to {request.path}, Session ID: {session.sid if session else 'No session'}")
+    if session: # Make session permanent for its lifetime
+        session.permanent = True
     
-    # Check session expiry
-    timestamp = session.get('query_timestamp')
-    if timestamp:
+    # Check for and clean up very old search results from the database (e.g., older than 7 days)
+    # This is a good place for periodic cleanup, but should not run on every request
+    # Consider a separate scheduled task or running it less frequently
+    if not hasattr(current_app, 'last_cleanup_time') or \
+       (get_utc_now() - current_app.last_cleanup_time > timedelta(hours=24)):
         try:
-            search_time = datetime.fromisoformat(timestamp)
-            if get_utc_now() - search_time > timedelta(hours=1):
-                # Clear expired search results from session
-                session.pop('current_query_id', None)
-                session.pop('query_timestamp', None)
-                session.pop('result_count', None)
-                session.modified = True
-                logger.info("Cleared expired search results from session")
+            clean_expired_results() # Defined in this file
+            current_app.last_cleanup_time = get_utc_now()
+            logger.info("Periodic cleanup of old search results performed.")
         except Exception as e:
-            logger.error(f"Error checking session expiry: {e}")
-            # Clear invalid session data
+            logger.error(f"Error during periodic cleanup: {str(e)}")
+
+    # Check session timestamp for current_query_id expiry
+    query_timestamp_str = session.get('query_timestamp') # This was used for session result expiry
+    if query_timestamp_str:
+        try:
+            query_time = datetime.fromisoformat(query_timestamp_str)
+            # If query_id is older than, say, 1 hour, clear it to avoid showing stale results
+            if get_utc_now() - query_time > timedelta(hours=1): 
+                session.pop('current_query_id', None)
+                session.pop('query_timestamp', None) # Also remove its timestamp
+                # search_summary and search_errors related to this query_id should also be cleared
+                session.pop('search_summary', None)
+                session.pop('search_errors', None)
+                session.modified = True
+                logger.info("Cleared expired current_query_id and related data from session.")
+        except ValueError: # Invalid isoformat string
+            logger.warning(f"Invalid query_timestamp in session: {query_timestamp_str}. Clearing.")
+            session.pop('current_query_id', None)
             session.pop('query_timestamp', None)
+            session.modified = True
+        except Exception as e: # Catch any other unexpected errors
+            logger.error(f"Error checking current_query_id expiry in session: {e}")
+            # Defensively clear potentially problematic session data
+            session.pop('current_query_id', None)
+            session.pop('query_timestamp', None)
+            session.modified = True
+
 
 def _construct_person_search_query(form_data):
-    """Helper function to construct person search query"""
+    """
+    Helper function to construct a search query string for 'person' search mode.
+    This typically combines names of selected persons and any additional keywords.
+    The exact query syntax might need to be adjusted based on how connectors'
+    `construct_query` methods expect person information (e.g., as part of the main query string
+    or through specific parameters).
+    """
     selected_person_ids_str = form_data.get('selected_person_ids', '')
     additional_keywords = form_data.get('person_search_keywords', '').strip()
     
     if not selected_person_ids_str:
+        # This case should ideally be caught by form validation before calling this.
+        logger.warning("No person IDs selected for person search mode.")
         flash('Bitte wählen Sie mindestens eine Person für die personenbezogene Suche aus.', 'warning')
-        return None
+        return None # Or raise ValueError
 
     try:
         selected_person_ids = [int(pid) for pid in selected_person_ids_str.split(',') if pid.isdigit()]
+        if not selected_person_ids:
+            logger.warning("No valid person IDs found after parsing.")
+            flash('Ungültige Personenauswahl.', 'warning')
+            return None
+
         persons = Person.query.filter(Person.id.in_(selected_person_ids)).all()
-        
         if not persons:
+            logger.warning(f"No persons found in database for IDs: {selected_person_ids_str}")
             flash('Ausgewählte Personen nicht gefunden.', 'warning')
             return None
 
-        # Construct query string
-        person_names = [f"{p.first_name} {p.last_name}" for p in persons]
-        query_parts = [f"({name})" for name in person_names]
+        # Construct a query string part for person names.
+        # This is a simple OR combination. Connectors might need more specific formatting.
+        # Example: "(John Doe) OR (Jane Smith)"
+        person_name_parts = []
+        for p in persons:
+            # Ensure names are quoted if they contain spaces, for many search engines
+            full_name = f"{p.first_name} {p.last_name}".strip()
+            if full_name:
+                 # Basic quoting, might need refinement based on target search engine syntax
+                person_name_parts.append(f'"{full_name}"') # Example: "\"John Doe\""
+
+        if not person_name_parts:
+            logger.warning("Selected persons have no names to search for.")
+            return None # Or handle as an error
+
+        # Combine person names with OR
+        person_query_segment = " OR ".join(person_name_parts)
         
+        # If there are additional keywords, combine with AND
         if additional_keywords:
-            return f"({' OR '.join(query_parts)}) AND ({additional_keywords})"
-        return ' OR '.join(query_parts)
+            # Ensure keywords are also appropriately formatted/quoted if needed
+            # Example: ("(John Doe) OR (Jane Smith)") AND (additional keywords)
+            # Using parentheses for clarity and correct precedence
+            return f"({person_query_segment}) AND ({additional_keywords})"
         
-    except Exception as e:
+        return person_query_segment # Just the person names query
+        
+    except ValueError as ve: # e.g. int(pid) fails
+        logger.error(f"Invalid person ID format in selected_person_ids: {selected_person_ids_str}. Error: {ve}", exc_info=True)
+        flash('Ungültiges Format für Personenauswahl.', 'error')
+        return None
+    except Exception as e: # Catch-all for other unexpected errors (e.g., DB query fails)
         logger.error(f"Error constructing person search query: {str(e)}", exc_info=True)
+        flash('Fehler bei der Erstellung der Personensuchanfrage.', 'error')
         return None
 
 def _clear_search_session_data():
-    """Helper function to clear search-related session data"""
+    """Helper function to clear search-related session data before a new search."""
     keys_to_clear = [
-        'search_status',
-        'search_start_time',
-        'search_error',
-        'search_summary',
-        'search_errors',
-        'current_query_id'
+        'search_status', 
+        'search_start_time', 
+        'search_errors',      # Errors per DB from previous search
+        'search_summary',     # Summary per DB from previous search
+        'current_query_id',   # ID of the last SearchQuery object
+        'search_errors_summary', # General error message for the whole search
+        'search_error_internal' # Old key, ensure it's cleared
     ]
     
+    cleared_keys_count = 0
     for key in keys_to_clear:
-        session.pop(key, None)
-    session.modified = True
+        if session.pop(key, None) is not None:
+            cleared_keys_count +=1
+            
+    if cleared_keys_count > 0:
+        session.modified = True
+        logger.debug(f"Cleared {cleared_keys_count} search-related keys from session.")
 
-def _process_search_results(results, search_errors, search_summary, query, selected_databases, search_mode):
+def _process_search_results(aggregated_results, search_errors_dict, search_summary_dict, 
+                            query_text_for_storage, selected_databases_list, search_mode_used):
     """
-    Process search results and update session status accordingly
-    
+    Processes aggregated search results, saves them, and updates session.
     Args:
-        results (list): List of search results
-        search_errors (dict): Dictionary of errors by database
-        search_summary (dict): Summary of search results by database
-        query (str): The search query
-        selected_databases (list): List of selected databases
-        search_mode (str): The search mode used
-        
+        aggregated_results (list): Combined list of all search results from all databases.
+        search_errors_dict (dict): Dictionary of errors by database name.
+        search_summary_dict (dict): Dictionary of summaries by database name.
+        query_text_for_storage (str): The main search term or constructed query string to be stored.
+        selected_databases_list (list): List of database names that were searched.
+        search_mode_used (str): The search mode ('simple', 'person', 'advanced').
     Returns:
-        tuple: (saved_count, query_obj) containing the number of saved results and the query object
+        tuple: (saved_count, query_obj) 
+               - saved_count (int): Number of results saved.
+               - query_obj (SearchQuery|None): The created SearchQuery object, or None if creation failed.
     """
     try:
-        # Create search query record
-        search_query = SearchQuery(
-            search_text=query,
-            database=','.join(selected_databases),
-            search_mode=search_mode,
+        # Create a single SearchQuery record for this entire search operation
+        search_query_record = SearchQuery(
+            search_text=query_text_for_storage, # The overall query
+            database=','.join(selected_databases_list), # Store all searched DBs
+            search_mode=search_mode_used,
             timestamp=get_utc_now()
+            # query_details = json.dumps(search_summary_dict) # Optionally store full summary
         )
-        db.session.add(search_query)
-        db.session.commit()
-        logger.info(f"Created search query record with ID: {search_query.id}")
+        db.session.add(search_query_record)
+        db.session.commit() # Commit to get an ID for search_query_record
+        logger.info(f"Created SearchQuery record with ID: {search_query_record.id} for search text: '{query_text_for_storage}'")
         
-        # Save results
-        saved_count = save_search_results(search_query, results)
-        logger.info(f"Saved {saved_count} results for query ID: {search_query.id}")
+        # Save individual results to SearchResult, linking them to the SearchQuery record
+        # The `save_search_results` function already handles batching and validation.
+        saved_count = save_search_results(search_query_record, aggregated_results)
+        logger.info(f"Saved {saved_count} individual results for SearchQuery ID: {search_query_record.id}")
         
-        # Update session with search information
-        session['current_query_id'] = search_query.id
-        session['search_summary'] = search_summary
+        # Update session with information about this search operation
+        session['current_query_id'] = search_query_record.id
+        session['query_timestamp'] = search_query_record.timestamp.isoformat() # For session result expiry
         
-        if search_errors:
-            session['search_errors'] = [{'database': db, 'error': err} for db, err in search_errors.items()]
-            logger.warning(f"Search completed with errors: {search_errors}")
+        # Store summary and errors (these are dicts with per-DB info)
+        session['search_summary'] = search_summary_dict 
+        session['search_errors'] = [{'database': db, 'error': err} for db, err in search_errors_dict.items() if err]
         
-        # Update search status based on results
-        if saved_count > 0:
-            session['search_status'] = 'completed'
-            logger.info(f"Search completed successfully with {saved_count} results")
-        else:
-            session['search_status'] = 'no_results'
-            logger.info("Search completed with no results")
+        if search_errors_dict:
+            logger.warning(f"Search completed with errors in some databases: {search_errors_dict}")
         
-        session.modified = True
-        return saved_count, search_query
+        session.modified = True # Ensure session is saved
+        return saved_count, search_query_record
         
     except Exception as e:
-        logger.error(f"Error processing search results: {str(e)}", exc_info=True)
-        session['search_status'] = 'error'
-        session['search_error'] = str(e)
+        logger.error(f"Error processing and saving search results: {str(e)}", exc_info=True)
+        # Avoid setting search_status here, let the main route handler do it
+        # session['search_status'] = 'error' # This was done here before
+        session['search_errors_summary'] = f"Fehler bei Ergebnisverarbeitung: {str(e)}"
         session.modified = True
-        raise
+        # Return 0 saved and None for query_obj to indicate failure at this stage
+        return 0, None 
+
 
 @search_bp.route("/results")
 def results():
-    """Show search results"""
+    """Display paginated search results for a given query ID stored in session."""
     query_id = session.get('current_query_id')
+    
     if not query_id:
-        flash("Keine aktiven Suchergebnisse gefunden.", "warning")
+        logger.info("Results page: No current_query_id in session.")
+        flash("Keine aktiven Suchergebnisse gefunden. Bitte starten Sie eine neue Suche.", "warning")
         return redirect(url_for("search.index"))
 
     try:
-        # Get query details and results
-        query = SearchQuery.query.get(query_id)
-        if not query:
-            flash("Die gesuchten Ergebnisse wurden nicht gefunden.", "warning")
+        search_query_obj = SearchQuery.query.get(query_id)
+        if not search_query_obj:
+            logger.warning(f"Results page: SearchQuery object not found for ID {query_id}.")
+            flash("Die gesuchten Ergebnisse oder die Suchanfrage wurden nicht gefunden.", "warning")
+            session.pop('current_query_id', None) # Clear invalid query_id
+            session.modified = True
             return redirect(url_for("search.index"))
         
-        # Get page number from request, default to 1
         page = request.args.get('page', 1, type=int)
-        per_page = 20  # Or get from config, e.g., current_app.config.get('PER_PAGE', 20)
+        # Use a configurable PER_PAGE, e.g., from app config
+        per_page = current_app.config.get('RESULTS_PER_PAGE', 20) 
 
-        # Get paginated results from database
+        # Get paginated results from the database using the helper
         results_pagination = get_search_results(query_id, page, per_page)
 
-        if results_pagination is None:
+        if results_pagination is None: # Should mean an error occurred in get_search_results
+            logger.error(f"Results page: get_search_results returned None for query_id {query_id}.")
             flash("Fehler beim Laden der Ergebnisse.", "error")
             return redirect(url_for("search.index"))
 
-        # Extract items for the current page to be displayed
-        # The .items attribute of the pagination object contains the records for the current page.
-        # These items already have .result_data, but we need to parse the JSON for the template.
+        # The .items attribute of the pagination object contains SearchResult records for the current page.
+        # We need to parse their .result_data (JSON string) into dictionaries for the template.
         results_on_page = []
-        for item in results_pagination.items:
-            if item.result_data:
+        for search_result_item in results_pagination.items:
+            if search_result_item.result_data:
                 try:
-                    results_on_page.append(json.loads(item.result_data))
+                    # Ensure result_data is a string before parsing, though it should be from DB
+                    if isinstance(search_result_item.result_data, str):
+                        parsed_data = json.loads(search_result_item.result_data)
+                        # Add the SearchResult ID itself if needed in template, e.g., for linking
+                        parsed_data['_search_result_id'] = search_result_item.id 
+                        results_on_page.append(parsed_data)
+                    else: # Should not happen if data is stored correctly
+                        logger.warning(f"Non-string result_data found for SearchResult item {search_result_item.id}, query {query_id}. Type: {type(search_result_item.result_data)}")
+                        results_on_page.append({"Title": "Fehlerhafte Daten", "_search_result_id": search_result_item.id})
                 except json.JSONDecodeError:
-                    logger.error(f"Error decoding JSON for result item {item.id} in query {query_id}")
-                    results_on_page.append({}) # Add empty dict or skip
+                    logger.error(f"Error decoding JSON for SearchResult item {search_result_item.id} in query {query_id}. Data: {search_result_item.result_data[:100]}...")
+                    # Add a placeholder or skip if data is corrupted
+                    results_on_page.append({"Title": "Fehler beim Laden dieses Eintrags", "_search_result_id": search_result_item.id})
+            else: # result_data is None or empty
+                 results_on_page.append({"Title": "Keine Daten für diesen Eintrag", "_search_result_id": search_result_item.id})
 
-        # Get search summary and errors from session
-        search_summary = session.get('search_summary', {}) # This is overall summary
-        search_errors = session.get('search_errors', [])
+
+        # Get search summary and errors from session (these are dicts with per-DB info)
+        search_summary_from_session = session.get('search_summary', {})
+        search_errors_from_session = session.get('search_errors', []) # This is a list of dicts
         
-        # Render results template
         return render_template(
             "results.html",
-            results_page=results_pagination, # Pass the pagination object
-            results=results_on_page, # Pass the actual items for the current page
-            query=query,
-            search_errors=search_errors,
-            search_summary=search_summary,
-            # total_results is now part of results_pagination.total
+            results_page=results_pagination,  # The pagination object for page navigation
+            results=results_on_page,          # List of result dicts for display
+            query=search_query_obj,           # The SearchQuery object
+            search_errors=search_errors_from_session, # Errors per DB
+            search_summary=search_summary_from_session  # Summary per DB
+            # total_results is available via results_pagination.total
         )
         
     except Exception as e:
-        logger.error(f"Error displaying results: {str(e)}", exc_info=True)
-        flash("Fehler beim Anzeigen der Ergebnisse.", "error")
+        logger.error(f"Error displaying results for query_id {query_id}: {str(e)}", exc_info=True)
+        flash("Ein unerwarteter Fehler ist beim Anzeigen der Ergebnisse aufgetreten.", "error")
         return redirect(url_for("search.index"))

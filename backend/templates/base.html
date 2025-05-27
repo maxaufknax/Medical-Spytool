@@ -12,12 +12,18 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Theme Manager - muss vor anderen Scripts geladen werden -->
     <script src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
+    
     <!-- Custom CSS -->
+    {% assets "css_all" %}
+        <link rel="stylesheet" href="{{ ASSET_URL }}">
+    {% endassets %}
+    {# Original links (now bundled):
     <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/search-tabs.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/accessibility.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/keyboard-navigation.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/results.css') }}" rel="stylesheet">
+    #}
     <script>
         // Global CSRF helper
         window.getCsrfToken = function() {
@@ -356,11 +362,11 @@
         }
     </style>
     
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/search-tabs.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard-navigation.css') }}">
+    <!-- Custom CSS (already included in css_all bundle if this was one of them, or keep if separate) -->
+    {# <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}"> #}
+    {# <link rel="stylesheet" href="{{ url_for('static', filename='css/search-tabs.css') }}"> #}
+    {# <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}"> #}
+    {# <link rel="stylesheet" href="{{ url_for('static', filename='css/keyboard-navigation.css') }}"> #}
     
     <!-- CSRF token for secure forms -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -375,10 +381,10 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <i class="fas fa-microscope"></i> Medical Spytool
+                <i class="fas fa-microscope" aria-hidden="true"></i> Medical Spytool
             </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Navigation umschalten">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
@@ -386,65 +392,76 @@
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'main.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('main.index') }}">
-                            <i class="fas fa-home"></i> Start
+                            <i class="fas fa-home" aria-hidden="true"></i> Start
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'search.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('search.index') }}">
-                            <i class="fas fa-search"></i> Suche
+                            <i class="fas fa-search" aria-hidden="true"></i> Suche
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'search.results' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('search.results') }}">
-                            <i class="fas fa-list"></i> Ergebnisse
+                            <i class="fas fa-list" aria-hidden="true"></i> Ergebnisse
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'analysis.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('analysis.index') }}">
-                            <i class="fas fa-chart-bar"></i> Analyse
+                            <i class="fas fa-chart-bar" aria-hidden="true"></i> Analyse
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'persons.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('persons.index') }}">
-                            <i class="fas fa-users"></i> Personen
+                            <i class="fas fa-users" aria-hidden="true"></i> Personen
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'settings.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('settings.index') }}">
-                            <i class="fas fa-cog"></i> Einstellungen
+                            <i class="fas fa-cog" aria-hidden="true"></i> Einstellungen
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'logs.index' %}active bg-white text-primary rounded px-3{% endif %}" href="{{ url_for('logs.index') }}">
-                            <i class="fas fa-clipboard-list"></i> Logs
+                            <i class="fas fa-clipboard-list" aria-hidden="true"></i> Logs
                         </a>
                     </li>
                 </ul>
+
+                <!-- Theme Switcher -->
+                <div class="theme-switch-wrapper d-flex align-items-center me-3">
+                    <label class="theme-switch" for="theme-toggle" title="Toggle theme">
+                        <input type="checkbox" id="theme-toggle" aria-label="Toggle theme">
+                        <span class="slider">
+                            <i class="fas fa-sun theme-icon" id="sun-icon" aria-hidden="true"></i>
+                            <i class="fas fa-moon theme-icon" id="moon-icon" aria-hidden="true"></i>
+                        </span>
+                    </label>
+                </div>
                 
                 <!-- User Menu -->
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle"></i> {{ current_user.username }}
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle" aria-hidden="true"></i> {{ current_user.username }}
                         </a>
-                        <div class="dropdown-menu dropdown-menu-end">
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <a class="dropdown-item" href="{{ url_for('auth.profile') }}">
-                                <i class="fas fa-id-card"></i> Profil
+                                <i class="fas fa-id-card" aria-hidden="true"></i> Profil
                             </a>
                             <a class="dropdown-item" href="{{ url_for('settings.index') }}">
-                                <i class="fas fa-sliders-h"></i> Einstellungen
+                                <i class="fas fa-sliders-h" aria-hidden="true"></i> Einstellungen
                             </a>
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                <i class="fas fa-sign-out-alt"></i> Abmelden
+                                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Abmelden
                             </a>
                         </div>
                     </li>
                     {% else %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('auth.login') }}">
-                            <i class="fas fa-sign-in-alt"></i> Anmelden
+                            <i class="fas fa-sign-in-alt" aria-hidden="true"></i> Anmelden
                         </a>
                     </li>
                     {% endif %}
@@ -466,7 +483,7 @@
                         'info': 'fas fa-info-circle'
                     } %}
                     <div class="alert alert-{{ alert_class }} alert-dismissible fade show shadow-sm border-{{ alert_class }}" role="alert">
-                        <i class="{{ icon_class.get(alert_class, 'fas fa-info-circle') }} me-2"></i>
+                        <i class="{{ icon_class.get(alert_class, 'fas fa-info-circle') }} me-2" aria-hidden="true"></i>
                         <strong>{{ {'success': 'Erfolg!', 'danger': 'Fehler!', 'warning': 'Achtung!', 'info': 'Information:'}.get(alert_class, '') }}</strong> 
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
@@ -486,7 +503,7 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h5 class="mb-1"><i class="fas fa-microscope me-2"></i>MedicalSpy</h5>
+                    <h5 class="mb-1"><i class="fas fa-microscope me-2" aria-hidden="true"></i>MedicalSpy</h5>
                     <p class="text-white-50 mb-0">Ein leistungsstarkes Suchwerkzeug für medizinische und wissenschaftliche Publikationen</p>
                 </div>
                 <div class="col-md-6 text-md-end">
@@ -516,11 +533,15 @@
         });
     </script>
     
-    <!-- Tab Fixing Script für Bootstrap Tabs -->
+    <!-- Tab Fixing Script für Bootstrap Tabs & Other Common JS -->
+    {% assets "js_common" %}
+        <script src="{{ ASSET_URL }}"></script>
+    {% endassets %}
+    {# Original links (now bundled):
     <script src="{{ url_for('static', filename='js/tab-fix.js') }}"></script>
-      <!-- Accessibility and Keyboard Navigation Enhancements -->
     <script src="{{ url_for('static', filename='js/keyboard-navigation.js') }}"></script>
     <script src="{{ url_for('static', filename='js/keyboard-shortcuts.js') }}"></script>
+    #}
     
     {% block scripts %}{% endblock %}
 </body>

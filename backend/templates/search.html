@@ -177,28 +177,32 @@
                                     </div>
                                     
                                     <div class="mb-4">
-                                        <h6 class="text-primary mb-3"><i class="fas fa-search me-2"></i>Personen suchen oder hinzufügen</h6>
-                                        <div class="input-group shadow-sm">
-                                            <span class="input-group-text bg-white text-primary">
-                                                <i class="fas fa-user-edit"></i>
-                                            </span>
-                                            <input type="text" class="form-control border" id="personSearchInput" placeholder="Namen eingeben, um Personen zu suchen..." autocomplete="off">
-                                            <button class="btn btn-primary" type="button" id="personSearchButton">
-                                                <i class="fas fa-search me-1"></i> Suchen
-                                            </button>
-                                            <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
-                                                <i class="fas fa-plus-circle me-1"></i> Neu
-                                            </button>
+                                        <h6 class="text-primary mb-3"><i class="fas fa-search me-2" aria-hidden="true"></i>Personen suchen oder hinzufügen</h6>
+                                        <div class="form-group">
+                                            <label for="personSearchInput" class="form-label visually-hidden">Personen suchen (Personenbezogene Suche)</label>
+                                            <div class="input-group shadow-sm">
+                                                <span class="input-group-text bg-white text-primary">
+                                                    <i class="fas fa-user-edit" aria-hidden="true"></i>
+                                                </span>
+                                                <input type="text" class="form-control border" id="personSearchInput" placeholder="Namen eingeben, um Personen zu suchen..." autocomplete="off" aria-describedby="personSearchHelp" aria-label="Personen suchen (Personenbezogene Suche)">
+                                                <button class="btn btn-primary" type="button" id="personSearchButton">
+                                                    <i class="fas fa-search me-1" aria-hidden="true"></i> Suchen
+                                                </button>
+                                            </div>
+                                            <div id="personSearchHelp" class="form-text mt-2">
+                                                <i class="fas fa-lightbulb text-warning me-1" aria-hidden="true"></i>
+                                                Tipp: Die Suche durchsucht Vor- und Nachnamen in der Datenbank
+                                            </div>
                                         </div>
-                                        
-                                        <div class="form-text mt-2">
-                                            <i class="fas fa-lightbulb text-warning me-1"></i>
-                                            Tipp: Die Suche durchsucht Vor- und Nachnamen in der Datenbank
+                                        <div class="mt-2"> <!-- Moved button here for better layout -->
+                                            <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                                                <i class="fas fa-plus-circle me-1" aria-hidden="true"></i> Neu
+                                            </button>
                                         </div>
                                         
                                         <!-- Dropdown for person results with improved styling -->
                                         <div id="personSearchResults" class="dropdown-menu w-100 shadow-lg border-0 rounded-3" 
-                                             style="display: none; max-height: 300px; overflow-y: auto;">
+                                             style="display: none; max-height: 300px; overflow-y: auto;" role="listbox">
                                             <!-- Results will be populated via JavaScript -->
                                         </div>
                                     </div>
@@ -236,18 +240,18 @@
                                                         </div>
                                                           <div class="database-cards-grid">
                                                             {% for db in databases %}
-                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
-                                                                <input class="database-checkbox" type="checkbox" value="{{ db }}" 
+                                                            <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}" tabindex="0" role="checkbox" aria-labelledby="db-person-label-{{ loop.index }}">
+                                                                <input class="database-checkbox visually-hidden" type="checkbox" value="{{ db }}" 
                                                                     id="db-person-{{ db }}" name="person_databases" 
                                                                     {% if db == 'PubMed' %}checked{% endif %}>
                                                                 <div class="database-status-indicator">
-                                                                    <i class="fas fa-check"></i>
+                                                                    <i class="fas fa-check" aria-hidden="true"></i>
                                                                 </div>
                                                                 <div class="database-card-inner">
                                                                     <div class="database-icon">
-                                                                        <i class="fas fa-database"></i>
+                                                                        <i class="fas fa-database" aria-hidden="true"></i>
                                                                     </div>
-                                                                    <div class="database-content">
+                                                                    <div class="database-content" id="db-person-label-{{ loop.index }}">
                                                                         <div class="database-name">{{ db }}</div>
                                                                         <p class="database-description">
                                                                             {% if db == 'PubMed' %}
@@ -443,6 +447,23 @@
                                                             Geben Sie einen oder mehrere Hauptbegriffe ein. Mehrere Begriffe im Hauptfeld (z.B. "A B") werden in der Regel als "A OR B" interpretiert, abhängig von der Datenbank. Verwenden Sie Anführungszeichen für exakte Phrasen (z.B. "chronische Nierenerkrankung").
                                                         </div>
                                                     </div>
+
+                                                    <div class="mb-4">
+                                                        <label for="advancedSearchField" class="form-label">Feld für Hauptsuchbegriffe</label>
+                                                        <select class="form-select shadow-sm border" id="advancedSearchField" name="search_field_advanced">
+                                                            <option value="All Fields" selected>Alle Felder</option>
+                                                            <option value="Title">Titel</option>
+                                                            <option value="Abstract">Abstract</option>
+                                                            <option value="Title/Abstract">Titel/Abstract (PubMed)</option>
+                                                            <option value="Author">Autor (als Suchbegriff)</option>
+                                                            <option value="MeSH Terms">MeSH Terms (PubMed)</option>
+                                                            <option value="Schlagwort">Schlagwort (DNB)</option>
+                                                        </select>
+                                                        <div class="form-text mt-2">
+                                                            <i class="fas fa-info-circle text-info me-1"></i>
+                                                            Wählen Sie das Feld aus, in dem die Hauptsuchbegriffe gesucht werden sollen.
+                                                        </div>
+                                                    </div>
                                                     
                                                     <div class="mb-3">
                                                         <label for="advancedAdditionalTerms" class="form-label">Zusätzliche eingrenzende Begriffe (optional) <i class="fas fa-info-circle text-muted ms-1" data-bs-toggle="tooltip" title="Verfeinern Sie Ihre Suche, indem Sie Begriffe hinzufügen, die in den gefundenen Dokumenten ebenfalls vorkommen müssen."></i></label>
@@ -479,7 +500,7 @@
                                                             {% for db in databases %}
                                                             <div class="database-card {% if db == 'PubMed' %}selected{% endif %}" data-database="{{ db }}">
                                                                 <input class="database-checkbox" type="checkbox" value="{{ db }}" 
-                                                                    id="db-advanced-{{ db }}" name="databases[]" 
+                                                                    id="db-advanced-{{ db }}" name="databases" 
                                                                     {% if db == 'PubMed' %}checked{% endif %}>
                                                                 <div class="database-status-indicator">
                                                                     <i class="fas fa-check"></i>
@@ -564,13 +585,13 @@
                                             <div class="card bg-light border-0 mb-4">
                                                 <div class="card-body p-4">
                                                     <h6 class="card-title text-primary mb-3">
-                                                        <i class="fas fa-user-circle me-2"></i>Ausgewählte Personen
+                                                        <i class="fas fa-user-circle me-2" aria-hidden="true"></i>Ausgewählte Personen
                                                     </h6>
                                                     
                                                     <div id="advancedSelectedPersonsContainer" class="mb-3">
                                                         <!-- Selected persons will be displayed here as tags -->
                                                         <div class="alert alert-light border shadow-sm d-flex align-items-center" id="advancedNoPersonsSelectedAlert">
-                                                            <i class="fas fa-user-circle fa-lg me-3 text-muted"></i>
+                                                            <i class="fas fa-user-circle fa-lg me-3 text-muted" aria-hidden="true"></i>
                                                             <div>
                                                                 <span>Keine Personen ausgewählt.</span><br>
                                                                 <small class="text-muted">Die Suche wird ohne Personenfilter durchgeführt. Wählen Sie unten Personen aus, wenn Sie die Suche einschränken möchten.</small>
@@ -579,33 +600,36 @@
                                                     </div>
                                                     
                                                     <h6 class="card-title mb-3 text-primary">
-                                                        <i class="fas fa-search me-2"></i>Personen suchen
+                                                        <i class="fas fa-search me-2" aria-hidden="true"></i>Personen suchen
                                                     </h6>
                                                     
-                                                    <div class="input-group shadow-sm mb-3">
-                                                        <span class="input-group-text bg-white text-primary">
-                                                            <i class="fas fa-user-edit"></i>
-                                                        </span>
-                                                        <input type="text" class="form-control border" id="advancedPersonSearchInput" 
-                                                               placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off"
-                                                               data-bs-toggle="tooltip" title="Suchen Sie hier nach bereits erfassten Personen. Die Ergebnisse erscheinen in einer dynamischen Liste.">
-                                                        <button class="btn btn-primary" type="button" id="advancedPersonSearchButton">
-                                                            <i class="fas fa-search me-1"></i> Suchen
-                                                        </button>
-                                                        <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
-                                                            <i class="fas fa-plus-circle me-1"></i> Neu
-                                                        </button>
+                                                    <div class="form-group">
+                                                        <label for="advancedPersonSearchInput" class="form-label visually-hidden">Personen suchen (Erweiterte Suche)</label>
+                                                        <div class="input-group shadow-sm mb-3">
+                                                            <span class="input-group-text bg-white text-primary">
+                                                                <i class="fas fa-user-edit" aria-hidden="true"></i>
+                                                            </span>
+                                                            <input type="text" class="form-control border" id="advancedPersonSearchInput" 
+                                                                   placeholder="Namen eingeben, um nach Personen zu suchen..." autocomplete="off"
+                                                                   data-bs-toggle="tooltip" title="Suchen Sie hier nach bereits erfassten Personen. Die Ergebnisse erscheinen in einer dynamischen Liste."
+                                                                   aria-describedby="advancedPersonSearchHelp" aria-label="Personen suchen (Erweiterte Suche)">
+                                                            <button class="btn btn-primary" type="button" id="advancedPersonSearchButton">
+                                                                <i class="fas fa-search me-1" aria-hidden="true"></i> Suchen
+                                                            </button>
+                                                            <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#addPersonModal">
+                                                                <i class="fas fa-plus-circle me-1" aria-hidden="true"></i> Neu
+                                                            </button>
+                                                        </div>
+                                                        <div id="advancedPersonSearchHelp" class="form-text">
+                                                            <i class="fas fa-lightbulb text-warning me-1" aria-hidden="true"></i>
+                                                            Tipp: Wenn Sie die gesuchte Person nicht finden, können Sie über "Neu" einen neuen Personeneintrag erstellen.
+                                                        </div>
                                                     </div>
                                                     
                                                     <!-- Dropdown for person results with improved styling -->
                                                     <div id="advancedPersonSearchResults" class="dropdown-menu w-100 shadow-lg border-0 rounded-3" 
-                                                         style="display: none; max-height: 300px; overflow-y: auto;">
+                                                         style="display: none; max-height: 300px; overflow-y: auto;" role="listbox">
                                                         <!-- Results will be populated via JavaScript -->
-                                                    </div>
-                                                    
-                                                    <div class="form-text">
-                                                        <i class="fas fa-lightbulb text-warning me-1"></i>
-                                                        Tipp: Wenn Sie die gesuchte Person nicht finden, können Sie über "Neu" einen neuen Personeneintrag erstellen.
                                                     </div>
                                                     
                                                     <!-- Hidden input to store selected person IDs -->
@@ -717,7 +741,24 @@
                                                     </h6>
                                                     
                                                     <div class="row g-4">
-                                                        <div class="col-md-6">
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="advancedAuthor" class="form-label">Autor (allgemein)</label>
+                                                            <input type="text" class="form-control shadow-sm border" id="advancedAuthor" name="author_advanced" placeholder="Nachname, Vorname oder Organisation" data-bs-toggle="tooltip" title="Suche nach einem spezifischen Autor oder einer Organisation. Kombiniert mit oben ausgewählten Personen (Schritt 2) durch ODER." aria-describedby="authorHelpAdvanced">
+                                                             <div id="authorHelpAdvanced" class="form-text mt-2">
+                                                                <i class="fas fa-info-circle text-info me-1" aria-hidden="true"></i>
+                                                                Feld für allgemeine Autorensuche. 
+                                                                Hinweis: Wenn Sie sowohl Personen in Schritt 2 auswählen als auch hier einen Autor eingeben, werden Publikationen gesucht, die entweder den ausgewählten Personen ODER dem hier eingegebenen Autor zugeordnet sind.
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="advancedTitle" class="form-label">Titelstichwörter</label>
+                                                            <input type="text" class="form-control shadow-sm border" id="advancedTitle" name="title_advanced" placeholder="Stichwörter aus dem Titel" data-bs-toggle="tooltip" title="Suchen Sie nach Wörtern oder Phrasen im Titel der Publikation.">
+                                                        </div>
+                                                        <div class="col-md-6 mb-3">
+                                                            <label for="advancedJournal" class="form-label">Journal / Publikationsquelle</label>
+                                                            <input type="text" class="form-control shadow-sm border" id="advancedJournal" name="journal_advanced" placeholder="Name des Journals oder der Quelle" data-bs-toggle="tooltip" title="Schränken Sie die Suche auf ein bestimmtes Journal oder eine Publikationsquelle ein.">
+                                                        </div>
+                                                         <div class="col-md-6 mb-3">
                                                             <label for="advancedLanguage" class="form-label">Sprache</label>
                                                             <select class="form-select shadow-sm border" id="advancedLanguage" name="language" data-bs-toggle="tooltip" title="Wählen Sie eine Sprache, um die Ergebnisse auf diese Sprache zu filtern.">
                                                                 <option value="">Alle Sprachen</option>
@@ -725,6 +766,7 @@
                                                                 <option value="ger">Deutsch</option>
                                                                 <option value="fre">Französisch</option>
                                                                 <option value="spa">Spanisch</option>
+                                                                <!-- Add other common languages -->
                                                             </select>
                                                             <div class="form-text mt-2">
                                                                 <i class="fas fa-info-circle text-info me-1"></i>
@@ -735,10 +777,11 @@
                                                             <label for="advancedPublicationType" class="form-label">Publikationstyp</label>
                                                             <select class="form-select shadow-sm border" id="advancedPublicationType" name="publication_type" data-bs-toggle="tooltip" title="Filtern Sie nach bestimmten Publikationsarten wie Journal-Artikeln oder Büchern.">
                                                                 <option value="">Alle Typen</option>
-                                                                <option value="journal">Journal-Artikel</option>
-                                                                <option value="review">Review</option>
-                                                                <option value="book">Buch</option>
-                                                                <option value="conference">Konferenzbeitrag</option>
+                                                                <option value="Journal Article">Journal-Artikel (PubMed)</option>
+                                                                <option value="Review">Review (PubMed)</option>
+                                                                <option value="Book">Buch</option>
+                                                                <option value="Conference Paper">Konferenzbeitrag</option>
+                                                                <!-- Add other common types, DNB might have "Hochschulschrift" etc. -->
                                                             </select>
                                                             <div class="form-text mt-2">
                                                                 <i class="fas fa-info-circle text-info me-1"></i>

@@ -107,3 +107,23 @@ th[data-sortable="true"]:hover {
 .btn:disabled {
     cursor: not-allowed;
 }
+
+/* Sticky table header for results table */
+#resultsTable thead th {
+    position: -webkit-sticky; /* For Safari */
+    position: sticky;
+    top: 0; /* Stick to the top of the scrollable container */
+    z-index: 10; /* Ensure it's above table body content */
+    background-color: var(--card-bg, #fff); /* Use a background color to prevent content from showing through */
+    /* Add a bottom border to visually separate from scrolling content */
+    border-bottom: 2px solid var(--border-color, #dee2e6); 
+}
+
+/* Style for the table container to ensure proper rendering of sticky header */
+/* The .table-responsive class in Bootstrap already provides overflow-x: auto.
+   To make the vertical scroll trigger for sticky header, we need a defined height
+   on a parent or the .table-responsive itself. */
+.table-responsive {
+    max-height: 70vh; /* Example: Set a max height to make the table scrollable vertically */
+    /* overflow-y: auto; /* This is implicitly handled by max-height for block elements */
+}

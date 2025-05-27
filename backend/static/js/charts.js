@@ -1,298 +1,168 @@
-/**
- * MedicalSpy - Charts module
- * This file contains functions for creating and updating charts.
+ * MedicalSpy - Charts module (Refactored)
+ * This file contains generic utility functions for creating and updating charts
+ * using Chart.js, and managing theme responsiveness for charts.
  */
 
-// Create a year distribution chart
-function createYearChart(chartData) {
-    // Get the canvas
-    const ctx = document.getElementById('yearChart').getContext('2d');
-    
-    // Extract years and counts
-    const years = Object.keys(chartData).sort();
-    const counts = years.map(year => chartData[year]);
-    
-    // Create chart
-    const yearChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: years,
-            datasets: [{
-                label: 'Publications per Year',
-                data: counts,
-                backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                borderColor: 'rgba(13, 110, 253, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
+// Global store for active chart instances
+window.medicalSpyCharts = window.medicalSpyCharts || {};
+
+const ChartUtils = {
+    // Store for chart instances for easy access and updates
+    instances: window.medicalSpyCharts,
+
+    // Default theme-aware colors
+    getThemeColors: function(isDark = null) {
+        if (isDark === null) {
+            isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        }
+        return {
+            gridColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            textColor: isDark ? '#f8f9fa' : '#343a40',
+            mutedTextColor: isDark ? '#adb5bd' : '#6c757d',
+            // Define a palette for chart datasets
+            datasetColors: [
+                { background: 'rgba(73, 160, 217, 0.7)', border: 'rgba(44, 107, 160, 1)' }, // Blue
+                { background: 'rgba(46, 204, 113, 0.7)', border: 'rgba(39, 174, 96, 1)' },  // Green
+                { background: 'rgba(243, 156, 18, 0.7)', border: 'rgba(211, 84, 0, 1)' },   // Orange
+                { background: 'rgba(231, 76, 60, 0.7)', border: 'rgba(192, 57, 43, 1)' },  // Red
+                { background: 'rgba(155, 89, 182, 0.7)', border: 'rgba(142, 68, 173, 1)' }, // Purple
+                { background: 'rgba(52, 152, 219, 0.7)', border: 'rgba(41, 128, 185, 1)' }  // Light Blue
+            ]
+        };
+    },
+
+    // Generic chart creation function
+    createChart: function(canvasId, type, data, options) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) {
+            console.error(`Canvas element with ID '${canvasId}' not found.`);
+            return null;
+        }
+
+        // Destroy existing chart on this canvas, if any
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+        }
+
+        const chart = new Chart(ctx, { type, data, options });
+        this.instances[canvasId] = chart;
+        
+        // Add to global window.charts for theme manager compatibility (if still used by theme-manager.js)
+        // Consider removing window.charts if theme-manager.js can directly call ChartUtils.updateAllChartThemes()
+        if (window.charts && Array.isArray(window.charts)) {
+            const existingChartIndex = window.charts.findIndex(c => c.id === canvasId);
+            if (existingChartIndex > -1) {
+                window.charts[existingChartIndex].instance = chart;
+            } else {
+                window.charts.push({ id: canvasId, instance: chart });
+            }
+        }
+        return chart;
+    },
+
+    // Update themes for all managed charts
+    updateAllChartThemes: function(isDark = null) {
+        if (typeof Chart === 'undefined') return;
+
+        const themeColors = this.getThemeColors(isDark);
+
+        // Update Chart.js defaults
+        Chart.defaults.color = themeColors.textColor;
+        Chart.defaults.borderColor = themeColors.gridColor; // Default border for elements like legend box
+
+        for (const chartId in this.instances) {
+            if (Object.hasOwnProperty.call(this.instances, chartId)) {
+                const chart = this.instances[chartId];
+                if (chart && chart.options) {
+                    // Update scales
+                    if (chart.options.scales) {
+                        Object.keys(chart.options.scales).forEach(axisKey => {
+                            const axis = chart.options.scales[axisKey];
+                            if (axis.grid) axis.grid.color = themeColors.gridColor;
+                            if (axis.ticks) axis.ticks.color = themeColors.mutedTextColor;
+                            if (axis.title) axis.title.color = themeColors.textColor;
+                        });
                     }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        title: (tooltipItems) => {
-                            return `Year: ${tooltipItems[0].label}`;
-                        },
-                        label: (tooltipItem) => {
-                            return `Publications: ${tooltipItem.raw}`;
-                        }
+                    // Update legend
+                    if (chart.options.plugins && chart.options.plugins.legend) {
+                        chart.options.plugins.legend.labels.color = themeColors.textColor;
                     }
+                    // Update title
+                    if (chart.options.plugins && chart.options.plugins.title) {
+                        chart.options.plugins.title.color = themeColors.textColor;
+                    }
+                    chart.update('none'); // 'none' for no animation
                 }
             }
         }
-    });
-    
-    return yearChart;
-}
+        console.log("Chart themes updated for: ", Object.keys(this.instances));
+    },
 
-// Create an author distribution chart
-function createAuthorChart(chartData) {
-    // Get the canvas
-    const ctx = document.getElementById('authorChart').getContext('2d');
-    
-    // Extract authors and counts
-    const authors = Object.keys(chartData);
-    const counts = authors.map(author => chartData[author]);
-    
-    // Create chart
-    const authorChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: authors,
-            datasets: [{
-                label: 'Publications per Author',
-                data: counts,
-                backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                borderColor: 'rgba(40, 167, 69, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',  // Horizontal bar chart
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        title: (tooltipItems) => {
-                            return `Author: ${tooltipItems[0].label}`;
-                        },
-                        label: (tooltipItem) => {
-                            return `Publications: ${tooltipItem.raw}`;
-                        }
-                    }
-                }
-            }
+    // Helper to show an error message in place of a chart
+    showChartError: function(canvasId, message = 'Daten konnten nicht geladen werden.') {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.parentNode;
+        if (!container) return;
+
+        // Destroy existing chart instance if it exists
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+            delete this.instances[canvasId];
         }
-    });
-    
-    return authorChart;
-}
-
-// Create a database distribution chart
-function createDatabaseChart(results) {
-    // Get the canvas
-    const ctx = document.getElementById('databaseChart').getContext('2d');
-    
-    // Count results by database
-    const databaseCounts = {};
-    results.forEach(result => {
-        const database = result.Datenbank || 'Unknown';
-        databaseCounts[database] = (databaseCounts[database] || 0) + 1;
-    });
-    
-    // Extract databases and counts
-    const databases = Object.keys(databaseCounts);
-    const counts = databases.map(db => databaseCounts[db]);
-    
-    // Define colors for databases
-    const colors = {
-        'PubMed': 'rgba(13, 110, 253, 0.7)',
-        'Deutsche Nationalbibliothek': 'rgba(255, 193, 7, 0.7)',
-        'Unknown': 'rgba(108, 117, 125, 0.7)'
-    };
-    
-    // Create chart colors array
-    const backgroundColor = databases.map(db => colors[db] || 'rgba(108, 117, 125, 0.7)');
-    const borderColor = databases.map(db => {
-        const bgColor = colors[db] || 'rgba(108, 117, 125, 0.7)';
-        return bgColor.replace('0.7', '1');
-    });
-    
-    // Create chart
-    const databaseChart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: databases,
-            datasets: [{
-                data: counts,
-                backgroundColor: backgroundColor,
-                borderColor: borderColor,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        label: (tooltipItem) => {
-                            const database = tooltipItem.label;
-                            const count = tooltipItem.raw;
-                            const percentage = ((count / results.length) * 100).toFixed(1);
-                            return `${database}: ${count} (${percentage}%)`;
-                        }
-                    }
-                }
-            }
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-warning text-center my-3 chart-error-message';
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
+        
+        // Replace canvas with error message or append if canvas not there
+        if (canvas.parentNode === container) {
+            container.replaceChild(errorDiv, canvas);
+        } else {
+            // If canvas was already removed or never there, just append the error.
+            // Clear previous error messages for this container
+            const existingError = container.querySelector('.chart-error-message');
+            if (existingError) existingError.remove();
+            container.appendChild(errorDiv);
         }
-    });
-    
-    return databaseChart;
-}
-
-// Create a citation distribution chart
-function createCitationChart(results) {
-    // Get the canvas
-    const ctx = document.getElementById('citationChart').getContext('2d');
-    
-    // Filter results to only include those with citation counts
-    const resultsWithCitations = results.filter(result => {
-        const citationCount = result.Zitationsanzahl;
-        return citationCount !== undefined && 
-               citationCount !== null && 
-               citationCount !== "N/A" && 
-               !isNaN(parseInt(citationCount));
-    });
-    
-    // Extract titles and citation counts
-    const titles = resultsWithCitations.map(result => {
-        // Truncate long titles
-        let title = result.Titel || 'Untitled';
-        return title.length > 30 ? title.substring(0, 27) + '...' : title;
-    });
-    
-    const citationCounts = resultsWithCitations.map(result => parseInt(result.Zitationsanzahl));
-    
-    // Sort by citation count (descending)
-    const combined = titles.map((title, i) => ({ title, count: citationCounts[i] }));
-    combined.sort((a, b) => b.count - a.count);
-    
-    // Take only top 10
-    const top10 = combined.slice(0, 10);
-    
-    // Create chart
-    const citationChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: top10.map(item => item.title),
-            datasets: [{
-                label: 'Citation Count',
-                data: top10.map(item => item.count),
-                backgroundColor: 'rgba(220, 53, 69, 0.7)',
-                borderColor: 'rgba(220, 53, 69, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',  // Horizontal bar chart
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
-                },
-                tooltip: {
-                    callbacks: {
-                        title: (tooltipItems) => {
-                            return tooltipItems[0].label;
-                        },
-                        label: (tooltipItem) => {
-                            return `Citations: ${tooltipItem.raw}`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-    
-    return citationChart;
-}
-
-// Initialize all charts on the analysis page
-function initializeCharts() {
-    // Get the results data
-    const resultsData = document.getElementById('resultsData');
-    if (!resultsData) return;
-    
-    const results = JSON.parse(resultsData.textContent || '[]');
-    if (results.length === 0) return;
-    
-    // Get analysis data
-    const analysisDataElem = document.getElementById('analysisData');
-    if (!analysisDataElem) return;
-    
-    const analysisData = JSON.parse(analysisDataElem.textContent || '{}');
-    
-    // Create charts if data exists
-    if (analysisData.year_counts) {
-        createYearChart(analysisData.year_counts);
     }
-    
-    if (analysisData.top_authors) {
-        createAuthorChart(analysisData.top_authors);
-    }
-    
-    // Create database distribution chart
-    createDatabaseChart(results);
-    
-    // Create citation chart if results have citation counts
-    createCitationChart(results);
-}
+};
 
-// Initialize charts when the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize charts if we're on the analysis page
-    if (document.getElementById('analysisPage')) {
-        initializeCharts();
+// Expose ChartUtils globally, e.g., for analysis.js to use
+window.ChartUtils = ChartUtils;
+
+// Event listener for theme changes to update charts
+// This assumes theme-manager.js dispatches a 'themeChanged' event
+window.addEventListener('themeChanged', function(event) {
+    if (window.ChartUtils && event.detail && typeof event.detail.isDarkMode !== 'undefined') {
+        console.log('Theme changed event received by charts.js, updating chart themes.');
+        window.ChartUtils.updateAllChartThemes(event.detail.isDarkMode);
+    } else if (window.ChartUtils) { // Fallback if event.detail is not as expected
+        console.log('Theme changed event received by charts.js (no detail), updating chart themes based on current attribute.');
+        window.ChartUtils.updateAllChartThemes();
     }
 });
+
+// Fallback for direct DOM attribute changes (e.g. by theme-manager.js initial load)
+// This might be redundant if theme-manager.js reliably dispatches 'themeChanged'
+// or directly calls ChartUtils.updateAllChartThemes().
+if (window.MutationObserver && document.documentElement) {
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.attributeName === 'data-bs-theme') {
+                // Prevent double updates if medicalSpyThemeManager is handling it
+                if (window.medicalSpyThemeManager && window.medicalSpyThemeManager.isChanging) return;
+                
+                if (window.ChartUtils) {
+                     console.log('data-bs-theme attribute changed, updating chart themes via MutationObserver.');
+                    window.ChartUtils.updateAllChartThemes();
+                }
+            }
+        });
+    });
+    observer.observe(document.documentElement, { attributes: true });
+} else {
+    console.warn("MutationObserver not available or documentElement not ready for chart theme observing.");
+}
+
+console.log('charts.js loaded and ChartUtils initialized.');

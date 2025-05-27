@@ -126,3 +126,64 @@
     background-color: #f8f9fa;
     border-color: #e9ecef;
 }
+
+/* Responsive Tab Adjustments */
+@media (max-width: 767.98px) { /* Small devices (landscape phones, less than 768px) */
+    #searchModeTabs .nav-link,
+    #advancedSearchTabs .nav-link {
+        font-size: 0.85rem; /* Slightly smaller font for tab text */
+        padding: 0.4rem 0.5rem; /* Adjust padding */
+    }
+
+    #searchModeTabs .search-mode-icon,
+    #advancedSearchTabs .rounded-circle { /* Targeting the step number circles */
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem; /* Adjust icon/number size if needed */
+        margin-right: 0.3rem !important; /* Reduce margin for icons */
+    }
+
+    #advancedSearchTabs .nav-link span.d-none.d-md-block {
+        display: inline !important; /* Show text even on smaller screens if it fits */
+        font-size: 0.75rem; /* Make text smaller if shown */
+    }
+}
+
+@media (max-width: 575.98px) { /* Extra small devices (portrait phones, less than 576px) */
+    #searchModeTabs .nav-link,
+    #advancedSearchTabs .nav-link {
+        /* Allow text to wrap if it's too long */
+        white-space: normal;
+        text-align: center; /* Center text if it wraps */
+        hyphens: auto; /* Allow hyphenation if supported */
+        word-break: break-word; /* More aggressive word breaking if needed */
+    }
+
+    #searchModeTabs .nav-link strong,
+    #advancedSearchTabs .nav-link span.d-none.d-md-block {
+         display: block; /* Make text and icon stack vertically if needed */
+         margin-left: 0;
+         font-size: 0.7rem;
+    }
+    
+    #searchModeTabs .search-mode-icon,
+    #advancedSearchTabs .rounded-circle {
+        margin-bottom: 0.25rem; /* Add some space if text stacks */
+    }
+
+    /* Reduce gap for very small screens to prevent overflow of the container */
+    #searchModeTabs.gap-2 {
+        gap: 0.25rem !important; /* Reduce gap between tabs */
+    }
+    #advancedSearchTabs .nav-item.mx-1 {
+        margin-left: 0.1rem !important;
+        margin-right: 0.1rem !important;
+    }
+}
+
+/* Ensure the pill buttons in advanced search steps can shrink a bit more */
+#advancedSearchTabs .nav-link {
+    min-width: 60px; /* Adjust as needed, allows them to shrink */
+    flex-basis: 0; /* Allows shrinking in flex container */
+    flex-grow: 1;
+}

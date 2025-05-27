@@ -130,23 +130,24 @@
                 </h5>
             </div>
             <div class="col-md-4">
-                <input type="text" id="resultFilter" class="form-control" placeholder="Filter current page...">
+                <label for="resultFilter" class="visually-hidden">Ergebnisse auf dieser Seite filtern</label>
+                <input type="text" id="resultFilter" class="form-control" placeholder="Ergebnisse auf dieser Seite filtern..." aria-label="Filter current page results">
             </div>
             <div class="col-md-4 text-md-end">
-                <div class="btn-group me-2">
-                    <button id="exportCsv" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-file-csv me-1"></i>CSV
+                <div class="btn-group me-2" role="group" aria-label="Export options">
+                    <button id="exportCsv" class="btn btn-sm btn-outline-secondary" aria-label="Als CSV exportieren">
+                        <i class="fas fa-file-csv me-1" aria-hidden="true"></i>CSV
                     </button>
-                    <button id="exportExcel" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-file-excel me-1"></i>Excel
+                    <button id="exportExcel" class="btn btn-sm btn-outline-secondary" aria-label="Als Excel exportieren">
+                        <i class="fas fa-file-excel me-1" aria-hidden="true"></i>Excel
                     </button>
                 </div>
-                <div class="btn-group">
-                    <button id="listViewBtn" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-list me-1"></i>List
+                <div class="btn-group" role="group" aria-label="View options">
+                    <button id="listViewBtn" class="btn btn-sm btn-outline-secondary active" aria-pressed="true" aria-label="Listenansicht anzeigen">
+                        <i class="fas fa-list me-1" aria-hidden="true"></i>List
                     </button>
-                    <button id="cardViewBtn" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-th-large me-1"></i>Cards
+                    <button id="cardViewBtn" class="btn btn-sm btn-outline-secondary" aria-pressed="false" aria-label="Kartenansicht anzeigen">
+                        <i class="fas fa-th-large me-1" aria-hidden="true"></i>Cards
                     </button>
                 </div>
             </div>
@@ -159,12 +160,12 @@
                 <table class="table table-striped table-hover" id="resultsTable">
                     <thead>
                         <tr>
-                            <th data-sortable="true" data-type="text">Title</th>
-                            <th data-sortable="true" data-type="text">Authors</th>
-                            <th data-sortable="true" data-type="date">Year</th>
-                            <th data-sortable="true" data-type="text">Database</th>
-                            <th data-sortable="true" data-type="number">Citations</th>
-                            <th>Actions</th>
+                            <th scope="col" data-sortable="true" data-type="text" aria-sort="none" tabindex="0">Title</th>
+                            <th scope="col" data-sortable="true" data-type="text" aria-sort="none" tabindex="0">Authors</th>
+                            <th scope="col" data-sortable="true" data-type="date" aria-sort="none" tabindex="0">Year</th>
+                            <th scope="col" data-sortable="true" data-type="text" aria-sort="none" tabindex="0">Database</th>
+                            <th scope="col" data-sortable="true" data-type="number" aria-sort="none" tabindex="0">Citations</th>
+                            <th scope="col">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -354,9 +355,9 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="exportConfigModalLabel">
-                    <i class="fas fa-file-export me-2"></i>Export-Konfiguration
+                    <i class="fas fa-file-export me-2" aria-hidden="true"></i>Export-Konfiguration
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Schließen"></button>
             </div>
             <div class="modal-body">
                 <form id="exportConfigForm" action="{{ url_for('export.export_results') }}" method="post">
@@ -400,14 +401,17 @@
                 </form>
             </div>            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                <button type="button" class="btn btn-success" id="exportCsvBtn">
-                    <i class="fas fa-file-csv me-1"></i>Als CSV exportieren
+                <button type="button" class="btn btn-success" id="exportCsvBtn" aria-label="Als CSV exportieren">
+                    <i class="fas fa-file-csv me-1" aria-hidden="true"></i>Als CSV exportieren
                 </button>
-                <button type="button" class="btn btn-primary" id="exportExcelBtn">
-                    <i class="fas fa-file-excel me-1"></i>Als Excel exportieren
+                <button type="button" class="btn btn-primary" id="exportExcelBtn" aria-label="Als Excel exportieren">
+                    <i class="fas fa-file-excel me-1" aria-hidden="true"></i>Als Excel exportieren
                 </button>
-                <button type="button" class="btn btn-info" id="exportBibtexBtn">
-                    <i class="fas fa-quote-right me-1"></i>Als BibTeX exportieren
+                <button type="button" class="btn btn-danger" id="exportPdfBtn" aria-label="Als PDF exportieren">
+                    <i class="fas fa-file-pdf me-1" aria-hidden="true"></i>Als PDF exportieren
+                </button>
+                <button type="button" class="btn btn-info" id="exportBibtexBtn" aria-label="Als BibTeX exportieren">
+                    <i class="fas fa-quote-right me-1" aria-hidden="true"></i>Als BibTeX exportieren
                 </button>
             </div>
         </div>

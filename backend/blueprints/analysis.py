@@ -251,3 +251,175 @@ def top_authors():
         data={"authors": authors_data, "total": len(all_authors)},
         message="Top authors retrieved successfully",
     )
+
+
+@analysis_bp.route("/api/analysis/top_cited", methods=["GET"])
+@swag_from(
+    {
+        "tags": ["Analysis"],
+        "summary": "Get top cited publications from search results",
+        "description": "Returns the most cited publications in the search results",
+        "parameters": [
+            {
+                "name": "search_id",
+                "in": "query",
+                "type": "integer",
+                "required": False,
+                "description": "ID of the search query. If not provided, uses the current search from the session.",
+            },
+            {
+                "name": "limit",
+                "in": "query",
+                "type": "integer",
+                "required": False,
+                "default": 10,
+                "description": "Maximum number of publications to return",
+            },
+        ],
+        "responses": {
+            "200": {
+                "description": "Top cited publications data",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string"},
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "publications": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "title": {"type": "string"},
+                                            "citations": {"type": "integer"},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            "400": {"description": "No search selected or invalid parameters"},
+            "404": {"description": "No results found or no citation data available"},
+        },
+    }
+)
+def top_cited_publications():
+    """API endpoint to get top cited publications"""
+    search_id = request.args.get("search_id") or session.get("current_search_id")
+    limit = request.args.get("limit", 10, type=int)
+
+    if not search_id:
+        return api_response(success=False, message="No search selected", status_code=400)
+
+    results = SearchResult.query.filter_by(query_id=search_id).all()
+    if not results:
+        return api_response(success=False, message="No results found for this search ID", status_code=404)
+
+    cited_publications = []
+    for result in results:
+        result_dict = result.to_dict() # Assuming result_data is parsed here
+        title = result_dict.get("Title") or result_dict.get("Titel") or "Unknown Title"
+        
+        citation_count_str = str(result_dict.get("Citation Count", 0)) # Ensure it's a string first
+        if citation_count_str == "N/A" or citation_count_str == "Loading...":
+            citation_count = 0
+        else:
+            try:
+                citation_count = int(float(citation_count_str)) # Allow float then convert to int
+            except (ValueError, TypeError):
+                citation_count = 0
+        
+        if title != "Unknown Title": # Only include if title is known
+            cited_publications.append({"title": title, "citations": citation_count})
+
+    if not cited_publications:
+        return api_response(success=False, message="No citation data available for these results", status_code=404)
+
+    # Sort by citation count (descending) and limit
+    # Ensure title is part of sort for stable sort if citations are equal, or use a unique ID if available
+    # For simplicity, just sorting by citations then title.
+    sorted_cited_publications = sorted(cited_publications, key=lambda x: (x["citations"], x["title"]), reverse=True)
+    top_cited = sorted_cited_publications[:limit]
+    
+    # Filter out entries with 0 citations if that's desired for a "top cited" list
+    # top_cited = [pub for pub in top_cited if pub["citations"] > 0]
+    # If after filtering, top_cited is empty, it means all had 0 or were invalid.
+    # if not top_cited:
+    #    return api_response(success=False, message="No publications with positive citation counts found", status_code=404)
+
+
+    return api_response(
+        success=True,
+        data={"publications": top_cited},
+        message="Top cited publications retrieved successfully",
+    )
+
+
+@analysis_bp.route("/api/analysis/database_distribution", methods=["GET"])
+@swag_from(
+    {
+        "tags": ["Analysis"],
+        "summary": "Get publication distribution by database",
+        "description": "Returns the count of publications per database for a given search query.",
+        "parameters": [
+            {
+                "name": "search_id",
+                "in": "query",
+                "type": "integer",
+                "required": False,
+                "description": "ID of the search query. If not provided, uses the current search from the session.",
+            }
+        ],
+        "responses": {
+            "200": {
+                "description": "Database distribution data",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "status": {"type": "string"},
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "labels": {"type": "array", "items": {"type": "string"}},
+                                "data": {"type": "array", "items": {"type": "integer"}},
+                            },
+                        },
+                    },
+                },
+            },
+            "400": {"description": "No search selected"},
+            "404": {"description": "No results found for this search ID"},
+        },
+    }
+)
+def database_distribution_data():
+    """API endpoint to get publication distribution by database."""
+    search_id = request.args.get("search_id") or session.get("current_search_id")
+    if not search_id:
+        return api_response(success=False, message="No search selected", status_code=400)
+
+    results = SearchResult.query.filter_by(query_id=search_id).all()
+    if not results:
+        return api_response(success=False, message="No results found for this search ID", status_code=404)
+
+    db_counts = {}
+    for result in results:
+        result_dict = result.to_dict()
+        # Use a reliable key for the database name, ensure fallback
+        db_name = result_dict.get("Database") or result_dict.get("Datenbank") or "Unknown"
+        db_counts[db_name] = db_counts.get(db_name, 0) + 1
+    
+    if not db_counts:
+         return api_response(success=False, message="No database information found in results", status_code=404)
+
+    labels = list(db_counts.keys())
+    data_values = list(db_counts.values())
+
+    return api_response(
+        success=True,
+        data={"labels": labels, "data": data_values},
+        message="Database distribution retrieved successfully",
+    )

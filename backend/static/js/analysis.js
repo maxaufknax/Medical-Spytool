@@ -3,385 +3,267 @@
  * This file contains functions for data analysis and visualization.
  */
 
-// Initialize charts on page load
+// Initialize charts on page load using ChartUtils
 document.addEventListener('DOMContentLoaded', function() {
-    // Load year distribution data
-    fetchYearDistribution();
-    
-    // Load database distribution data
-    fetchDatabaseDistribution();
-    
-    // Load top authors data
-    fetchTopAuthors();
-    
-    // Register charts for theme updates - verwendet das zentrale Theme-Management
-    window.addEventListener('themeChanged', function(event) {
-        const { isDarkMode } = event.detail;
-        updateAllCharts(isDarkMode);
-    });
-    
-    // Fallback für direkte DOM-Änderungen (für Rückwärtskompatibilität)
-    const observer = new MutationObserver(mutations => {
-        mutations.forEach(mutation => {
-            if (mutation.attributeName === 'data-bs-theme') {
-                // Verwende das zentrale Theme-Management, falls verfügbar
-                if (!window.medicalSpyThemeManager || !window.medicalSpyThemeManager.isChanging) {
-                    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-                    updateAllCharts(isDark);
-                }
-            }
-        });
-    });
-    
-    observer.observe(document.documentElement, { attributes: true });
+    if (document.getElementById('analysisPage')) {
+        console.log("Analysis page detected, initializing charts via analysis.js");
+        fetchYearDistribution();
+        fetchDatabaseDistribution(); // This will be updated to use API
+        fetchTopAuthors();
+        fetchTopCitedPublications();
+    }
+
+    // Theme change listener should be in charts.js or theme-manager.js
+    // For now, ensure it's not duplicated if charts.js handles it.
+    // If theme-manager.js calls ChartUtils.updateAllChartThemes(), this is not needed here.
+    // window.addEventListener('themeChanged', function(event) {
+    //     if (window.ChartUtils && event.detail && typeof event.detail.isDarkMode !== 'undefined') {
+    //          console.log('Theme changed event received by analysis.js, calling ChartUtils.updateAllChartThemes.');
+    //         window.ChartUtils.updateAllChartThemes(event.detail.isDarkMode);
+    //     }
+    // });
 });
 
-// Fetch year distribution data
+// Helper to get common chart options with theme awareness
+function getCommonChartOptions(titleText, xAxisLabel, yAxisLabel, isDark = null) {
+    const themeColors = ChartUtils.getThemeColors(isDark);
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: { color: themeColors.gridColor },
+                ticks: { color: themeColors.mutedTextColor, precision: 0 },
+                title: { display: !!yAxisLabel, text: yAxisLabel, color: themeColors.textColor }
+            },
+            x: {
+                grid: { color: themeColors.gridColor },
+                ticks: { color: themeColors.mutedTextColor },
+                title: { display: !!xAxisLabel, text: xAxisLabel, color: themeColors.textColor }
+            }
+        },
+        plugins: {
+            legend: { labels: { color: themeColors.textColor } },
+            title: { display: true, text: titleText, color: themeColors.textColor }
+        }
+    };
+    return options;
+}
+
+
+// Fetch and render year distribution chart
 function fetchYearDistribution() {
     const searchId = document.getElementById('analysisPage')?.dataset.searchId;
-    if (!searchId) return;
-    
+    if (!searchId) { ChartUtils.showChartError('yearChart'); return; }
+
     fetch(`/api/analysis/years?search_id=${searchId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                renderYearChart(data.data.years);
+        .then(response => response.ok ? response.json() : Promise.reject(`Network error: ${response.statusText}`))
+        .then(apiResponse => {
+            if (apiResponse.status === 'success' && apiResponse.data && apiResponse.data.years) {
+                const yearData = apiResponse.data.years;
+                const labels = Object.keys(yearData).sort();
+                const data = labels.map(year => yearData[year]);
+                const themeColors = ChartUtils.getThemeColors();
+
+                ChartUtils.createChart('yearChart', 'bar', 
+                    {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Publications',
+                            data: data,
+                            backgroundColor: themeColors.datasetColors[0].background,
+                            borderColor: themeColors.datasetColors[0].border,
+                            borderWidth: 1
+                        }]
+                    },
+                    getCommonChartOptions('Publications by Year', 'Year', 'Number of Publications')
+                );
             } else {
-                showChartError('yearChart');
+                ChartUtils.showChartError('yearChart', apiResponse.message);
             }
         })
         .catch(error => {
             console.error('Error fetching year distribution:', error);
-            showChartError('yearChart');
+            ChartUtils.showChartError('yearChart');
         });
 }
 
-// Fetch database distribution data
+// Fetch and render database distribution chart (Updated to use API)
 function fetchDatabaseDistribution() {
     const searchId = document.getElementById('analysisPage')?.dataset.searchId;
-    if (!searchId) return;
-    
-    // This is a simple example that would use the results directly from the page
-    // In a real API implementation, you would fetch this data from an endpoint
-    const databases = {};
-    const results = JSON.parse(document.getElementById('analysisPage').dataset.results || '[]');
-    
-    results.forEach(result => {
-        const database = result.Datenbank || result.Database || 'Unknown';
-        databases[database] = (databases[database] || 0) + 1;
-    });
-    
-    renderDatabaseChart(databases);
+    if (!searchId) { 
+        ChartUtils.showChartError('databaseChart', 'Search ID not found.'); // More specific error
+        return; 
+    }
+
+    fetch(`/api/analysis/database_distribution?search_id=${searchId}`)
+        .then(response => response.ok ? response.json() : Promise.reject(`Network error: ${response.statusText}`))
+        .then(apiResponse => {
+            if (apiResponse.status === 'success' && apiResponse.data && apiResponse.data.labels && apiResponse.data.data) {
+                const themeColors = ChartUtils.getThemeColors();
+                // Cycle through datasetColors if there are more databases than predefined colors
+                const backgroundColors = apiResponse.data.labels.map((label, index) => 
+                    themeColors.datasetColors[index % themeColors.datasetColors.length].background
+                );
+                const borderColors = apiResponse.data.labels.map((label, index) => 
+                    themeColors.datasetColors[index % themeColors.datasetColors.length].border
+                );
+
+                ChartUtils.createChart('databaseChart', 'pie',
+                    {
+                        labels: apiResponse.data.labels,
+                        datasets: [{
+                            data: apiResponse.data.data,
+                            backgroundColor: backgroundColors,
+                            borderColor: borderColors,
+                            borderWidth: 1
+                        }]
+                    },
+                    { 
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { 
+                                position: 'right', 
+                                labels: { color: themeColors.textColor } 
+                            },
+                            title: { 
+                                display: true, 
+                                text: 'Publications by Database', 
+                                color: themeColors.textColor 
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            label += context.parsed;
+                                            // Calculate percentage
+                                            const total = context.dataset.data.reduce((sum, value) => sum + value, 0);
+                                            if (total > 0) {
+                                                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                                label += ` (${percentage}%)`;
+                                            }
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+            } else {
+                ChartUtils.showChartError('databaseChart', apiResponse.message || 'Failed to load database distribution data.');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching database distribution:', error);
+            ChartUtils.showChartError('databaseChart');
+        });
 }
 
-// Fetch top authors data
+
+// Fetch and render top authors chart
 function fetchTopAuthors() {
     const searchId = document.getElementById('analysisPage')?.dataset.searchId;
-    if (!searchId) return;
-    
+    if (!searchId) { ChartUtils.showChartError('authorsChart'); return; }
+
     fetch(`/api/analysis/authors?search_id=${searchId}&limit=10`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.status === 'success') {
-                renderTopAuthorsChart(data.data.authors);
+        .then(response => response.ok ? response.json() : Promise.reject(`Network error: ${response.statusText}`))
+        .then(apiResponse => {
+            if (apiResponse.status === 'success' && apiResponse.data && apiResponse.data.authors) {
+                const authorsData = apiResponse.data.authors;
+                const labels = authorsData.map(item => item.name);
+                const data = authorsData.map(item => item.count);
+                const themeColors = ChartUtils.getThemeColors();
+                
+                let options = getCommonChartOptions('Top Contributing Authors', 'Number of Publications', null /* Y-axis label not needed for horizontal */);
+                options.indexAxis = 'y'; // Make it horizontal
+                options.plugins.legend.display = false; // Typically hide legend for single dataset horizontal bar
+
+                ChartUtils.createChart('authorsChart', 'bar',
+                    {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Publications',
+                            data: data,
+                            backgroundColor: themeColors.datasetColors[1].background,
+                            borderColor: themeColors.datasetColors[1].border,
+                            borderWidth: 1
+                        }]
+                    },
+                    options
+                );
             } else {
-                showChartError('authorsChart');
+                ChartUtils.showChartError('authorsChart', apiResponse.message);
             }
         })
         .catch(error => {
             console.error('Error fetching top authors:', error);
-            showChartError('authorsChart');
+            ChartUtils.showChartError('authorsChart');
         });
 }
 
-// Render year distribution chart
-function renderYearChart(yearData) {
-    const ctx = document.getElementById('yearChart');
-    if (!ctx) return;
-    
-    // Convert the object to arrays for Chart.js
-    const years = Object.keys(yearData).sort();
-    const counts = years.map(year => yearData[year]);
-    
-    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = isDark ? '#f8f9fa' : '#343a40';
-    
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: years,
-            datasets: [{
-                label: 'Publications',
-                data: counts,
-                backgroundColor: 'rgba(73, 160, 217, 0.7)',
-                borderColor: 'rgba(44, 107, 160, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: gridColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        precision: 0
-                    },
-                    title: {
-                        display: true,
-                        text: 'Number of Publications',
-                        color: textColor
-                    }
-                },
-                x: {
-                    grid: {
-                        color: gridColor
-                    },
-                    ticks: {
-                        color: textColor
-                    },
-                    title: {
-                        display: true,
-                        text: 'Year',
-                        color: textColor
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: {
-                        color: textColor
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Publications by Year',
-                    color: textColor
-                }
-            }
-        }
-    });
-    
-    // Register chart for dark mode updates
-    window.charts.push({ id: 'yearChart', instance: chart });
-}
 
-// Render database distribution chart
-function renderDatabaseChart(databaseData) {
-    const ctx = document.getElementById('databaseChart');
-    if (!ctx) return;
+// Fetch and render top cited publications chart
+function fetchTopCitedPublications() {
+    const searchId = document.getElementById('analysisPage')?.dataset.searchId;
+    if (!searchId) { ChartUtils.showChartError('citationChart'); return; }
     
-    // Convert the object to arrays for Chart.js
-    const databases = Object.keys(databaseData);
-    const counts = databases.map(db => databaseData[db]);
-    
-    // Generate colors
-    const backgroundColors = [
-        'rgba(73, 160, 217, 0.7)',
-        'rgba(46, 204, 113, 0.7)',
-        'rgba(243, 156, 18, 0.7)',
-        'rgba(231, 76, 60, 0.7)',
-        'rgba(155, 89, 182, 0.7)',
-        'rgba(52, 152, 219, 0.7)',
-        'rgba(243, 104, 224, 0.7)',
-        'rgba(250, 130, 49, 0.7)',
-        'rgba(39, 174, 96, 0.7)',
-        'rgba(41, 128, 185, 0.7)'
-    ];
-    
-    const borderColors = [
-        'rgba(44, 107, 160, 1)',
-        'rgba(39, 174, 96, 1)',
-        'rgba(211, 84, 0, 1)',
-        'rgba(192, 57, 43, 1)',
-        'rgba(142, 68, 173, 1)',
-        'rgba(41, 128, 185, 1)',
-        'rgba(155, 89, 182, 1)',
-        'rgba(230, 126, 34, 1)',
-        'rgba(22, 160, 133, 1)',
-        'rgba(40, 116, 166, 1)'
-    ];
-    
-    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    const textColor = isDark ? '#f8f9fa' : '#343a40';
-    
-    const chart = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: databases,
-            datasets: [{
-                data: counts,
-                backgroundColor: backgroundColors.slice(0, databases.length),
-                borderColor: borderColors.slice(0, databases.length),
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        color: textColor
-                    }
-                },
-                title: {
-                    display: true,
-                    text: 'Publications by Database',
-                    color: textColor
-                }
-            }
-        }
-    });
-    
-    // Register chart for dark mode updates
-    window.charts.push({ id: 'databaseChart', instance: chart });
-}
+    fetch(`/api/analysis/top_cited?search_id=${searchId}&limit=10`)
+        .then(response => response.ok ? response.json() : Promise.reject(`Network error: ${response.statusText}`))
+        .then(apiResponse => {
+            if (apiResponse.status === 'success' && apiResponse.data && apiResponse.data.publications) {
+                const publicationData = apiResponse.data.publications;
+                const labels = publicationData.map(item => {
+                    let title = item.title || 'Untitled';
+                    return title.length > 50 ? title.substring(0, 47) + '...' : title;
+                });
+                const data = publicationData.map(item => item.citations);
+                const themeColors = ChartUtils.getThemeColors();
 
-// Render top authors chart
-function renderTopAuthorsChart(authorsData) {
-    const ctx = document.getElementById('authorsChart');
-    if (!ctx) return;
-    
-    // Process the data
-    const authors = authorsData.map(item => item.name);
-    const counts = authorsData.map(item => item.count);
-    
-    const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = isDark ? '#f8f9fa' : '#343a40';
-    
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: authors,
-            datasets: [{
-                label: 'Publications',
-                data: counts,
-                backgroundColor: 'rgba(46, 204, 113, 0.7)',
-                borderColor: 'rgba(39, 174, 96, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: {
-                        color: gridColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        precision: 0
-                    },
-                    title: {
-                        display: true,
-                        text: 'Number of Publications',
-                        color: textColor
+                let options = getCommonChartOptions('Top Cited Publications', 'Number of Citations', null);
+                options.indexAxis = 'y';
+                options.plugins.legend.display = false;
+                options.plugins.tooltip = { // Custom tooltip for full title
+                     callbacks: {
+                        title: function(tooltipItems) {
+                            const originalIndex = tooltipItems[0].dataIndex;
+                            return publicationData[originalIndex].title || 'Untitled';
+                        },
+                        label: function(tooltipItem) {
+                            return `Citations: ${tooltipItem.raw}`;
+                        }
                     }
-                },
-                y: {
-                    grid: {
-                        color: gridColor
+                };
+
+
+                ChartUtils.createChart('citationChart', 'bar', 
+                    {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Citations',
+                            data: data,
+                            backgroundColor: themeColors.datasetColors[3].background, // Using a different color
+                            borderColor: themeColors.datasetColors[3].border,
+                            borderWidth: 1
+                        }]
                     },
-                    ticks: {
-                        color: textColor
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: 'Top Contributing Authors',
-                    color: textColor
-                }
+                    options
+                );
+            } else {
+                ChartUtils.showChartError('citationChart', apiResponse.message);
             }
-        }
-    });
-    
-    // Register chart for dark mode updates
-    window.charts.push({ id: 'authorsChart', instance: chart });
-}
-
-// Show error message when chart data cannot be loaded
-function showChartError(chartId) {
-    const canvas = document.getElementById(chartId);
-    if (!canvas) return;
-    
-    const container = canvas.parentNode;
-    
-    // Create error message
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'alert alert-warning text-center my-3';
-    errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Daten konnten nicht geladen werden.';
-    
-    // Replace canvas with error message
-    container.replaceChild(errorDiv, canvas);
-}
-
-// Update all charts for dark/light mode - verwendet zentrales Theme-Management
-function updateAllCharts(isDark = null) {
-    // Verwende das zentrale Theme-Management, wenn verfügbar
-    if (window.medicalSpyThemeManager) {
-        window.medicalSpyThemeManager.updateChartTheme();
-        return;
-    }
-    
-    // Fallback für direktes Update
-    if (isDark === null) {
-        isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-    }
-    
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = isDark ? '#f8f9fa' : '#343a40';
-    
-    if (window.charts && window.charts.length) {
-        window.charts.forEach(chart => {
-            if (chart.instance) {
-                // Update scales if they exist
-                if (chart.instance.options.scales) {
-                    Object.keys(chart.instance.options.scales).forEach(axisKey => {
-                        const axis = chart.instance.options.scales[axisKey];
-                        if (axis.grid) axis.grid.color = gridColor;
-                        if (axis.ticks) axis.ticks.color = textColor;
-                        if (axis.title) axis.title.color = textColor;
-                    });
-                }
-                
-                // Update legend
-                if (chart.instance.options.plugins.legend) {
-                    chart.instance.options.plugins.legend.labels.color = textColor;
-                }
-                
-                // Update title
-                if (chart.instance.options.plugins.title) {
-                    chart.instance.options.plugins.title.color = textColor;
-                }
-                
-                chart.instance.update();
-            }
+        })
+        .catch(error => {
+            console.error('Error fetching top cited publications:', error);
+            ChartUtils.showChartError('citationChart');
         });
-    }
 }
+
+// Remove local showChartError as it's now in ChartUtils
+// Remove local updateAllCharts as it's now in ChartUtils (and called by event listeners in charts.js)

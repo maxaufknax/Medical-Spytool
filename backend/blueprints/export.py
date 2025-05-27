@@ -12,7 +12,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
 
 from backend.models import db, SearchQuery, SearchResult, Setting
-from backend.export_utils import generate_filename, export_to_csv, export_to_excel, export_to_bibtex
+from backend.export_utils import generate_filename, export_to_csv, export_to_excel, export_to_bibtex, export_to_pdf
 
 export_bp = Blueprint("export", __name__)
 
@@ -117,6 +117,20 @@ def export_results():
         return send_file(
             BytesIO(output.encode("utf-8")),
             mimetype="application/x-bibtex",
+            as_attachment=True,
+            download_name=filename,
+        )
+    elif export_format == "pdf":
+        search_query_info = {
+            "search_text": search_query.search_text,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        # Pass output_columns to export_to_pdf
+        output_pdf_bytes = export_to_pdf(filtered_results_for_export, filename_base, unique, search_query_info, output_columns)
+        filename = generate_filename(filename_base, "pdf", unique)
+        return send_file(
+            output_pdf_bytes,
+            mimetype="application/pdf",
             as_attachment=True,
             download_name=filename,
         )

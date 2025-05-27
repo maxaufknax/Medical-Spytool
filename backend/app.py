@@ -25,6 +25,8 @@ from .csrf_config import init_csrf_protection
 csrf = CSRFProtect()
 migrate = Migrate()
 login_manager = LoginManager()
+# Flask-Assets
+from flask_assets import Environment, Bundle
 
 @click.command()
 def init_db_command():
@@ -146,6 +148,50 @@ def create_app(config_class=None):
             app.logger.info("Database tables created/ensured.")
         except Exception as e:
             app.logger.error(f"Error creating database tables: {e}")
+
+    # Initialize Flask-Assets
+    assets = Environment(app)
+    app.config['ASSETS_URL'] = '/static/dist' # Output directory for bundled files
+    app.config['ASSETS_MANIFEST'] = 'json:manifest.json' # Optional: for better cache busting
+    # In production, ASSETS_AUTO_BUILD and ASSETS_Rebuild_Always should be False
+    app.config['ASSETS_AUTO_BUILD'] = app.debug # Rebuild bundles in debug mode
+    app.config['ASSETS_REBUILD_ALWAYS'] = False # Don't rebuild on every request unless in debug
+
+    # Define CSS bundle for common styles
+    css_all = Bundle(
+        'css/custom.css',
+        'css/search-tabs.css',
+        'css/accessibility.css',
+        'css/keyboard-navigation.css',
+        'css/results.css',
+        filters='cssmin', # Minifier
+        output='dist/css/common.bundle.%(version)s.css' # Output file pattern
+    )
+    assets.register('css_all', css_all)
+    app.logger.info("Flask-Assets: css_all bundle registered.")
+
+    # Define JS bundle for common scripts (loaded at the end of body)
+    # Excludes theme-manager.js (loaded in head) and page-specific scripts
+    js_common = Bundle(
+        'js/tab-fix.js',
+        'js/keyboard-navigation.js',
+        'js/keyboard-shortcuts.js',
+        # Note: Page-specific JS like search.js, results.js, person-search.js, etc.,
+        # are loaded in their respective templates and are not part of this common bundle.
+        # They could be bundled separately if desired.
+        filters='jsmin', # Minifier
+        output='dist/js/common.bundle.%(version)s.js' # Output file pattern
+    )
+    assets.register('js_common', js_common)
+    app.logger.info("Flask-Assets: js_common bundle registered.")
+    
+    # Ensure the /static/dist directory exists for bundled assets
+    dist_dir = Path(app.static_folder) / "dist" / "css"
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    dist_dir = Path(app.static_folder) / "dist" / "js"
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    app.logger.info(f"Flask-Assets: Ensured dist directories exist in {Path(app.static_folder) / 'dist'}")
+
 
     # Root route
     @app.route('/')

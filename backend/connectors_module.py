@@ -474,25 +474,162 @@ class DNBConnector(DatabaseConnector):
         if not search_term:
             return 'dc.any all "*"'  # Default to match all if empty
 
-        # Escape special characters
-        search_term = search_term.replace('"', '\\"')
-        
-        # Handle different search types
-        if ":" in search_term:  # Already in CQL format
+        # If the search term is likely already a valid CQL query (e.g., contains operators or field prefixes)
+        # or is meant to be passed as is by advanced users.
+        # This is a simple heuristic; more robust parsing might be needed for complex cases.
+        if any(op in search_term for op in [" AND ", " OR ", " NOT ", "=", ">", "<"]) or \
+           (":" in search_term and not search_term.startswith("http:")): # Avoid treating URLs like http://... as CQL
+            logger.debug(f"DNB transform_query: Treating as pre-formatted CQL: {search_term}")
+            # Minimal escaping for pre-formatted CQL: ensure existing quotes are valid if any part is user input.
+            # This path assumes the user knows CQL. If parts are from user input, they should be individually processed.
+            # For now, this path returns the term as is, relying on user's CQL correctness.
             return search_term
-            
-        terms = search_term.split()
-        if len(terms) == 2:  # Might be a person name
-            first, last = terms
-            # Properly encode the terms for CQL syntax
-            first = first.strip()
-            last = last.strip()
-            return f'(dc.author all "{last}, {first}" OR dc.author all "{first} {last}")'
+
+        # For general search terms, escape for literal interpretation within quotes.
+        # Escape backslashes first, then double quotes.
+        processed_term = search_term.replace("\\", "\\\\").replace('"', '\\"')
         
-        # General search across all fields with proper escaping for DNB's CQL syntax
-        # The search term needs to be properly processed for DNB's CQL syntax
-        search_term = search_term.strip()
-        return f'dc.any all "{search_term}"'
+        # Heuristic for person names (last name, first name or first name last name)
+        # This is basic and might not always be correct for all names or search intentions.
+        # Consider if 'dc.author' is the best field or if a general person index 'per' exists and is better.
+        # Example: DNB GKD uses 'piz' for person index. For SRU, 'dc.creator' or 'dc.contributor' often used.
+        # Using 'dc.author' as a common, though potentially broad, interpretation.
+        terms = processed_term.split()
+        if len(terms) == 2:
+            first, last = terms[0], terms[1]
+            # Formatted for typical "Last, First" or "First Last" author searches.
+            # Ensure each part is quoted if it contains spaces, though `processed_term` handles outer quotes.
+            # This heuristic is very basic. A proper solution would involve dedicated author fields if possible.
+            # For `dc.author all "..."`, the full name string is within the quotes.
+            # Example: (dc.author all "Doe, John" OR dc.author all "John Doe")
+            # Using 'dc.any' might be safer if field is unknown, or specific 'per' (person) index if available.
+            # The original used dc.author. Let's stick to that for now but refine quoting.
+            # If the whole term is "Max Mustermann", it becomes `dc.any all "Max Mustermann"` below.
+            # This specific person heuristic might be better handled by `construct_query` if an author field is specified.
+            # For now, simplifying: if it's two terms, assume it's a name and search broadly.
+            # The original heuristic:
+            # return f'(dc.author all "{last}, {first}" OR dc.author all "{first} {last}")'
+            # This creates a complex CQL structure directly.
+            # A simpler approach for transform_query (which is about transforming a single search_term string):
+            # Fall through to the general term search, which is `dc.any all " পুরো টার্ম "`.
+            # If specific author search is needed, it should be handled by `construct_query` using an author field.
+            pass # Let it fall through to general term search for now.
+
+        # General search: wrap the processed term in quotes and use 'dc.any all'.
+        # This means the entire processed_term is treated as a phrase.
+        return f'dc.any all "{processed_term}"'
+
+    def construct_query(self, base_query, additional_terms="", date_range=None, 
+                        language=None, pub_type=None, field=None,
+                        author_filter=None, title_filter=None, journal_filter=None,
+                        # Database-specific flags
+                        pubmed_full_text_only=False, pubmed_free_access_only=False,
+                        dnb_online_only=False, dnb_academic_only=False, 
+                        **kwargs): # Catch-all for unused kwargs from other connectors
+        """
+        Construct a DNB CQL query string from various components.
+        Uses transform_query for processing individual search terms.
+        """
+        query_parts = []
+
+        # Main query (base_query) and optional specified field
+        if base_query:
+            # DNB specific field mapping
+            field_map_dnb = {
+                "Alle Felder": "dc.any",
+                "Titel": "dc.title",
+                "Autor": "dc.creator", # Or 'per' if using a person index directly
+                "Schlagwort": "dc.subject",
+                "Jahr": "jhr", # Or dc.date
+            }
+            cql_field = field_map_dnb.get(field, "dc.any") # Default to dc.any
+            
+            # Use transform_query to process the base_query string for the given field context
+            # transform_query itself returns a full `field all "term"` like string if not already CQL-like
+            # So, we need to adapt this. If base_query is simple, transform_query wraps it.
+            # If field is specified, we want `cql_field all "transformed_base_query"`
+            
+            # Let transform_query handle if base_query is complex (contains AND, OR etc.)
+            if any(op in base_query for op in [" AND ", " OR ", " NOT ", "=", ">", "<"]) or \
+               (":" in base_query and not base_query.startswith("http:")):
+                transformed_base_query = self.transform_query(base_query) # Returns as is
+            else: # Simple term, apply field and quote
+                escaped_base_query = base_query.replace("\\", "\\\\").replace('"', '\\"')
+                transformed_base_query = f'{cql_field} all "{escaped_base_query}"'
+            
+            query_parts.append(f"({transformed_base_query})")
+
+
+        # Additional terms are treated as a general dc.any search and ANDed
+        if additional_terms:
+            transformed_additional = self.transform_query(additional_terms) # dc.any all "..."
+            query_parts.append(f"AND ({transformed_additional})")
+
+        # Specific filters - these are typically ANDed
+        if author_filter:
+            # Assuming author_filter is a name string. Use transform_query for proper formatting.
+            # This will result in dc.any all "author_name". For specific author field:
+            escaped_author = author_filter.replace("\\", "\\\\").replace('"', '\\"')
+            query_parts.append(f'AND (dc.creator all "{escaped_author}")') 
+            # Or use 'per' if DNB supports it broadly: query_parts.append(f'AND (per="{escaped_author}")')
+
+        if title_filter:
+            escaped_title = title_filter.replace("\\", "\\\\").replace('"', '\\"')
+            query_parts.append(f'AND (dc.title all "{escaped_title}")')
+        
+        # Journal filter for DNB (e.g., searching for series title 'zti' or part of dc.source)
+        if journal_filter:
+            escaped_journal = journal_filter.replace("\\", "\\\\").replace('"', '\\"')
+            query_parts.append(f'AND (dc.source all "{escaped_journal}")') # Example, DNB might have better fields like 'zti'
+
+        if language:
+            # Map common language names to DNB's ISO 639-2/b codes (ger, eng, fre etc.)
+            lang_map = {"german": "ger", "english": "eng", "french": "fre"} # Add more as needed
+            lang_code = lang_map.get(language.lower(), language) # Use raw if not in map
+            query_parts.append(f'AND (dc.language = "{lang_code}")')
+
+        if pub_type:
+            # DNB uses specific URNs or keywords for publication types (e.g., Hochschulschrift, Monografie)
+            # This mapping would need to be more extensive based on DNB's specific values for dc.type or mat.
+            # For example: dc.type="Hochschulschrift"
+            # For now, treating pub_type as a keyword search in dc.type
+            escaped_pub_type = pub_type.replace("\\", "\\\\").replace('"', '\\"')
+            query_parts.append(f'AND (dc.type all "{escaped_pub_type}")')
+
+        if date_range:
+            start_date = date_range.get("start", "")[:4] # Assuming YYYY from YYYY-MM-DD
+            end_date = date_range.get("end", "")[:4]
+            
+            if start_date and end_date:
+                if start_date == end_date:
+                    query_parts.append(f'AND (jhr = "{start_date}")')
+                else:
+                    query_parts.append(f'AND (jhr >= "{start_date}" AND jhr <= "{end_date}")')
+            elif start_date:
+                query_parts.append(f'AND (jhr >= "{start_date}")')
+            elif end_date:
+                query_parts.append(f'AND (jhr <= "{end_date}")')
+
+        # DNB-specific flags
+        if dnb_online_only:
+            # Common DNB SRU syntax for online resources is often via 'location' index
+            # TODO: Verify exact DNB SRU syntax for filtering online resources. 'location = "online"' is a common pattern.
+            query_parts.append('AND (location = "online")') 
+        if dnb_academic_only:
+            # This is highly dependent on DNB's indexing. Could be dc.type or other fields.
+            # Using a placeholder, assuming 'Hochschulschrift' is one type of academic work.
+            # TODO: Verify exact DNB SRU syntax for filtering academic publications.
+            query_parts.append('AND (dc.type all "Hochschulschrift" OR dc.type all "academic")')
+        
+        final_query = " ".join(part for part in query_parts if part).strip()
+        # Clean up leading/trailing ANDs and multiple spaces
+        while final_query.startswith("AND "):
+            final_query = final_query[4:].strip()
+        while "  " in final_query:
+            final_query = final_query.replace("  ", " ")
+            
+        logger.debug(f"DNB constructed query: {final_query}")
+        return final_query
 
 
 class PubMedConnector(DatabaseConnector):
@@ -502,8 +639,95 @@ class PubMedConnector(DatabaseConnector):
         super().__init__(api_key)
         self.name = "PubMed"
         self.max_results_per_page = 1000
-        self.search_fields = ["Alle Felder", "Titel/Abstract", "Autor", "Journal", "MeSH-Terms"]
+        # Added more specific fields that PubMed supports
+        self.search_fields = [
+            "All Fields", "Title/Abstract", "Title", "Abstract", "Author", 
+            "Journal", "MeSH Terms", "Publication Type", "Language", "Publication Date"
+        ]
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+
+    def construct_query(self, base_query, additional_terms="", date_range=None, 
+                        language=None, pub_type=None, field=None, 
+                        author_filter=None, title_filter=None, journal_filter=None,
+                        # Database-specific flags
+                        pubmed_full_text_only=False, pubmed_free_access_only=False,
+                        dnb_online_only=False, dnb_academic_only=False, # These will be ignored by PubMed but are passed
+                        **kwargs): # Catch-all for other unused kwargs
+        """
+        Construct a PubMed query string from various components.
+        """
+        query_parts = []
+
+        # Main query (base_query) and optional specified field
+        if base_query:
+            if field and field != "All Fields":
+                # Map user-friendly field names to PubMed tags
+                field_map = {
+                    "Title/Abstract": "[TIAB]",
+                    "Title": "[TI]",
+                    "Abstract": "[AB]",
+                    "Author": "[AU]",
+                    "Journal": "[TA]", # Journal Title Abbreviation or Full Title
+                    "MeSH Terms": "[MH]",
+                    "Publication Type": "[PT]",
+                    "Language": "[LA]",
+                    # "Publication Date": "[DP]", # Handled by date_range
+                }
+                query_parts.append(f"{base_query}{field_map.get(field, '')}")
+            else:
+                query_parts.append(base_query) # Search all fields
+
+        if additional_terms:
+            query_parts.append(f"AND ({additional_terms})") # Assume additional terms are general
+
+        # Specific filters - these are typically ANDed
+        if author_filter:
+            query_parts.append(f"AND ({author_filter}[AU])")
+        if title_filter:
+            query_parts.append(f"AND ({title_filter}[TI])")
+        if journal_filter:
+             query_parts.append(f"AND ({journal_filter}[TA])")
+
+        if language:
+            # Assuming language is provided as full name e.g., "English", "German"
+            query_parts.append(f"AND ({language}[LA])")
+
+        if pub_type:
+            # Assuming pub_type is a valid PubMed publication type e.g., "Journal Article"
+            query_parts.append(f"AND ({pub_type}[PT])")
+
+        if date_range:
+            start_date = date_range.get("start")
+            end_date = date_range.get("end")
+            # PubMed date format YYYY/MM/DD or YYYY/MM or YYYY
+            # Assuming start_date and end_date are in "YYYY-MM-DD" format from parse_date_range
+            # Convert to YYYY/MM/DD
+            start_date_pubmed = start_date.replace("-", "/") if start_date else "mindate"
+            end_date_pubmed = end_date.replace("-", "/") if end_date else "maxdate"
+            
+            if start_date and end_date:
+                query_parts.append(f"AND ({start_date_pubmed[0:10]}:{end_date_pubmed[0:10]}[DP])")
+            elif start_date:
+                query_parts.append(f"AND ({start_date_pubmed[0:10]}:maxdate[DP])")
+            elif end_date:
+                query_parts.append(f"AND (mindate:{end_date_pubmed[0:10]}[DP])")
+
+        # PubMed-specific boolean flags
+        if pubmed_full_text_only:
+            query_parts.append("AND (pubmed full text[sb])")
+        if pubmed_free_access_only:
+            query_parts.append("AND (free full text[sb])")
+        
+        final_query = " ".join(part for part in query_parts if part)
+        # Clean up leading/trailing ANDs and multiple spaces
+        final_query = final_query.strip()
+        while final_query.startswith("AND "):
+            final_query = final_query[4:].strip()
+        while "  " in final_query:
+            final_query = final_query.replace("  ", " ")
+            
+        logger.debug(f"PubMed constructed query: {final_query}")
+        return final_query
 
     def search(self, query, params=None):
         """Search PubMed for publications."""

@@ -156,12 +156,16 @@ function toggleResultsView(viewType) {
         listView.classList.add('d-none');
         cardView.classList.remove('d-none');
         cardViewBtn.classList.add('active');
+        cardViewBtn.setAttribute('aria-pressed', 'true');
         listViewBtn.classList.remove('active');
+        listViewBtn.setAttribute('aria-pressed', 'false');
     } else { // Default to list view
         listView.classList.remove('d-none');
         cardView.classList.add('d-none');
         listViewBtn.classList.add('active');
+        listViewBtn.setAttribute('aria-pressed', 'true');
         cardViewBtn.classList.remove('active');
+        cardViewBtn.setAttribute('aria-pressed', 'false');
     }
     localStorage.setItem('resultsViewPreference', viewType);
 }
@@ -224,6 +228,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (exportExcelModalBtn) {
         exportExcelModalBtn.addEventListener('click', () => exportResults('excel'));
     }
+
+    const exportPdfModalBtn = document.getElementById('exportPdfBtn'); // Button inside modal for PDF
+    if (exportPdfModalBtn) {
+        exportPdfModalBtn.addEventListener('click', () => exportResults('pdf'));
+    }
     
     const exportBibtexBtn = document.getElementById('exportBibtexBtn');
     if (exportBibtexBtn) {
@@ -271,7 +280,80 @@ document.addEventListener('DOMContentLoaded', function() {
         header.addEventListener('click', function() {
             const columnIndex = Array.from(header.parentElement.children).indexOf(header);
             const dataType = header.dataset.type || 'text';
-            sortResultsTable(columnIndex, dataType);
+            // Clear aria-sort from other headers
+            sortableHeaders.forEach(h => {
+                if (h !== header) h.setAttribute('aria-sort', 'none');
+            });
+            // Get current sort status for this header
+            let currentSort = header.getAttribute('aria-sort');
+            let newSort;
+            if (currentSort === 'ascending') {
+                newSort = 'descending';
+            } else { // Covers 'none' or 'descending'
+                newSort = 'ascending';
+            }
+            header.setAttribute('aria-sort', newSort);
+            sortResultsTable(columnIndex, dataType, newSort === 'ascending');
+        });
+        // Add keyboard accessibility for sorting
+        header.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                this.click(); // Trigger the click handler which does the sorting
+            }
         });
     });
 });
+
+// Modified sortResultsTable to accept explicit direction
+function sortResultsTable(columnIndex, dataType, ascending) { // Added ascending parameter
+    const table = document.getElementById('resultsTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // No need for sortDirectionElement if direction is passed explicitly
+    // const sortDirectionElement = table.querySelector('.sort-direction') || document.createElement('span'); 
+    // sortDirectionElement.className = 'sort-direction'; 
+    // sortDirectionElement.style.display = 'none'; 
+    // if (!sortDirectionElement.parentNode) table.appendChild(sortDirectionElement);
+
+    // if (sortDirectionElement.dataset.columnIndex == columnIndex) {
+    //     ascending = sortDirectionElement.dataset.direction === 'desc'; 
+    // }
+    // sortDirectionElement.dataset.columnIndex = columnIndex;
+    // sortDirectionElement.dataset.direction = ascending ? 'asc' : 'desc';
+        
+    const headers = table.querySelectorAll('th[data-sortable]'); // Select only sortable headers
+    headers.forEach((header, index) => {
+        if (index === columnIndex) {
+            header.classList.remove(ascending ? 'sorting-desc' : 'sorting-asc');
+            header.classList.add(ascending ? 'sorting-asc' : 'sorting-desc');
+            // ARIA-sort is set by the click handler now
+        } else {
+            header.classList.remove('sorting-asc', 'sorting-desc');
+        }
+    });
+    
+    rows.sort((a, b) => {
+        const aCellValue = a.cells[columnIndex].textContent.trim();
+        const bCellValue = b.cells[columnIndex].textContent.trim();
+        let comparison = 0;
+        
+        if (dataType === 'number') {
+            const aNum = parseFloat(aCellValue) || 0;
+            const bNum = parseFloat(bCellValue) || 0;
+            comparison = aNum - bNum;
+        } else if (dataType === 'date') {
+            const aDate = Date.parse(aCellValue) || 0;
+            const bDate = Date.parse(bCellValue) || 0;
+            comparison = aDate - bDate;
+        } else {
+            comparison = aCellValue.localeCompare(bCellValue, undefined, {numeric: true, sensitivity: 'base'});
+        }
+        return ascending ? comparison : -comparison;
+    });
+    
+    rows.forEach(row => {
+        tbody.appendChild(row);
+    });
+}
