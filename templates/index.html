@@ -13,10 +13,10 @@
                         <p class="lead">Ein modulares, interaktives System zur Suche und Analyse von wissenschaftlichen Publikationen</p>
                     </div>
                     
-                    <!-- Schnellstart-Bereich für die kombinierte Suche -->
+                    <!-- Schnellstart-Bereich für die einfache Suche -->
                     <div class="card mb-5 border-primary bg-lighter">
                         <div class="card-body p-4">
-                            <h2 class="h3 card-title mb-3 text-center"><i class="fas fa-search-plus me-2"></i>Schnellsuche über alle Datenbanken</h2>
+                            <h2 class="h3 card-title mb-3 text-center"><i class="fas fa-search me-2"></i>Einfache Suche über alle Datenbanken</h2>
                             <p class="card-text text-center mb-4">Führen Sie eine einfache Suche über alle verfügbaren Datenbanken durch.</p>
                             
                             <form id="quickSearchForm" method="post" action="/search" class="mb-3">
@@ -24,14 +24,14 @@
                                 <div class="mb-3">
                                     <label for="quick_search_term" class="form-label">Suchbegriff eingeben:</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control" id="quick_search_term" name="search_term" placeholder="z.B. Diabetes Mellitus" required>
+                                        <input type="text" class="form-control" id="quick_search_term" name="search_term" placeholder="z.B. anette melk, diabetes mellitus, coronavirus..." required>
                                         <button type="submit" class="btn btn-primary">Suchen</button>
                                     </div>
                                 </div>
                             </form>
                             
                             <div class="text-center">
-                                <a href="/search?db=Combined" class="btn btn-link">Erweiterte kombinierte Suche mit mehr Optionen</a>
+                                <a href="/search?db=Combined" class="btn btn-link">Erweiterte einfache Suche mit mehr Optionen</a>
                             </div>
                         </div>
                     </div>

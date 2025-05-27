@@ -1,222 +1,257 @@
 /**
  * Person-Selector für das Medical Spytool
- * 
- * Dieses Skript implementiert eine Autocomplete-Funktion für die Personenauswahl
- * und verwaltet die Liste der ausgewählten Personen als Tags.
  */
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialisiere Personenauswahl auf allen relevanten Seiten
     initializePersonSelector();
 });
 
-/**
- * Initialisiert die Personenauswahl mit Autocomplete-Funktion
- */
-function initializePersonSelector() {
-    // Wir suchen nach verschiedenen möglichen Eingabefeldern für die Personensuche
-    const personInputs = document.querySelectorAll('.person-autocomplete');
-    if (personInputs.length === 0) return;
+const PersonState = {
+    selectedPersons: new Map(),
     
-    // Initialisiere jedes Personenauswahlfeld
-    personInputs.forEach(personInput => {
-        initializeSinglePersonSelector(personInput);
+    add(prefix, person) {
+        if (!this.selectedPersons.has(prefix)) {
+            this.selectedPersons.set(prefix, new Set());
+        }
+        this.selectedPersons.get(prefix).add(person);
+        this.updateUI(prefix);
+    },
+    
+    remove(prefix, personName) {
+        const persons = this.selectedPersons.get(prefix);
+        if (persons) {
+            persons.delete(personName);
+            this.updateUI(prefix);
+        }
+    },
+    
+    get(prefix) {
+        return Array.from(this.selectedPersons.get(prefix) || []);
+    },
+    
+    updateUI(prefix) {
+        const container = document.getElementById(`${prefix}_selected_persons`);
+        const hiddenInput = document.getElementById(`${prefix}_persons_names`);
+        if (!container || !hiddenInput) return;
+        
+        // Container leeren
+        container.innerHTML = '';
+        
+        // Aktuelle Auswahl abrufen
+        const selectedPersons = this.get(prefix);
+        
+        if (selectedPersons.length === 0) {
+            // Wenn keine Auswahl, zeige Nachricht
+            container.innerHTML = '<div class="text-muted small fst-italic">Keine Personen ausgewählt</div>';
+        } else {
+            // Füge für jede Person ein Badge hinzu
+            selectedPersons.forEach(person => {
+                const badge = createPersonBadge(person, () => this.remove(prefix, person.name));
+                container.appendChild(badge);
+            });
+        }
+        
+        // Hidden Input aktualisieren
+        hiddenInput.value = selectedPersons.map(p => p.name).join(',');
+    },
+    
+    clear(prefix) {
+        this.selectedPersons.set(prefix, new Set());
+        this.updateUI(prefix);
+    }
+};
+
+function initializePersonSelector() {
+    const personInputs = document.querySelectorAll('.person-autocomplete');
+    if (!personInputs.length) return;
+    
+    personInputs.forEach(input => {
+        initializeSinglePersonSelector(input);
     });
 }
 
-/**
- * Initialisiert ein einzelnes Personenauswahlfeld
- */
-function initializeSinglePersonSelector(personInput) {
-    if (!personInput) return;
+function initializeSinglePersonSelector(input) {
+    if (!input) return;
     
-    // Bestimme den ID-Präfix basierend auf der Eingabefeld-ID
-    const prefix = personInput.id.split('_')[0];
+    const prefix = input.id.split('_')[0];
+    const container = input.parentElement;
+    if (!container) return;
     
-    // Container für ausgewählte Personen
-    const selectedPersonsContainer = document.getElementById(`${prefix}_selected_persons`);
-    if (!selectedPersonsContainer) {
-        console.error(`Kein Container mit ID "${prefix}_selected_persons" gefunden`);
-        return;
-    }
+    // Vorschläge-Container erstellen
+    const suggestionsContainer = container.querySelector('.person-autocomplete-items') || 
+                               createSuggestionsContainer(input);
     
-    // Verstecktes Eingabefeld für die ausgewählten Personen (wird an das Backend übermittelt)
-    const selectedPersonsHiddenInput = document.getElementById(`${prefix}_persons_names`);
-    if (!selectedPersonsHiddenInput) {
-        console.error(`Kein Hidden-Input mit ID "${prefix}_persons_names" gefunden`);
-        return;
-    }
+    // Debounced Fetch Funktion für Vorschläge
+    const debouncedFetch = debounce(fetchPersonSuggestions, 300);
     
-    // Vorschläge-Container
-    const suggestionsContainer = document.createElement('div');
-    suggestionsContainer.className = 'person-suggestions';
-    suggestionsContainer.style.position = 'absolute';
-    suggestionsContainer.style.width = personInput.offsetWidth + 'px';
-    suggestionsContainer.style.maxHeight = '200px';
-    suggestionsContainer.style.overflowY = 'auto';
-    suggestionsContainer.style.display = 'none';
-    suggestionsContainer.style.zIndex = '1000';
-    suggestionsContainer.style.border = '1px solid #dee2e6';
-    suggestionsContainer.style.borderRadius = '0.25rem';
-    suggestionsContainer.style.backgroundColor = 'var(--bs-body-bg)';
-    suggestionsContainer.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';
-    personInput.parentNode.appendChild(suggestionsContainer);
-    
-    // Array für ausgewählte Personen
-    let selectedPersons = [];
-    
-    // Event-Listener für Eingabefeld
-    personInput.addEventListener('input', function() {
-        const searchTerm = this.value.trim();
-        
-        if (searchTerm.length < 2) {
-            suggestionsContainer.style.display = 'none';
+    // Input Handler
+    input.addEventListener('input', async function() {
+        if (!this.value.trim()) {
+            hideSuggestions(suggestionsContainer);
             return;
         }
         
-        // Anfrage an Backend für Personenvorschläge
-        fetch(`/api/persons?query=${encodeURIComponent(searchTerm)}`)
-            .then(response => response.json())
-            .then(data => {
-                suggestionsContainer.innerHTML = '';
-                
-                if (data.length === 0) {
-                    suggestionsContainer.style.display = 'none';
-                    return;
-                }
-                
-                // Vorschläge anzeigen
-                data.forEach(person => {
-                    // Prüfen, ob die Person bereits ausgewählt ist
-                    if (selectedPersons.includes(person.name)) {
-                        return;
-                    }
-                    
-                    const div = document.createElement('div');
-                    div.className = 'person-suggestion p-2';
-                    div.textContent = person.name;
-                    div.style.cursor = 'pointer';
-                    div.style.borderBottom = '1px solid #dee2e6';
-                    div.style.transition = 'background-color 0.15s ease-in-out';
-                    
-                    div.addEventListener('mouseenter', function() {
-                        this.style.backgroundColor = 'var(--bs-primary-bg-subtle)';
-                    });
-                    
-                    div.addEventListener('mouseleave', function() {
-                        this.style.backgroundColor = '';
-                    });
-                    
-                    div.addEventListener('click', function() {
-                        // Person zur Liste hinzufügen
-                        addPerson(person);
-                        
-                        // Eingabefeld leeren und Vorschläge ausblenden
-                        personInput.value = '';
-                        suggestionsContainer.style.display = 'none';
-                    });
-                    
-                    suggestionsContainer.appendChild(div);
-                });
-                
-                // Vorschläge-Container anzeigen
-                suggestionsContainer.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Fehler beim Abrufen der Personenvorschläge:', error);
-            });
+        try {
+            const persons = await debouncedFetch(this.value);
+            updateSuggestions(persons, suggestionsContainer, prefix);
+        } catch (error) {
+            console.error('Error fetching suggestions:', error);
+        }
     });
     
-    // Klick außerhalb schließt die Vorschläge
+    // Klick außerhalb schließt Vorschläge
     document.addEventListener('click', function(event) {
-        if (!personInput.contains(event.target) && !suggestionsContainer.contains(event.target)) {
-            suggestionsContainer.style.display = 'none';
+        if (!container.contains(event.target)) {
+            hideSuggestions(suggestionsContainer);
         }
     });
     
-    /**
-     * Fügt eine Person zur Liste der ausgewählten Personen hinzu
-     */
-    function addPerson(person) {
-        // Prüfen, ob die Person bereits ausgewählt ist
-        if (selectedPersons.includes(person.name)) {
-            return;
-        }
+    // Tastatur-Navigation
+    input.addEventListener('keydown', function(e) {
+        handleKeyboardNavigation(e, suggestionsContainer, prefix);
+    });
+}
+
+function createSuggestionsContainer(input) {
+    const container = document.createElement('div');
+    container.className = 'person-autocomplete-items';
+    input.parentNode.appendChild(container);
+    return container;
+}
+
+function createPersonBadge(person, onRemove) {
+    const badge = document.createElement('span');
+    badge.className = 'selected-person-badge';
+    badge.innerHTML = `
+        ${person.name}
+        <button type="button" class="btn-close btn-close-white ms-2" aria-label="Entfernen"></button>
+    `;
+    
+    const removeBtn = badge.querySelector('.btn-close');
+    removeBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        onRemove();
+    });
+    
+    return badge;
+}
+
+async function fetchPersonSuggestions(searchTerm) {
+    try {
+        const response = await fetch(`/api/persons?query=${encodeURIComponent(searchTerm)}`);
+        if (!response.ok) throw new Error('Netzwerkfehler bei der Personensuche');
+        return await response.json();
+    } catch (error) {
+        console.error('Fehler beim Laden der Personenvorschläge:', error);
+        return [];
+    }
+}
+
+function updateSuggestions(persons, container, prefix) {
+    container.innerHTML = '';
+    
+    if (!persons.length) {
+        const noResults = document.createElement('div');
+        noResults.className = 'p-2 text-muted';
+        noResults.textContent = 'Keine Personen gefunden';
+        container.appendChild(noResults);
+        return;
+    }
+    
+    persons.forEach((person, index) => {
+        const div = document.createElement('div');
+        div.className = 'person-suggestion p-2';
+        if (index === currentFocus) div.classList.add('person-autocomplete-active');
         
-        // Person zum Array hinzufügen
-        selectedPersons.push(person.name);
+        const nameEl = document.createElement('div');
+        nameEl.className = 'person-name';
+        nameEl.textContent = person.Name;
         
-        // Badge erstellen
-        const badge = document.createElement('span');
-        badge.className = 'badge bg-primary me-2 mb-2';
-        badge.style.fontSize = '100%';
-        badge.style.display = 'inline-flex';
-        badge.style.alignItems = 'center';
+        const detailsEl = document.createElement('div');
+        detailsEl.className = 'person-details small text-muted';
+        detailsEl.textContent = `${person['Search Term'] || ''} ${person['Additional Terms'] || ''}`.trim();
         
-        // Person-Name
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = person.name;
-        badge.appendChild(nameSpan);
+        div.appendChild(nameEl);
+        if (detailsEl.textContent) div.appendChild(detailsEl);
         
-        // Entfernen-Button
-        const removeButton = document.createElement('button');
-        removeButton.type = 'button';
-        removeButton.className = 'btn-close ms-2';
-        removeButton.style.fontSize = '0.65em';
-        removeButton.style.marginLeft = '5px';
-        removeButton.setAttribute('aria-label', 'Entfernen');
-        
-        removeButton.addEventListener('click', function() {
-            // Person aus dem Array entfernen
-            selectedPersons = selectedPersons.filter(p => p !== person.name);
-            
-            // Badge entfernen
-            badge.remove();
-            
-            // Verstecktes Eingabefeld aktualisieren
-            updateHiddenInput();
+        div.addEventListener('click', () => {
+            PersonState.add(prefix, {
+                name: person.Name,
+                searchTerm: person['Search Term'],
+                additionalTerms: person['Additional Terms']
+            });
+            container.style.display = 'none';
         });
         
-        badge.appendChild(removeButton);
-        
-        // Badge zum Container hinzufügen
-        selectedPersonsContainer.appendChild(badge);
-        
-        // Verstecktes Eingabefeld aktualisieren
-        updateHiddenInput();
-    }
+        container.appendChild(div);
+    });
     
-    /**
-     * Aktualisiert das versteckte Eingabefeld mit den ausgewählten Personen
-     */
-    function updateHiddenInput() {
-        selectedPersonsHiddenInput.value = JSON.stringify(selectedPersons);
-        
-        // Aktualisiere den Platzhaltertext
-        const placeholderText = selectedPersonsContainer.querySelector('.text-muted.small.fst-italic');
-        if (placeholderText) {
-            if (selectedPersons.length > 0) {
-                placeholderText.style.display = 'none';
-            } else {
-                placeholderText.style.display = 'block';
-            }
-        }
+    container.style.display = 'block';
+}
+
+function hideSuggestions(container) {
+    if (container) {
+        container.style.display = 'none';
+        container.innerHTML = '';
     }
+    currentFocus = -1;
+}
+
+function handleKeyboardNavigation(event, container, prefix) {
+    const suggestions = container.getElementsByClassName('person-suggestion');
+    if (!suggestions.length) return;
     
-    // Initialisiere bereits vorhandene Personen (z.B. nach Formular-Submit)
-    if (selectedPersonsHiddenInput.value) {
-        try {
-            const savedPersons = JSON.parse(selectedPersonsHiddenInput.value);
+    switch (event.key) {
+        case 'ArrowDown':
+            currentFocus++;
+            addActive(suggestions);
+            break;
             
-            if (Array.isArray(savedPersons)) {
-                savedPersons.forEach(personName => {
-                    if (personName) {
-                        addPerson({ name: personName });
-                    }
-                });
+        case 'ArrowUp':
+            currentFocus--;
+            addActive(suggestions);
+            break;
+            
+        case 'Enter':
+            event.preventDefault();
+            if (currentFocus > -1 && suggestions[currentFocus]) {
+                suggestions[currentFocus].click();
             }
-        } catch (e) {
-            console.error('Fehler beim Parsieren der gespeicherten Personen:', e);
-        }
+            break;
+            
+        case 'Escape':
+            hideSuggestions(container);
+            break;
     }
+}
+
+function addActive(suggestions) {
+    if (!suggestions) return false;
+    
+    removeActive(suggestions);
+    
+    if (currentFocus >= suggestions.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = suggestions.length - 1;
+    
+    suggestions[currentFocus].classList.add('person-autocomplete-active');
+}
+
+function removeActive(suggestions) {
+    Array.from(suggestions).forEach(suggestion => {
+        suggestion.classList.remove('person-autocomplete-active');
+    });
+}
+
+let currentFocus = -1;
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func.apply(this, args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
 }

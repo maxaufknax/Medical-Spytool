@@ -1,360 +1,457 @@
 """
-PubMed Database Connector
+PubMed Connector Module
 
-This module provides functionality to search and retrieve publications from PubMed.
+This module provides functionality to search the PubMed database
+using their E-utilities API.
 """
 
-import time
+from typing import List, Dict, Any, Optional, Union
 import requests
-import xml.etree.ElementTree as ET
 import logging
-from functools import lru_cache
 from datetime import datetime
-
-from database_connectors.base_connector import DatabaseConnector
+from bs4 import BeautifulSoup
+from .base_connector import BaseConnector
 
 logger = logging.getLogger(__name__)
 
-class PubMedConnector(DatabaseConnector):
+class PubMedConnector(BaseConnector):
     """
-    Connector for PubMed database.
+    Connector for searching the PubMed database.
     """
     
-    def __init__(self, api_key=None, settings=None):
+    def __init__(self, api_key: str = None, settings: dict = None):
+        """Initialize the PubMed connector."""
+        super().__init__(api_key, settings)
+        self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        self.max_results = 100
+        
+    def construct_query(self, search_term: str, **kwargs) -> str:
         """
-        Initialize the PubMed connector.
+        Construct a PubMed query string.
         
         Args:
-            api_key (str, optional): API key for PubMed.
-            settings (dict, optional): Additional settings.
-        """
-        super().__init__(api_key, settings)
-        self.name = "PubMed"
-        self.max_results_per_page = 10000  # Erhöhen auf maximal 10.000 Ergebnisse
-        self.search_fields = ["Alle Felder", "Autor", "Titel", "Journal", "MESH-Terme"]
-        self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-        self.requires_api_key = False  # Optional aber empfohlen für höhere Limits
-        
-    def validate_api_key(self):
-        """
-        Überprüft, ob der angegebene API-Key für PubMed gültig ist.
-        
-        Bei PubMed ist der API-Key optional, erhöht aber die Limits von 3 auf 10 Anfragen pro Sekunde.
-        Diese Methode testet den API-Key mit einer einfachen Suche.
-        
+            search_term (str): The main search term
+            **kwargs: Additional search parameters
+                - additional_terms (str): Additional search terms
+                - date_range (dict): Date range with 'start' and 'end' keys
+                - language (str): Language filter
+                - pub_type (str): Publication type filter
+                - field (str): Specific field to search in
+                - person_names (list): List of person names to include in search
+                
         Returns:
-            bool: True, wenn der API-Key gültig ist oder kein Key angegeben wurde.
-                 False, wenn ein ungültiger Key angegeben wurde.
+            str: The constructed query string
         """
-        # Wenn kein API-Key angegeben wurde, ist das für PubMed in Ordnung
-        if not self.api_key:
-            return True
+        query_parts = []
+        
+        # Add main search term if provided
+        if search_term:
+            query_parts.append(f"({search_term})")
+        
+        # Add person names if provided
+        person_names = kwargs.get('person_names', [])
+        if person_names and isinstance(person_names, list):
+            # Convert each person name to a search term
+            for person in person_names:
+                if isinstance(person, str) and person.strip():
+                    # Format: "Lastname, Firstname"[Author] OR "Lastname F"[Author]
+                    # Split name if it contains a comma
+                    if ',' in person:
+                        lastname, firstname = person.split(',', 1)
+                        author_query = f'"{lastname.strip()}, {firstname.strip()}"[Author]'
+                    # Split name if it contains a space
+                    elif ' ' in person:
+                        name_parts = person.split()
+                        lastname = name_parts[-1]  # Last part is likely the lastname
+                        firstname_initial = name_parts[0][0] if len(name_parts) > 1 else ""
+                        author_query = f'"{lastname} {firstname_initial}"[Author]'
+                    else:
+                        # Just use the name as is
+                        author_query = f'"{person}"[Author]'
+                    query_parts.append(author_query)
             
+        # Add additional terms if provided
+        additional_terms = kwargs.get('additional_terms')
+        if additional_terms:
+            query_parts.append(f"({additional_terms})")
+            
+        # Add date range if provided
+        date_range = kwargs.get('date_range')
+        if date_range:
+            start_date = date_range.get('start')
+            end_date = date_range.get('end')
+            if start_date and end_date:
+                date_query = f"{start_date}:{end_date}[dp]"
+                query_parts.append(date_query)
+        
+        # Alternative: check for start_date and end_date directly (from form submission)
+        start_date = kwargs.get('start_date')
+        end_date = kwargs.get('end_date')
+        if start_date and end_date:
+            date_query = f"{start_date}:{end_date}[dp]"
+            query_parts.append(date_query)
+                
+        # Add language filter if provided
+        language = kwargs.get('language')
+        if language:
+            query_parts.append(f"{language}[lang]")
+            
+        # Add publication type filter if provided
+        pub_type = kwargs.get('pub_type')
+        if pub_type:
+            query_parts.append(f"{pub_type}[pt]")
+            
+        # Add field-specific search if provided
+        field = kwargs.get('field')
+        if field and field.lower() != 'all fields' and search_term:
+            # Map common fields to PubMed field tags
+            field_map = {
+                'title': '[ti]',
+                'author': '[au]',
+                'journal': '[ta]',
+                'abstract': '[ab]',
+                'affiliation': '[ad]'
+            }
+            
+            # Handle field in search_field parameter (from form)
+            search_field = kwargs.get('search_field')
+            if search_field and search_field.lower() in field_map and search_term:
+                # Replace the first query part (search term) with field-specific query
+                if query_parts and search_term in query_parts[0]:
+                    query_parts[0] = f"({search_term}{field_map[search_field.lower()]})"
+            
+            # Direct field specification takes precedence
+            elif field.lower() in field_map and search_term:
+                # Replace the first query part (search term) with field-specific query
+                if query_parts and search_term in query_parts[0]:
+                    query_parts[0] = f"({search_term}{field_map[field.lower()]})"
+        
+        # Combine all parts with AND
+        if not query_parts:
+            # If no query parts, use a default query that returns recent publications
+            return "recent[filter]"
+        
+        return " AND ".join(query_parts)
+        
+    def search(self, search_term: str = None, query: str = None, params: Dict[str, Any] = None, person_names: List[str] = None, max_results: int = None, **kwargs) -> List[Dict[str, Any]]:
+        """
+        Perform a search using the PubMed E-utilities API.
+        
+        This method supports two calling conventions:
+        1. search(query, params) - The traditional BaseConnector interface
+        2. search(search_term, person_names, max_results, **kwargs) - The way it's called in main.py
+        
+        Args:
+            search_term (str, optional): The main search term
+            query (str, optional): A pre-constructed query string (alternative to search_term)
+            params (dict, optional): Additional search parameters
+            person_names (list, optional): List of person names to include in the search
+            max_results (int, optional): Maximum number of results to return
+            **kwargs: Any additional parameters for the search
+            
+        Returns:
+            list: List of search results as dictionaries
+        """
         try:
-            # Führe eine einfache Suchanfrage mit dem API-Key durch
-            import requests
+            # Set the maximum number of results if provided
+            if max_results:
+                self.max_results = max_results
             
-            url = f"{self.base_url}esearch.fcgi"
-            params = {
+            # If a query is not provided directly, construct it from search_term and other parameters
+            if not query:
+                # Combine all search parameters into kwargs
+                combined_kwargs = kwargs.copy()
+                if person_names:
+                    combined_kwargs['person_names'] = person_names
+                
+                # Construct the query
+                query = self.construct_query(search_term, **combined_kwargs)
+            
+            logger.info(f"PubMed search query: {query}")
+            
+            # First, search for matching PMIDs
+            search_params = {
                 'db': 'pubmed',
-                'term': 'test',
-                'retmax': 1,
-                'api_key': self.api_key,
+                'term': query,
+                'retmax': str(self.max_results),
+                'usehistory': 'y',
                 'retmode': 'json'
             }
             
-            response = requests.get(url, params=params, timeout=5)
-            if response.status_code == 200:
-                # Versuche die JSON-Antwort zu parsen
-                response_json = response.json()
-                # Wenn wir einen Fehler oder eine leere 'esearchresult' bekommen, ist der Key ungültig
-                if 'esearchresult' in response_json:
-                    return True
-                else:
-                    logger.warning(f"PubMed API-Key ungültig oder API antwortet nicht korrekt. Antwort: {response.text}")
-                    return False
-            else:
-                logger.warning(f"PubMed API-Key ungültig. Status-Code: {response.status_code}")
-                return False
+            # If params were provided, update search_params
+            if params:
+                search_params.update(params)
+            
+            # Add API key if available
+            if self.api_key:
+                search_params['api_key'] = self.api_key
+            
+            # Get the API key from app_config if it's in kwargs
+            elif 'api_key' in kwargs:
+                search_params['api_key'] = kwargs.get('api_key')
                 
-        except Exception as e:
-            logger.error(f"Fehler bei der Validierung des PubMed API-Keys: {str(e)}")
-            # Bei Netzwerkfehlern gehen wir davon aus, dass der Key valide ist
-            # um die Anwendung nicht zu blockieren
-            return True
-    
-    @lru_cache(maxsize=128)
-    def get_citation_count(self, pmid):
-        """
-        Get the citation count for a PubMed publication.
-        
-        Args:
-            pmid (str): PubMed ID.
-            
-        Returns:
-            int or str: Citation count or error message.
-        """
-        if not pmid or pmid == "N/A" or pmid == "Keine PMID":
-            return "N/A"
-            
-        elink_url = self.base_url + "elink.fcgi"
-        params = {
-            "dbfrom": "pubmed",
-            "linkname": "pubmed_pubmed_citedin",
-            "id": pmid,
-            "retmode": "xml",
-            "api_key": self.api_key
-        }
-        
-        max_retries = 3
-        delay = 0.5
-        
-        for attempt in range(max_retries):
-            try:
-                response = requests.get(elink_url, params=params)
-                response.raise_for_status()
-                xml_data = ET.fromstring(response.content)
-                count = len(xml_data.findall(".//LinkSetDb/Link/Id"))
-                return count
-            except requests.exceptions.HTTPError as e:
-                if response.status_code == 429:  # Too Many Requests
-                    logger.warning(f"429 Error for PMID {pmid}. Waiting {delay} seconds...")
-                    time.sleep(delay)
-                    delay *= 2
-                else:
-                    logger.error(f"Error fetching citation count for PMID {pmid}: {e}")
-                    return "Error"
-            except ET.ParseError as e:
-                logger.error(f"XML Parse error for PMID {pmid}: {e}")
-                return "XML Error"
-            except Exception as e:
-                logger.error(f"Unexpected error for PMID {pmid}: {e}")
-                return "Error"
-                
-        logger.error(f"Maximum retries exceeded for PMID {pmid}")
-        return "Error: Too Many Requests"
-    
-    def construct_query(self, base_query, additional_terms="", date_range=None, 
-                      language=None, pub_type=None, field=None):
-        """
-        Construct a PubMed search query.
-        
-        Args:
-            base_query (str): Base query.
-            additional_terms (str, optional): Additional search terms.
-            date_range (dict, optional): Date range with 'start' and 'end' keys.
-            language (str, optional): Language filter.
-            pub_type (str, optional): Publication type filter.
-            field (str, optional): Field to search in.
-            
-        Returns:
-            str: Constructed query.
-        """
-        query = base_query
-
-        if field and field != "Alle Felder":
-            field_map = {
-                "Autor": "[Author]",
-                "Titel": "[Title]",
-                "Journal": "[Journal]",
-                "MESH-Terme": "[MeSH Terms]"
-            }
-            query = f"{query}{field_map.get(field, '')}"
-
-        if additional_terms:
-            query = f"({query}) AND ({additional_terms})"
-            
-        if date_range and date_range.get('start') and date_range.get('end'):
-            start_date = date_range['start'].strftime("%Y/%m/%d")
-            end_date = date_range['end'].strftime("%Y/%m/%d")
-            query = f"{query} AND {start_date}:{end_date}[Date - Publication]"
-            
-        if language:
-            query = f"{query} AND {language}[Language]"
-            
-        if pub_type:
-            query = f"{query} AND {pub_type}[Publication Type]"
-            
-        return query
-    
-    def search(self, query, params=None, log_widget=None):
-        """
-        Search PubMed with the given query.
-        
-        Args:
-            query (str): Search query.
-            params (dict, optional): Additional search parameters.
-            log_widget (object, optional): Object for logging messages.
-            
-        Returns:
-            list: Search results.
-        """
-        from utils.logging_manager import log_message
-        
-        params = params or {}
-        name = params.get('name', 'General Search')
-        max_results = params.get('max_results', self.max_results_per_page)
-        
-        log_message(log_widget, f"Starting PubMed search: {query}")
-        
-        esearch_url = self.base_url + "esearch.fcgi"
-        efetch_url = self.base_url + "efetch.fcgi"
-        
-        esearch_params = {
-            "db": "pubmed",
-            "term": query,
-            "retmax": max_results,
-            "retmode": "xml",
-            "api_key": self.api_key
-        }
-        
-        try:
-            response = requests.get(esearch_url, params=esearch_params)
+            search_url = f"{self.base_url}/esearch.fcgi"
+            response = requests.get(search_url, params=search_params)
             response.raise_for_status()
-            esearch_xml = ET.fromstring(response.content)
-            id_list = [node.text for node in esearch_xml.findall(".//Id")]
             
-            count_node = esearch_xml.find(".//Count")
-            total_count = int(count_node.text) if count_node is not None else 0
+            search_result = response.json()
+            pmids = search_result['esearchresult'].get('idlist', [])
             
-            log_message(log_widget, f"PubMed search: {total_count} results found")
-            
-            if not id_list:
-                log_message(log_widget, f"No publications found for '{query}'")
+            if not pmids:
+                logger.info("No results found for PubMed query")
                 return []
-        except requests.exceptions.RequestException as e:
-            log_message(log_widget, f"Error in PubMed search for '{query}': {e}")
-            return []
-        
-        efetch_params = {
-            "db": "pubmed",
-            "id": ",".join(id_list),
-            "retmode": "xml",
-            "api_key": self.api_key
-        }
-        
-        try:
-            log_message(log_widget, f"Retrieving PubMed details for {len(id_list)} articles...")
-            response = requests.get(efetch_url, params=efetch_params)
+                
+            # Then, fetch details for those PMIDs
+            fetch_params = {
+                'db': 'pubmed',
+                'id': ','.join(pmids),
+                'retmode': 'xml'
+            }
+            
+            if self.api_key:
+                fetch_params['api_key'] = self.api_key
+            elif 'api_key' in kwargs:
+                fetch_params['api_key'] = kwargs.get('api_key')
+                
+            fetch_url = f"{self.base_url}/efetch.fcgi"
+            response = requests.get(fetch_url, params=fetch_params)
             response.raise_for_status()
-            efetch_xml = ET.fromstring(response.content)
-        except requests.exceptions.RequestException as e:
-            log_message(log_widget, f"Error retrieving PubMed details: {e}")
-            return []
-        
-        return self.parse_results(efetch_xml, params={'name': name, 'log_widget': log_widget})
-    
-    def parse_results(self, efetch_xml, params=None):
+            
+            # Parse XML response
+            soup = BeautifulSoup(response.content, 'xml')
+            articles = soup.find_all('PubmedArticle')
+            
+            results = []
+            for article in articles:
+                try:
+                    # Extract article metadata
+                    citation = article.MedlineCitation
+                    
+                    # Basic metadata
+                    pmid = citation.PMID.text
+                    article_info = citation.Article
+                    
+                    # Title
+                    title = article_info.ArticleTitle.text if article_info.ArticleTitle else "No Title"
+                    
+                    # Authors
+                    authors = []
+                    author_list = article_info.AuthorList.find_all('Author') if article_info.AuthorList else []
+                    for author in author_list:
+                        try:
+                            lastname = author.LastName.text if author.LastName else ''
+                            forename = author.ForeName.text if author.ForeName else ''
+                            authors.append(f"{lastname}, {forename}".strip(', '))
+                        except Exception as author_error:
+                            logger.debug(f"Error extracting author: {author_error}")
+                            continue
+                    
+                    author_string = "; ".join(authors) if authors else "Unknown"
+                            
+                    # Journal info
+                    journal = article_info.Journal
+                    journal_title = journal.Title.text if journal and journal.Title else "No Journal"
+                    
+                    # Publication date
+                    pub_date = None
+                    pub_month = None
+                    
+                    # Try different paths for publication date
+                    if hasattr(journal, 'JournalIssue') and hasattr(journal.JournalIssue, 'PubDate'):
+                        pub_date_elem = journal.JournalIssue.PubDate
+                        year = pub_date_elem.Year.text if hasattr(pub_date_elem, 'Year') else None
+                        month = pub_date_elem.Month.text if hasattr(pub_date_elem, 'Month') else None
+                        if year:
+                            pub_date = year
+                            pub_month = month
+                    
+                    # Try alternative publication date path
+                    if not pub_date and hasattr(article_info, 'PubDate'):
+                        pub_date_elem = article_info.PubDate
+                        year = pub_date_elem.Year.text if hasattr(pub_date_elem, 'Year') else None
+                        month = pub_date_elem.Month.text if hasattr(pub_date_elem, 'Month') else None
+                        if year:
+                            pub_date = year
+                            pub_month = month
+                            
+                    # Abstract
+                    abstract = None
+                    if article_info.Abstract and article_info.Abstract.AbstractText:
+                        if isinstance(article_info.Abstract.AbstractText, list):
+                            abstract_parts = []
+                            for part in article_info.Abstract.AbstractText:
+                                if part.string:
+                                    abstract_parts.append(part.string)
+                                else:
+                                    abstract_parts.append(part.text)
+                            abstract = " ".join(abstract_parts)
+                        else:
+                            abstract = article_info.Abstract.AbstractText.text
+                    
+                    # Publication type
+                    pub_types = []
+                    pub_type_list = citation.find_all('PublicationType') if citation else []
+                    for pub_type in pub_type_list:
+                        if pub_type.text:
+                            pub_types.append(pub_type.text)
+                    pub_type_string = "; ".join(pub_types) if pub_types else None
+                    
+                    # MeSH terms (Keywords)
+                    mesh_terms = []
+                    mesh_heading_list = citation.find_all('MeshHeading') if citation else []
+                    for mesh in mesh_heading_list:
+                        descriptor = mesh.DescriptorName.text if mesh.DescriptorName else None
+                        if descriptor:
+                            mesh_terms.append(descriptor)
+                    keywords = "; ".join(mesh_terms) if mesh_terms else None
+                    
+                    # Language
+                    language = article_info.Language.text if hasattr(article_info, 'Language') else None
+                    
+                    # DOI and other identifiers
+                    article_ids = article.PubmedData.ArticleIdList.find_all('ArticleId') if hasattr(article, 'PubmedData') and hasattr(article.PubmedData, 'ArticleIdList') else []
+                    doi = next((aid.text for aid in article_ids if aid.get('IdType') == 'doi'), None)
+                    
+                    # Citation count (not directly available from PubMed, would need additional API calls)
+                    citation_count = None
+                    
+                    # Build result dictionary
+                    result = {
+                        'Title': title,
+                        'Authors': author_string,
+                        'Journal': journal_title,
+                        'Publication Year': pub_date,
+                        'Publication Month': pub_month,
+                        'Abstract': abstract,
+                        'PMID': pmid,
+                        'DOI': doi,
+                        'Database': 'PubMed',
+                        'URL': f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
+                        'Publication Type': pub_type_string,
+                        'Language': language,
+                        'Keywords': keywords,
+                        'Citation Count': citation_count
+                    }
+                    
+                    results.append(result)
+                    
+                except Exception as e:
+                    logger.error(f"Error parsing PubMed article (ID: {pmid if 'pmid' in locals() else 'unknown'}): {e}", exc_info=True)
+                    continue
+                    
+            logger.info(f"Found {len(results)} PubMed results")
+            return results
+            
+        except requests.RequestException as e:
+            logger.error(f"PubMed API request error: {e}", exc_info=True)
+            raise Exception(f"PubMed API request error: {str(e)}")
+        except Exception as e:
+            logger.error(f"PubMed search error: {e}", exc_info=True)
+            raise Exception(f"PubMed search error: {str(e)}")
+            
+    def validate_api_key(self, api_key: str = None) -> bool:
         """
-        Parse PubMed search results.
+        Validate the PubMed API key by making a test request.
         
         Args:
-            efetch_xml (xml.etree.ElementTree.Element): XML response from PubMed.
-            params (dict, optional): Additional parameters.
+            api_key (str, optional): The API key to validate. If None, use the one from the instance.
             
         Returns:
-            list: Parsed publications.
+            bool: True if the API key is valid, False otherwise
         """
-        from utils.logging_manager import log_message
+        try:
+            # Use provided API key or fall back to instance API key
+            key_to_validate = api_key if api_key else self.api_key
+            
+            # If no API key, return True as PubMed doesn't strictly require one
+            if not key_to_validate:
+                return True
+            
+            # Make a simple test query
+            test_params = {
+                'db': 'pubmed',
+                'term': 'test',
+                'retmax': '1',
+                'api_key': key_to_validate
+            }
+            
+            search_url = f"{self.base_url}/esearch.fcgi"
+            response = requests.get(search_url, params=test_params)
+            
+            # Check if the request was successful and didn't return an API key error
+            return response.ok and 'API key invalid' not in response.text
+            
+        except Exception as e:
+            logger.error(f"API key validation error: {e}", exc_info=True)
+            return False
+            
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test the connection to PubMed.
         
-        params = params or {}
-        name = params.get('name', 'Unknown')
-        log_widget = params.get('log_widget', None)
+        Returns:
+            dict: A dictionary containing the test results
+        """
+        import time
         
-        publications = []
-        articles = efetch_xml.findall(".//PubmedArticle")
-        total = len(articles)
-        
-        log_message(log_widget, f"Processing {total} PubMed articles...")
-        
-        for i, article in enumerate(articles):
-            if i % 10 == 0:  # Status update every 10 articles
-                log_message(log_widget, f"Processing PubMed article {i+1}/{total}...")
+        try:
+            start_time = time.time()
+            
+            # Make a simple test query
+            test_params = {
+                'db': 'pubmed',
+                'term': 'medical',
+                'retmax': '1',
+                'retmode': 'json'
+            }
+            
+            if self.api_key:
+                test_params['api_key'] = self.api_key
                 
-            try:
-                # Extract title
-                title_el = article.find(".//ArticleTitle")
-                title = title_el.text if title_el is not None else "No Title"
+            search_url = f"{self.base_url}/esearch.fcgi"
+            response = requests.get(search_url, params=test_params, timeout=10)
+            
+            response_time = time.time() - start_time
+            
+            if response.ok:
+                search_result = response.json()
+                count = int(search_result['esearchresult'].get('count', 0))
                 
-                # Extract publication date
-                pub_date_el = article.find(".//PubDate")
-                year = pub_date_el.find("Year").text if pub_date_el is not None and pub_date_el.find("Year") is not None else "N/A"
-                
-                month_el = pub_date_el.find("Month") if pub_date_el is not None else None
-                month_raw = month_el.text if month_el is not None else ""
-                try:
-                    month_numeric = datetime.strptime(month_raw, "%b").strftime("%m") if month_raw else ""
-                except:
-                    try:
-                        month_numeric = datetime.strptime(month_raw, "%B").strftime("%m") if month_raw else ""
-                    except:
-                        try:
-                            month_numeric = str(int(month_raw)).zfill(2) if month_raw.isdigit() else month_raw
-                        except:
-                            month_numeric = month_raw
-                
-                # Extract authors
-                authors = []
-                for author in article.findall(".//Author"):
-                    ln = author.find(".//LastName")
-                    fn = author.find(".//ForeName")
-                    if ln is not None and fn is not None:
-                        authors.append(f"{fn.text} {ln.text}")
-                    elif ln is not None:
-                        authors.append(ln.text)
-                    else:
-                        continue
-                authors_str = ", ".join(authors) if authors else "No Authors"
-                
-                # Extract publication types
-                pub_types = [pt.text for pt in article.findall(".//PublicationTypeList/PublicationType") if pt.text]
-                pub_types_str = ", ".join(pub_types) if pub_types else "No Publication Types"
-                
-                # Extract identifiers
-                pmid_el = article.find(".//PMID")
-                pmid = pmid_el.text if pmid_el is not None else "No PMID"
-                
-                pmcid_el = article.find('.//ArticleId[@IdType="pmc"]')
-                pmcid = pmcid_el.text if pmcid_el is not None else "No PMCID"
-                
-                doi_el = article.find('.//ArticleId[@IdType="doi"]')
-                doi = doi_el.text if doi_el is not None else "No DOI"
-                
-                # Create URLs
-                doi_url = f"https://doi.org/{doi}" if doi != "No DOI" else "No DOI URL"
-                pubmed_url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/" if pmid != "No PMID" else "No PubMed URL"
-                
-                # Extract affiliations
-                affils = [aff.text for aff in article.findall(".//AffiliationInfo/Affiliation") if aff.text]
-                affils_str = "\n".join(affils) if affils else "No Affiliation Data"
-                
-                # Get citation count
-                citation_count = self.get_citation_count(pmid) if pmid != "No PMID" else "N/A"
-                
-                # Create publication record
-                publication = {
-                    "Database": "PubMed",
-                    "Name": name,
-                    "Title": title,
-                    "Publication Year": year,
-                    "Publication Month": month_numeric,
-                    "Authors": authors_str,
-                    "Publication Types": pub_types_str,
-                    "Affiliations": affils_str,
-                    "PubMed URL": pubmed_url,
-                    "DOI URL": doi_url,
-                    "PubMed ID": pmid,
-                    "PMCID": pmcid,
-                    "DOI": doi,
-                    "Citation Count": citation_count,
-                    "Identifier": pmid,  # Use PMID as the primary identifier
-                    "URL": pubmed_url    # Use PubMed URL as the primary URL
+                if count > 0:
+                    return {
+                        'status': 'OK',
+                        'message': f'Successfully connected to PubMed. Found {count} results for "medical"',
+                        'response_time': round(response_time, 2)
+                    }
+                else:
+                    return {
+                        'status': 'Warning',
+                        'message': 'Connected to PubMed, but received 0 results for test query',
+                        'response_time': round(response_time, 2)
+                    }
+            else:
+                return {
+                    'status': 'Error',
+                    'message': f'Error connecting to PubMed: {response.status_code} - {response.reason}',
+                    'response_time': round(response_time, 2)
                 }
                 
-                publications.append(publication)
-            except Exception as e:
-                logger.error(f"Error parsing PubMed article: {e}", exc_info=True)
-                log_message(log_widget, f"Error parsing PubMed article: {e}")
-        
-        log_message(log_widget, f"Completed processing {len(publications)} PubMed articles")
-        return publications
+        except requests.exceptions.Timeout:
+            return {
+                'status': 'Error',
+                'message': 'Connection to PubMed timed out',
+                'response_time': None
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                'status': 'Error',
+                'message': 'Network error: Unable to connect to PubMed',
+                'response_time': None
+            }
+        except Exception as e:
+            logger.error(f"PubMed connection test error: {e}", exc_info=True)
+            return {
+                'status': 'Error',
+                'message': f'Error testing PubMed connection: {str(e)}',
+                'response_time': None
+            }

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Medical Spytool - Über die Anwendung{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Über Medical Spytool
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <h3>Überblick</h3>
+                            <p class="lead">
+                                Medical Spytool ist eine umfassende Anwendung zur Literaturrecherche in medizinischen und wissenschaftlichen Datenbanken.
+                            </p>
+                            <p>
+                                Die Anwendung ermöglicht die gleichzeitige Suche in mehreren Datenbanken, 
+                                Personenverwaltung für wiederkehrende Recherchen, erweiterte Suchoptionen,
+                                Ergebnisvisualisierung und Exportfunktionen.
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="bg-light p-3 rounded">
+                                <i class="fas fa-flask text-primary fa-4x mb-3"></i>
+                                <p>Version {{ version }}</p>
+                                <p class="text-muted">{{ now.strftime('%Y-%m-%d') }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h4>Unterstützte Datenbanken</h4>
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">PubMed</h5>
+                                    <p class="card-text">
+                                        Zugriff auf mehr als 33 Millionen Zitate aus biomedizinischer
+                                        Literatur aus MEDLINE, Life-Science-Zeitschriften und Online-Büchern.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Deutsche Nationalbibliothek (DNB)</h5>
+                                    <p class="card-text">
+                                        Zugriff auf Veröffentlichungen der Deutschen Nationalbibliothek,
+                                        einschließlich Bücher, Zeitschriften und anderer Medien.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Scopus</h5>
+                                    <p class="card-text">
+                                        Große Datenbank für Abstracts und Zitationen aus peer-reviewed Literatur,
+                                        wissenschaftlichen Zeitschriften, Büchern und Konferenzen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">Web of Science (WoS)</h5>
+                                    <p class="card-text">
+                                        Zitationsindizes mit Millionen von akademischen Zitaten und Referenzen
+                                        aus einer Vielzahl von wissenschaftlichen Disziplinen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title">GEPRIS</h5>
+                                    <p class="card-text">
+                                        Das Datenbanksystem der Deutschen Forschungsgemeinschaft (DFG) für geförderte
+                                        Projekte, Personen und Institutionen.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Hauptfunktionen</h4>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-search text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Kombinierte Suche</strong>
+                                        <p class="mb-0 text-muted">Durchsuchen Sie mehrere Datenbanken gleichzeitig</p>
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-users text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Personenverwaltung</strong>
+                                        <p class="mb-0 text-muted">Verwalten Sie Personenprofile für wiederkehrende Recherchen</p>
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-filter text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Erweiterte Filteroptionen</strong>
+                                        <p class="mb-0 text-muted">Filtern Sie nach Publikationstyp, Sprache und Datum</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-chart-line text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Datenanalyse</strong>
+                                        <p class="mb-0 text-muted">Visualisieren Sie Publikationstrends und -statistiken</p>
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-save text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Suchprofile</strong>
+                                        <p class="mb-0 text-muted">Speichern und laden Sie Suchprofile für spätere Verwendung</p>
+                                    </div>
+                                </li>
+                                <li class="list-group-item d-flex">
+                                    <i class="fas fa-file-export text-primary me-3 mt-1"></i>
+                                    <div>
+                                        <strong>Export</strong>
+                                        <p class="mb-0 text-muted">Exportieren Sie Ergebnisse im Excel- oder CSV-Format</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h4>Kontakt & Support</h4>
+                    <p>
+                        Bei Fragen oder Problemen zur Anwendung können Sie sich an den Support wenden.
+                        Bitte verwenden Sie die Protokolldateien unter dem Menüpunkt "Logs", um bei Problemen
+                        detaillierte Informationen bereitzustellen.
+                    </p>
+                    
+                    <div class="text-center mt-4">
+                        <p>
+                            <i class="fas fa-code text-muted me-2"></i>
+                            Entwickelt mit <i class="fas fa-heart text-danger mx-1"></i> und Python/Flask
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

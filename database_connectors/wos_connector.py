@@ -1,19 +1,19 @@
 """
-Web of Science Database Connector
+Web of Science (WoS) Connector Module
 
-This module provides a connector for the Web of Science database.
+This module provides functionality to search the Web of Science database.
 """
 
+from typing import List, Dict, Any, Optional
 import requests
 import logging
-import json
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from .base_connector import DatabaseConnector
+from bs4 import BeautifulSoup
+from .base_connector import BaseConnector  # Changed from DatabaseConnector to BaseConnector
 
 logger = logging.getLogger(__name__)
 
-class WoSConnector(DatabaseConnector):
+class WoSConnector(BaseConnector):
     """Connector for the Web of Science database."""
     
     def __init__(self, api_key=None, settings=None):

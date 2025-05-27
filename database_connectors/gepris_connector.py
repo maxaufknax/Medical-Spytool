@@ -1,413 +1,227 @@
 """
-GEPRIS Database Connector
+GEPRIS Connector Module
 
-This module provides a connector for the GEPRIS (German Project Information System) database.
+This module provides functionality to search the GEPRIS database.
 """
 
+from typing import List, Dict, Any, Optional
 import requests
 import logging
-import json
-from typing import List, Dict, Any, Optional
 from datetime import datetime
-from .base_connector import DatabaseConnector
 from bs4 import BeautifulSoup
+from .base_connector import BaseConnector  # Changed from DatabaseConnector to BaseConnector
 
 logger = logging.getLogger(__name__)
 
-class GEPRISConnector(DatabaseConnector):
-    """Connector for the GEPRIS database."""
+class GeprisConnector(BaseConnector):
+    """
+    Connector for searching the GEPRIS database.
+    """
     
-    def __init__(self, api_key=None, settings=None):
-        """Initialize the GEPRIS connector.
-        
-        Args:
-            api_key (str, optional): The API key for GEPRIS.
-            settings (dict, optional): Additional settings.
-        """
+    def __init__(self, api_key: str = None, settings: dict = None):
+        """Initialize the GEPRIS connector."""
         super().__init__(api_key, settings)
-        self.base_url = "https://gepris.dfg.de"
-        self.search_url = "https://gepris.dfg.de/gepris/OCTOPUS"
+        self.base_url = "http://gepris.dfg.de/gepris/OCTOPUS"
+        self.max_results = 100
         
-    def get_available_fields(self) -> List[str]:
-        """Get the available search fields for GEPRIS.
-        
-        Returns:
-            List[str]: The available search fields.
+    def construct_query(self, search_term: str, **kwargs) -> str:
         """
-        return [
-            "Alle Felder",
-            "Projekt",
-            "Person",
-            "Institution",
-            "Fachgebiet"
-        ]
-        
-    def construct_query(self, base_query, additional_terms="", date_range=None, 
-                         language=None, pub_type=None, field=None):
-        """Construct a GEPRIS query.
+        Construct a GEPRIS query string.
         
         Args:
-            base_query (str): The base query.
-            additional_terms (str, optional): Additional search terms.
-            date_range (dict, optional): The date range for the search.
-            language (str, optional): The language filter.
-            pub_type (str, optional): The publication type filter.
-            field (str, optional): The field to search in.
-            
-        Returns:
-            str: The constructed query.
-        """
-        # For GEPRIS, we'll create a custom query structure based on its web interface
-        query = base_query
-        
-        # Add additional terms if provided
-        if additional_terms:
-            query = f"{query} {additional_terms}"
-            
-        return query
-        
-    def search(self, query, params=None, log_widget=None):
-        """Search the GEPRIS database.
-        
-        Args:
-            query (str): The query string.
-            params (dict, optional): Additional search parameters.
-            log_widget (object, optional): A widget for logging messages.
-            
-        Returns:
-            List[Dict[str, Any]]: The search results.
-        """
-        if params is None:
-            params = {}
-            
-        # Get parameters
-        max_results = params.get('max_results', 100)
-        names = params.get('names', [])
-        pub_type = params.get('pub_type', '')
-        
-        # Map publication types to GEPRIS entity types
-        type_map = {
-            "Project": "task",
-            "Person": "person",
-            "Institution": "organisation",
-            "": "OCTOPUS"  # Default is all types
-        }
-        
-        # Determine the entity type based on publication type
-        entity_type = type_map.get(pub_type, "OCTOPUS")
-        
-        # If using test mode without API key, generate dummy results
-        # Note: GEPRIS doesn't actually require an API key, but we'll
-        # use dummy results for testing when requested
-        if self.api_key == "dummy":
-            from utils.logging_manager import log_message
-            log_message(log_widget, "Verwende Dummy-Ergebnisse für GEPRIS-Tests.")
-            return self._dummy_search(query, params, log_widget)
-            
-        all_results = []
-        
-        try:
-            # Use person names for person-specific queries
-            if names:
-                from utils.logging_manager import log_message
+            search_term (str): The main search term
+            **kwargs: Additional search parameters
+                - additional_terms (str): Additional search terms
+                - date_range (dict): Date range with 'start' and 'end' keys
+                - language (str): Language filter
+                - pub_type (str): Publication type filter
+                - field (str): Specific field to search in
                 
-                # Search for each person
-                for name in names:
-                    if not name:
-                        continue
-                        
-                    log_message(log_widget, f"Suche nach Person: {name} in GEPRIS...")
+        Returns:
+            str: The constructed query string
+        """
+        query_parts = []
+        
+        # Add main search term
+        if search_term:
+            query_parts.append(search_term)
+            
+        # Add additional terms if provided
+        additional_terms = kwargs.get('additional_terms')
+        if additional_terms:
+            query_parts.append(additional_terms)
+            
+        # Combine all parts with AND
+        return " AND ".join(query_parts) if query_parts else "*"
+        
+    def search(self, query: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """
+        Perform a search using the GEPRIS database.
+        
+        Args:
+            query (str): The search query
+            params (dict): Additional search parameters
+            
+        Returns:
+            list: List of search results as dictionaries
+        """
+        try:
+            # Since GEPRIS doesn't have a public API, we'll use web scraping
+            search_url = f"{self.base_url}/search/project"
+            params = {
+                'findButton': 'Finden',
+                'task': 'doSearchSimple',
+                'searchString': query
+            }
+            
+            response = requests.get(search_url, params=params)
+            response.raise_for_status()
+            
+            # Parse HTML response
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Find project results
+            results = []
+            project_elements = soup.find_all('div', class_='project-item')
+            
+            for project in project_elements[:self.max_results]:
+                try:
+                    # Extract project details
+                    title_elem = project.find('h2', class_='title')
+                    title = title_elem.text.strip() if title_elem else None
                     
-                    # For person search in GEPRIS, we'll focus on the person entity type
-                    person_query = name
+                    # Project ID
+                    project_id = None
+                    if title_elem and title_elem.find('a'):
+                        project_link = title_elem.find('a').get('href', '')
+                        project_id = project_link.split('/')[-1] if project_link else None
                     
-                    # Prepare search parameters
-                    search_params = {
-                        "task": "doSearchSimple",
-                        "searchString": person_query,
-                        "ctx": "person"  # Focus on persons
+                    # Principal investigators
+                    investigators = []
+                    pi_elem = project.find('div', class_='investigator')
+                    if pi_elem:
+                        for name in pi_elem.find_all('a'):
+                            investigators.append(name.text.strip())
+                    
+                    # Institution
+                    institution = None
+                    inst_elem = project.find('div', class_='institution')
+                    if inst_elem:
+                        institution = inst_elem.text.strip()
+                    
+                    # Project period
+                    period = None
+                    period_elem = project.find('div', class_='period')
+                    if period_elem:
+                        period = period_elem.text.strip()
+                    
+                    # Subject area
+                    subject = None
+                    subject_elem = project.find('div', class_='subject-area')
+                    if subject_elem:
+                        subject = subject_elem.text.strip()
+                    
+                    result = {
+                        'Title': title,
+                        'Project ID': project_id,
+                        'Investigators': investigators,
+                        'Institution': institution,
+                        'Period': period,
+                        'Subject Area': subject,
+                        'Database': 'GEPRIS',
+                        'URL': f"http://gepris.dfg.de/gepris/projekt/{project_id}" if project_id else None
                     }
                     
-                    try:
-                        # Send request to GEPRIS
-                        response = requests.get(
-                            self.search_url,
-                            params=search_params
-                        )
-                        
-                        # Check if request was successful
-                        if response.status_code != 200:
-                            log_message(log_widget, f"Fehler bei GEPRIS-Anfrage: {response.status_code}")
-                            continue
-                            
-                        # Parse HTML response
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        
-                        # Extract search results
-                        result_items = soup.select('.results li.result')
-                        
-                        if not result_items:
-                            log_message(log_widget, f"Keine Ergebnisse für '{name}' in GEPRIS gefunden.")
-                            continue
-                            
-                        # Limit results to max_results
-                        result_items = result_items[:max_results]
-                        
-                        # Process each result
-                        for item in result_items:
-                            try:
-                                # Extract basic information
-                                title_elem = item.select_one('h2 a')
-                                title = title_elem.get_text(strip=True) if title_elem else ""
-                                url = self.base_url + title_elem['href'] if title_elem and 'href' in title_elem.attrs else ""
-                                
-                                # Extract ID from URL
-                                gepris_id = url.split("/")[-1] if url else ""
-                                
-                                # Extract description/details
-                                details = []
-                                detail_elems = item.select('.details p')
-                                for detail in detail_elems:
-                                    details.append(detail.get_text(strip=True))
-                                
-                                details_text = "\n".join(details)
-                                
-                                # Extract subjects/categories
-                                subjects = []
-                                subject_elem = item.select_one('.subject')
-                                if subject_elem:
-                                    subjects = [s.strip() for s in subject_elem.get_text(strip=True).split(",")]
-                                
-                                # Create result dictionary
-                                result = {
-                                    "Database": "GEPRIS",
-                                    "Name": name,
-                                    "Title": title,
-                                    "Authors": name,  # In person search context, the person is the "author"
-                                    "Publication Year": "",  # GEPRIS doesn't provide years directly in search results
-                                    "Publication Types": ["Person"],
-                                    "Abstract": details_text,
-                                    "Affiliations": "",  # Extract from details if possible
-                                    "Publisher": "Deutsche Forschungsgemeinschaft (DFG)",
-                                    "Subjects": subjects,
-                                    "URL": url,
-                                    "Identifier": gepris_id
-                                }
-                                
-                                all_results.append(result)
-                                
-                            except Exception as e:
-                                log_message(log_widget, f"Fehler beim Parsen eines GEPRIS-Eintrags: {str(e)}")
-                                logger.error(f"Error parsing GEPRIS entry: {e}", exc_info=True)
-                                
-                        log_message(log_widget, f"Gefunden: {len(result_items)} Ergebnisse für '{name}' in GEPRIS")
-                        
-                    except Exception as e:
-                        log_message(log_widget, f"Fehler bei GEPRIS-Suche für '{name}': {str(e)}")
-                        logger.error(f"GEPRIS search error for '{name}': {e}", exc_info=True)
-            else:
-                # Regular search without person specification
-                from utils.logging_manager import log_message
-                log_message(log_widget, f"Suche in GEPRIS mit Abfrage: {query}")
-                
-                # Prepare search parameters
-                search_params = {
-                    "task": "doSearchSimple",
-                    "searchString": query,
-                    "ctx": entity_type
-                }
-                
-                try:
-                    # Send request to GEPRIS
-                    response = requests.get(
-                        self.search_url,
-                        params=search_params
-                    )
-                    
-                    # Check if request was successful
-                    if response.status_code != 200:
-                        log_message(log_widget, f"Fehler bei GEPRIS-Anfrage: {response.status_code}")
-                        return []
-                        
-                    # Parse HTML response
-                    soup = BeautifulSoup(response.text, 'html.parser')
-                    
-                    # Extract search results
-                    result_items = soup.select('.results li.result')
-                    
-                    if not result_items:
-                        log_message(log_widget, "Keine Ergebnisse in GEPRIS gefunden.")
-                        return []
-                        
-                    # Limit results to max_results
-                    result_items = result_items[:max_results]
-                    
-                    # Process each result
-                    for item in result_items:
-                        try:
-                            # Extract basic information
-                            title_elem = item.select_one('h2 a')
-                            title = title_elem.get_text(strip=True) if title_elem else ""
-                            url = self.base_url + title_elem['href'] if title_elem and 'href' in title_elem.attrs else ""
-                            
-                            # Extract ID from URL
-                            gepris_id = url.split("/")[-1] if url else ""
-                            
-                            # Extract description/details
-                            details = []
-                            detail_elems = item.select('.details p')
-                            for detail in detail_elems:
-                                details.append(detail.get_text(strip=True))
-                            
-                            details_text = "\n".join(details)
-                            
-                            # Extract subjects/categories
-                            subjects = []
-                            subject_elem = item.select_one('.subject')
-                            if subject_elem:
-                                subjects = [s.strip() for s in subject_elem.get_text(strip=True).split(",")]
-                            
-                            # Determine type from class
-                            result_type = "Project"
-                            if "person" in item.get("class", []):
-                                result_type = "Person"
-                            elif "organisation" in item.get("class", []):
-                                result_type = "Institution"
-                            
-                            # Try to extract persons/authors for projects
-                            authors = ""
-                            if result_type == "Project":
-                                authors_elem = item.select_one('.persons')
-                                if authors_elem:
-                                    authors = authors_elem.get_text(strip=True)
-                            
-                            # Create result dictionary
-                            result = {
-                                "Database": "GEPRIS",
-                                "Name": "General Search",
-                                "Title": title,
-                                "Authors": authors,
-                                "Publication Year": "",  # GEPRIS doesn't provide years directly in search results
-                                "Publication Types": [result_type],
-                                "Abstract": details_text,
-                                "Affiliations": "",  # Extract from details if possible
-                                "Publisher": "Deutsche Forschungsgemeinschaft (DFG)",
-                                "Subjects": subjects,
-                                "URL": url,
-                                "Identifier": gepris_id
-                            }
-                            
-                            all_results.append(result)
-                            
-                        except Exception as e:
-                            log_message(log_widget, f"Fehler beim Parsen eines GEPRIS-Eintrags: {str(e)}")
-                            logger.error(f"Error parsing GEPRIS entry: {e}", exc_info=True)
-                            
-                    log_message(log_widget, f"Gefunden: {len(result_items)} Ergebnisse in GEPRIS")
+                    results.append(result)
                     
                 except Exception as e:
-                    log_message(log_widget, f"Fehler bei GEPRIS-Suche: {str(e)}")
-                    logger.error(f"GEPRIS search error: {e}", exc_info=True)
-                    
-            return all_results
+                    logger.error(f"Error parsing GEPRIS project: {e}", exc_info=True)
+                    continue
             
+            return results
+            
+        except requests.RequestException as e:
+            logger.error(f"GEPRIS request error: {e}", exc_info=True)
+            raise Exception(f"GEPRIS request error: {str(e)}")
         except Exception as e:
-            from utils.logging_manager import log_message
-            log_message(log_widget, f"Fehler bei GEPRIS-Suche: {str(e)}")
             logger.error(f"GEPRIS search error: {e}", exc_info=True)
-            return []
+            raise Exception(f"GEPRIS search error: {str(e)}")
             
-    def _dummy_search(self, query, params=None, log_widget=None):
-        """Generate dummy results for testing.
+    def validate_api_key(self, api_key: str = None) -> bool:
+        """
+        Validate the API key (GEPRIS doesn't require an API key).
         
         Args:
-            query (str): The query string.
-            params (dict, optional): Additional search parameters.
-            log_widget (object, optional): A widget for logging messages.
-            
+            api_key (str, optional): API key (not used for GEPRIS)
+        
         Returns:
-            List[Dict[str, Any]]: The dummy search results.
+            bool: Always returns True as GEPRIS doesn't use API keys
         """
-        from utils.logging_manager import log_message
-        log_message(log_widget, "Generiere Dummy-Ergebnisse für GEPRIS...")
+        return True
+
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test the connection to the GEPRIS API.
         
-        # Generate some dummy results for testing without API key
-        dummy_results = []
-        names = params.get('names', [])
-        person_name = names[0] if names else "General Search"
+        Returns:
+            dict: A dictionary containing the test results
+        """
+        import time
         
-        # Define result types based on search context
-        if person_name != "General Search":
-            # Person-specific search - include projects and person info
-            result_types = ["Project", "Person", "Institution"]
-        else:
-            # General search - include various types
-            result_types = ["Project", "Person", "Institution"]
-        
-        # Generate dummy results
-        for i in range(1, 11):
-            # Rotate through result types
-            result_type = result_types[i % len(result_types)]
+        try:
+            start_time = time.time()
             
-            # Customize result based on type
-            if result_type == "Person":
-                title = f"Prof. Dr. {person_name if person_name != 'General Search' else f'Example Researcher {i}'}"
-                subjects = ["Medizin", "Gesundheitswissenschaften"]
-                details = "Universitätsklinikum XYZ\nAbteilung für Medizinische Forschung"
-                
-            elif result_type == "Project":
-                title = f"Dummy GEPRIS Projekt {i}: {query.capitalize() if query else 'Forschungsprojekt'}"
-                subjects = ["Klinische Forschung", "Medizinische Informatik"]
-                details = f"Laufzeit: 2020 - 2023\nFörderkennzeichen: ABC-123-{i}\nFördersumme: {i*100000} EUR"
-                
-            else:  # Institution
-                title = f"Institut für {query.capitalize() if query else 'Medizinische Forschung'} {i}"
-                subjects = ["Universitätsmedizin", "Forschungseinrichtung"]
-                details = f"Universität XYZ\nFakultät für Medizin\nAbteilung {i}"
-            
-            # Create result dictionary
-            result = {
-                "Database": "GEPRIS",
-                "Name": person_name,
-                "Title": title,
-                "Authors": person_name if result_type == "Project" and person_name != "General Search" else "",
-                "Publication Year": f"202{i % 5}",
-                "Publication Types": [result_type],
-                "Abstract": details,
-                "Affiliations": "Universität XYZ" if result_type in ["Person", "Project"] else "",
-                "Publisher": "Deutsche Forschungsgemeinschaft (DFG)",
-                "Subjects": subjects,
-                "URL": f"https://gepris.dfg.de/gepris/projekt/12345{i}",
-                "Identifier": f"12345{i}",
+            # Make a simple test query
+            test_query = "medizin"  # Simple German medical term
+            url = f"{self.base_url}/projects"
+            params = {
+                "q": test_query,
+                "rows": 1
             }
-            dummy_results.append(result)
             
-        log_message(log_widget, f"Generierte {len(dummy_results)} Dummy-Ergebnisse für GEPRIS")
-        return dummy_results
-        
-    def parse_results(self, entries, name, log_widget):
-        """Parse the results from GEPRIS search.
-        
-        Args:
-            entries (List[Dict[str, Any]]): The entries from GEPRIS search.
-            name (str): The name of the person who performed the search.
-            log_widget (object, optional): A widget for logging messages.
+            response = requests.get(url, params=params, timeout=10)
             
-        Returns:
-            List[Dict[str, Any]]: The parsed results.
-        """
-        # Note: This method is not directly used as we parse HTML directly in the search method
-        # It's included for compatibility with the DatabaseConnector interface
-        return []
-        
-    def get_citation_count(self, gepris_id):
-        """Get the citation count for a publication.
-        
-        Args:
-            gepris_id (str): The GEPRIS ID.
+            response_time = time.time() - start_time
             
-        Returns:
-            int: The citation count (always 0 for GEPRIS).
-        """
-        # GEPRIS doesn't provide citation counts
-        return 0
+            if response.ok:
+                try:
+                    data = response.json()
+                    total_results = data.get('numFound', 0)
+                    
+                    return {
+                        'status': 'OK',
+                        'message': f'Successfully connected to GEPRIS. Found {total_results} results for "medizin"',
+                        'response_time': round(response_time, 2)
+                    }
+                except json.JSONDecodeError:
+                    return {
+                        'status': 'Warning',
+                        'message': 'Connected to GEPRIS, but received invalid JSON response',
+                        'response_time': round(response_time, 2)
+                    }
+            else:
+                return {
+                    'status': 'Error',
+                    'message': f'Error connecting to GEPRIS: {response.status_code} - {response.reason}',
+                    'response_time': round(response_time, 2)
+                }
+                
+        except requests.exceptions.Timeout:
+            return {
+                'status': 'Error',
+                'message': 'Connection to GEPRIS timed out',
+                'response_time': None
+            }
+        except requests.exceptions.ConnectionError:
+            return {
+                'status': 'Error',
+                'message': 'Network error: Unable to connect to GEPRIS',
+                'response_time': None
+            }
+        except Exception as e:
+            logger.error(f"GEPRIS connection test error: {e}", exc_info=True)
+            return {
+                'status': 'Error',
+                'message': f'Error testing GEPRIS connection: {str(e)}',
+                'response_time': None
+            }

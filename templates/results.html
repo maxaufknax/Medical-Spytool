@@ -1,63 +1,27 @@
 {% extends 'base.html' %}
-
 {% block title %}Medical Spytool - Suchergebnisse{% endblock %}
+
+{% block extra_head %}
+<style>
+    .filter-panel {
+        background-color: #f8f9fa;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .filter-section {
+        margin-bottom: 0.75rem;
+    }
+    .filter-section-header {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container py-4">
     <h1 class="section-title">Suchergebnisse</h1>
-    
-    {% block scripts %}
-    {{ super() }}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Funktion zum Filtern der Ergebnistabelle
-            const filterInput = document.getElementById('resultFilterInput');
-            const clearFilterButton = document.getElementById('clearFilterButton');
-            const resultsTable = document.getElementById('resultsTable');
-            
-            if (filterInput && resultsTable) {
-                filterInput.addEventListener('input', function() {
-                    const filterValue = this.value.toLowerCase();
-                    const rows = resultsTable.querySelectorAll('tbody tr.result-row');
-                    
-                    rows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        if (text.indexOf(filterValue) > -1) {
-                            row.style.display = '';
-                        } else {
-                            row.style.display = 'none';
-                        }
-                    });
-                });
-                
-                // Clear filter button
-                if (clearFilterButton) {
-                    clearFilterButton.addEventListener('click', function() {
-                        filterInput.value = '';
-                        const rows = resultsTable.querySelectorAll('tbody tr.result-row');
-                        rows.forEach(row => {
-                            row.style.display = '';
-                        });
-                    });
-                }
-            }
-            
-            // Funktion zum Ein-/Ausblenden von Spalten
-            const columnToggles = document.querySelectorAll('.column-toggle');
-            
-            columnToggles.forEach(toggle => {
-                toggle.addEventListener('change', function() {
-                    const column = this.dataset.column;
-                    const columnElements = document.querySelectorAll(`.column-${column}`);
-                    
-                    columnElements.forEach(element => {
-                        element.style.display = this.checked ? '' : 'none';
-                    });
-                });
-            });
-        });
-    </script>
-    {% endblock %}
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -96,16 +60,70 @@
         <i class="fas fa-search me-2"></i>Neue Suche
     </a>
     {% else %}
-    <div class="d-flex justify-content-between mb-3">
-        <div class="form-inline">
-            <div class="input-group">
-                <input type="text" class="form-control" id="resultFilterInput" placeholder="In Ergebnissen suchen...">
-                <button class="btn btn-outline-secondary" type="button" id="clearFilterButton">
-                    <i class="fas fa-times"></i>
+    
+    <!-- Advanced Filter Panel -->
+    <div class="filter-panel mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Erweiterte Filter</h5>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleFilterPanelBtn">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+        </div>
+        
+        <div id="filterPanelContent">
+            <div class="row">
+                <!-- Text Search Filter -->
+                <div class="col-md-8 filter-section">
+                    <div class="filter-section-header">Textsuche</div>
+                    <div class="input-group">
+                        <input type="text" class="form-control filter-input" id="resultFilterInput" placeholder="In Ergebnissen suchen...">
+                        <button class="btn btn-outline-secondary" type="button" id="clearFilterButton">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Database Filter -->
+                <div class="col-md-4 filter-section">
+                    <div class="filter-section-header">Datenbank</div>
+                    <div id="databaseFilterContainer"></div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <!-- Year Filter -->
+                <div class="col-md-4 filter-section">
+                    <div class="filter-section-header">Publikationsjahr</div>
+                    <div id="yearFilterContainer"></div>
+                </div>
+                
+                <!-- Publication Type Filter -->
+                <div class="col-md-4 filter-section">
+                    <div class="filter-section-header">Publikationstyp</div>
+                    <div id="pubTypeFilterContainer"></div>
+                </div>
+                
+                <!-- Author Filter -->
+                <div class="col-md-4 filter-section">
+                    <div class="filter-section-header">Autor</div>
+                    <div id="authorFilterContainer"></div>
+                </div>
+            </div>
+            
+            <!-- Filter Actions -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div id="filterStats" class="text-muted small">
+                    Angezeigt: {{ count }} von {{ count }} Ergebnissen
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" id="resetFiltersButton">
+                    <i class="fas fa-undo me-1"></i>Filter zurücksetzen
                 </button>
             </div>
         </div>
-        
+    </div>
+    
+    <!-- Column Selection -->
+    <div class="d-flex justify-content-end mb-3">
         <div class="btn-group">
             <button type="button" class="btn btn-outline-secondary" id="toggleColumnsButton" data-bs-toggle="modal" data-bs-target="#columnSelectionModal">
                 <i class="fas fa-columns me-2"></i>Spalten
@@ -326,4 +344,72 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/results_filter.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle filter panel
+        const toggleFilterPanelBtn = document.getElementById('toggleFilterPanelBtn');
+        const filterPanelContent = document.getElementById('filterPanelContent');
+        
+        if (toggleFilterPanelBtn && filterPanelContent) {
+            toggleFilterPanelBtn.addEventListener('click', function() {
+                const isExpanded = filterPanelContent.style.display !== 'none';
+                
+                if (isExpanded) {
+                    filterPanelContent.style.display = 'none';
+                    this.querySelector('i').classList.remove('fa-chevron-up');
+                    this.querySelector('i').classList.add('fa-chevron-down');
+                } else {
+                    filterPanelContent.style.display = '';
+                    this.querySelector('i').classList.remove('fa-chevron-down');
+                    this.querySelector('i').classList.add('fa-chevron-up');
+                }
+                
+                // Save state
+                sessionStorage.setItem('filterPanelExpanded', !isExpanded);
+            });
+            
+            // Restore state
+            const isExpanded = sessionStorage.getItem('filterPanelExpanded') !== 'false';
+            if (!isExpanded) {
+                filterPanelContent.style.display = 'none';
+                toggleFilterPanelBtn.querySelector('i').classList.remove('fa-chevron-up');
+                toggleFilterPanelBtn.querySelector('i').classList.add('fa-chevron-down');
+            }
+        }
+        
+        // Column toggling (existing functionality)
+        const columnToggles = document.querySelectorAll('.column-toggle');
+        
+        columnToggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const column = this.dataset.column;
+                const columnElements = document.querySelectorAll(`.column-${column}`);
+                
+                columnElements.forEach(element => {
+                    element.style.display = this.checked ? '' : 'none';
+                });
+                
+                // Save column state
+                sessionStorage.setItem(`column_${column}`, this.checked);
+            });
+            
+            // Restore column state
+            const column = toggle.dataset.column;
+            const isVisible = sessionStorage.getItem(`column_${column}`);
+            
+            if (isVisible === 'false') {
+                toggle.checked = false;
+                const columnElements = document.querySelectorAll(`.column-${column}`);
+                columnElements.forEach(element => {
+                    element.style.display = 'none';
+                });
+            }
+        });
+    });
+</script>
 {% endblock %}

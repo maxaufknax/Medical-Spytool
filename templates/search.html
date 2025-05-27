@@ -23,1781 +23,293 @@
         {% endif %}
     {% endwith %}
 
-    <div class="row mb-4">
-        <div class="col-md-8">
-            <div class="alert alert-info">
-                <div class="d-flex">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-info-circle fa-2x me-3"></i>
-                    </div>
-                    <div>
-                        <h5 class="alert-heading mb-1">Verschiedene Suchmodi verfügbar</h5>
-                        <p class="mb-0">Wählen Sie einen Tab für Ihre bevorzugte Suchmethode. Sie können 
-                        <a href="/persons" class="alert-link">Personen mit zugehörigen Suchbegriffen verwalten</a> und diese dann in allen Sucharten verwenden.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="d-grid gap-2">
-                <div class="row g-2">
-                    <div class="col-6">
-                        <a href="/persons" class="btn btn-outline-primary btn-lg w-100">
-                            <i class="fas fa-user-edit me-2"></i>Personen
-                        </a>
-                    </div>
-                    <div class="col-6">
-                        <a href="/search_profiles" class="btn btn-outline-success btn-lg w-100">
-                            <i class="fas fa-save me-2"></i>Suchprofile
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    {% if error %}
-    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-        <i class="fas fa-exclamation-triangle me-2"></i> <strong>Fehler:</strong> {{ error }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    {% endif %}
-    
-    <!-- Tabs für die verschiedenen Sucharten -->
+    <!-- Search Tabs -->
     <ul class="nav nav-tabs mb-4" id="searchTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if request.args.get('db') == 'Combined' or database == 'Combined' %}active{% elif not request.args.get('db') and not database %}active{% endif %}" id="combined-tab" data-bs-toggle="tab" data-bs-target="#combined" type="button" role="tab" aria-controls="combined" aria-selected="true">
-                <i class="fas fa-search-plus me-2"></i>Kombinierte Suche
+            <button class="nav-link active" id="combined-tab" data-bs-toggle="tab" data-bs-target="#combined" type="button" role="tab">
+                <i class="fas fa-search me-2"></i>Einfache Suche
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if request.args.get('db') == 'Specific' or database and database != 'Combined' %}active{% endif %}" id="specific-tab" data-bs-toggle="tab" data-bs-target="#specific" type="button" role="tab" aria-controls="specific" aria-selected="false">
+            <button class="nav-link" id="specific-tab" data-bs-toggle="tab" data-bs-target="#specific" type="button" role="tab">
                 <i class="fas fa-database me-2"></i>Spezifische Datenbanksuche
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link {% if request.args.get('db') == 'Person' %}active{% endif %}" id="person-tab" data-bs-toggle="tab" data-bs-target="#person" type="button" role="tab" aria-controls="person" aria-selected="false">
+            <button class="nav-link" id="person-tab" data-bs-toggle="tab" data-bs-target="#person" type="button" role="tab">
                 <i class="fas fa-user-tie me-2"></i>Personenbezogene Suche
             </button>
         </li>
     </ul>
-    
+
     <div class="tab-content" id="searchTabsContent">
-        <!-- Kombinierte Suche (vereinfacht) -->
-        <div class="tab-pane fade {% if request.args.get('db') == 'Combined' or database == 'Combined' %}show active{% elif not request.args.get('db') and not database %}show active{% endif %}" id="combined" role="tabpanel" aria-labelledby="combined-tab">
-            <div class="card mb-4 border-primary">
-                <div class="card-header bg-primary bg-opacity-75 text-white">
-                    <h5 class="mb-0"><i class="fas fa-search-plus me-2"></i>Suche über alle Datenbanken</h5>
-                </div>
-                <div class="card-body">
-                    <p class="lead mb-4">Durchsuchen Sie alle verfügbaren Datenbanken gleichzeitig und erhalten Sie integrierte Ergebnisse.</p>
-                    
-                    <form id="combinedSearchForm" method="post" action="/search">
-                        <input type="hidden" name="database" value="Combined">
-                        
-                        <div class="mb-4">
-                            <label for="combined_search_term" class="form-label">Suchbegriff</label>
-                            <input type="text" class="form-control form-control-lg" id="combined_search_term" name="search_term" placeholder="z.B. Diabetes Mellitus" required>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="combined_additional_terms" class="form-label">Zusätzliche Suchbegriffe (optional)</label>
-                                <input type="text" class="form-control" id="combined_additional_terms" name="additional_terms" placeholder="z.B. Treatment OR Therapy">
+        <!-- Simple Search (formerly Combined Search) -->
+        <div class="tab-pane fade show active" id="combined" role="tabpanel">
+            <form id="combinedSearchForm" method="post" action="{{ url_for('search') }}" data-search-form>
+                <input type="hidden" name="database" value="Combined">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search me-2"></i>Einfache Suche in allen Datenbanken
+                        </h5>
+                        <small class="text-muted">Suchen Sie mit einem einfachen Suchbegriff in allen verfügbaren Datenbanken gleichzeitig</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="combined_search_term" class="form-label">Suchbegriff</label>
+                                <input type="text" class="form-control" id="combined_search_term" name="search_term" 
+                                       placeholder="z.B. anette melk, diabetes, coronavirus..."
+                                       value="{{ profile.search_term if profile else '' }}" required>
+                                <div class="form-text">Geben Sie Ihren Suchbegriff ein. Die Suche erfolgt automatisch in allen verfügbaren Datenbanken.</div>
                             </div>
-                            
-                            <div class="col-md-6">
-                                <label for="combined_person_search" class="form-label">Nach Personen suchen</label>
-                                <div class="person-autocomplete-wrapper mb-2">
-                                    <input type="text" class="form-control person-autocomplete" id="combined_person_search" placeholder="Name eingeben...">
-                                    <div class="person-autocomplete-items" style="display: none;"></div>
+                            <div class="col-md-4">
+                                <label for="combined_max_results" class="form-label">Max. Ergebnisse</label>
+                                <input type="number" class="form-control" id="combined_max_results" name="max_results" 
+                                       value="{{ profile.max_results if profile else '100' }}" min="1" max="10000">
+                                <div class="form-text">Maximum pro Datenbank</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Suche starten
+                    </button>
+                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
+                        <i class="fas fa-save me-2"></i>Als Profil speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Specific Database Search -->
+        <div class="tab-pane fade" id="specific" role="tabpanel">
+            <form id="specificSearchForm" method="post" action="{{ url_for('search') }}" data-search-form>
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="database" class="form-label">Datenbank</label>
+                                <select class="form-select" id="database" name="database" required>
+                                    <option value="">Datenbank auswählen</option>
+                                    <option value="PubMed" {% if profile and profile.database == 'PubMed' %}selected{% endif %}>PubMed</option>
+                                    <option value="DNB" {% if profile and profile.database == 'DNB' %}selected{% endif %}>DNB</option>
+                                    <option value="Scopus" {% if profile and profile.database == 'Scopus' %}selected{% endif %}>Scopus</option>
+                                    <option value="WoS" {% if profile and profile.database == 'WoS' %}selected{% endif %}>Web of Science</option>
+                                    <option value="GEPRIS" {% if profile and profile.database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="search_field" class="form-label">Suchfeld</label>
+                                <select class="form-select" id="search_field" name="search_field">
+                                    <option value="Alle Felder">Alle Felder</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="max_results" class="form-label">Max. Ergebnisse</label>
+                                <input type="number" class="form-control" id="max_results" name="max_results" 
+                                       value="{{ profile.max_results if profile else '100' }}" min="1" max="10000">
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label for="search_term" class="form-label">Suchbegriff</label>
+                                <input type="text" class="form-control" id="search_term" name="search_term" 
+                                       value="{{ profile.search_term if profile else '' }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label">Personen</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control person-autocomplete" id="specific_person_search" 
+                                           placeholder="Person suchen...">
+                                    <div class="person-autocomplete-items"></div>
                                 </div>
-                                <input type="hidden" id="combined_persons_names" name="person_names" value="">
-                                <div class="d-flex justify-content-between mt-1 mb-2">
-                                    <small class="form-text text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> Personen durch Eingabe suchen
-                                    </small>
-                                    <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
-                                        <i class="fas fa-user-edit me-1"></i>Personen verwalten
-                                    </a>
-                                </div>
-                                <label class="form-label mt-2">Ausgewählte Personen</label>
-                                <div id="combined_selected_persons" class="selected-persons-container">
-                                    <!-- Hier werden die ausgewählten Personen angezeigt -->
+                                <div id="specific_selected_persons" class="selected-persons mt-2">
                                     <div class="text-muted small fst-italic">Keine Personen ausgewählt</div>
                                 </div>
+                                <input type="hidden" id="specific_persons_names" name="person_names">
                             </div>
                         </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-12 mb-3">
-                                <label class="form-label">Datenbanken für die Suche</label>
-                                <div class="card">
-                                    <div class="card-body bg-dark bg-opacity-50">
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="checkbox" id="use_all_databases" name="use_all_databases" checked>
-                                            <label class="form-check-label" for="use_all_databases">
-                                                <strong>Alle Datenbanken durchsuchen</strong>
-                                            </label>
-                                        </div>
-                                        <hr>
-                                        <div id="database_selection" class="row g-3 mt-1" style="opacity: 0.5;">
-                                            <div class="col-md-6">
-                                                <div class="form-check">
-                                                    <input class="form-check-input database-checkbox" type="checkbox" id="use_pubmed" name="databases" value="PubMed" checked disabled>
-                                                    <label class="form-check-label" for="use_pubmed">
-                                                        PubMed
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-check">
-                                                    <input class="form-check-input database-checkbox" type="checkbox" id="use_dnb" name="databases" value="DNB" checked disabled>
-                                                    <label class="form-check-label" for="use_dnb">
-                                                        Deutsche Nationalbibliothek (DNB)
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="pub_type" class="form-label">Publikationstyp</label>
+                                <select class="form-select" id="pub_type" name="pub_type">
+                                    <option value="">Alle Typen</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="language" class="form-label">Sprache</label>
+                                <select class="form-select" id="language" name="language">
+                                    <option value="">Alle Sprachen</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="use_date_filter" name="use_date_filter">
+                                    <label class="form-check-label" for="use_date_filter">
+                                        Datumsbereich einschränken
+                                    </label>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="combined_language" class="form-label">Sprache (optional)</label>
-                                <select class="form-select" id="combined_language" name="language">
-                                    <option value="">Alle Sprachen</option>
-                                    <option value="German">Deutsch</option>
-                                    <option value="English">Englisch</option>
-                                    <option value="French">Französisch</option>
-                                    <option value="Spanish">Spanisch</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label for="combined_max_results" class="form-label">Max. Anzahl Ergebnisse pro Datenbank</label>
-                                <input type="number" class="form-select" id="combined_max_results" name="max_results" min="1" max="1000" value="100">
-                            </div>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-8">
-                                <button type="submit" class="btn btn-primary me-2" id="combinedSearchButton">
-                                    <i class="fas fa-search me-2"></i>Suche starten
-                                </button>
-                                <button type="reset" class="btn btn-outline-secondary me-2">
-                                    <i class="fas fa-undo me-2"></i>Zurücksetzen
-                                </button>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
-                                    <i class="fas fa-save me-2"></i>Suche als Profil speichern
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Spezifische Datenbanksuche (mit allen Optionen) -->
-        <div class="tab-pane fade {% if request.args.get('db') == 'Specific' or database and database != 'Combined' %}show active{% endif %}" id="specific" role="tabpanel" aria-labelledby="specific-tab">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-database me-2"></i>Detaillierte Datenbanksuche</h5>
-                </div>
-                <div class="card-body">
-                    <form id="specificSearchForm" method="post" action="/search">
-                        <div class="card mb-4 bg-dark bg-opacity-10 border-primary">
-                            <div class="card-header bg-primary bg-opacity-25">
-                                <h5 class="mb-0"><i class="fas fa-database me-2"></i>Datenbank auswählen</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12">
-                                        <label for="database" class="form-label fs-5">Welche Datenbank möchten Sie durchsuchen?</label>
-                                        <select class="form-select form-select-lg" id="database" name="database" required>
-                                            <option value="PubMed" {% if database == 'PubMed' %}selected{% endif %}>PubMed</option>
-                                            <option value="DNB" {% if database == 'DNB' %}selected{% endif %}>Deutsche Nationalbibliothek (DNB)</option>
-                                            <option value="Scopus" {% if database == 'Scopus' %}selected{% endif %}>Scopus</option>
-                                            <option value="WoS" {% if database == 'WoS' %}selected{% endif %}>Web of Science (WoS)</option>
-                                            <option value="GEPRIS" {% if database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-12 mb-3">
-                                <label for="search_field" class="form-label">Suchfeld</label>
-                                <select class="form-select" id="search_field" name="search_field">
-                                    <option value="Alle Felder">Alle Felder</option>
-                                    <!-- Weitere Optionen werden per JavaScript geladen -->
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="specific_person_search" class="form-label">Nach Personen suchen</label>
-                            <div class="person-autocomplete-wrapper mb-2">
-                                <input type="text" class="form-control person-autocomplete" id="specific_person_search" placeholder="Name eingeben...">
-                                <div class="person-autocomplete-items" style="display: none;"></div>
-                            </div>
-                            <input type="hidden" id="specific_persons_names" name="person_names" value="">
-                            <div class="d-flex justify-content-between mt-1 mb-2">
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle me-1"></i> Personen durch Eingabe suchen
-                                </small>
-                                <a href="/persons" class="btn btn-sm btn-outline-secondary" title="Personenverzeichnis verwalten" target="_blank">
-                                    <i class="fas fa-user-edit me-1"></i>Personen verwalten
-                                </a>
-                            </div>
-                            <label class="form-label mt-2">Ausgewählte Personen</label>
-                            <div id="specific_selected_persons" class="selected-persons-container">
-                                <!-- Hier werden die ausgewählten Personen angezeigt -->
-                                <div class="text-muted small fst-italic">Keine Personen ausgewählt</div>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="search_term" class="form-label">Suchbegriff</label>
-                            <input type="text" class="form-control" id="search_term" name="search_term" placeholder="z.B. Diabetes Mellitus">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="additional_terms" class="form-label">Zusätzliche Suchbegriffe (optional)</label>
-                            <input type="text" class="form-control" id="additional_terms" name="additional_terms" placeholder="z.B. Treatment OR Therapy">
-                        </div>
-                        
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="use_date_filter" name="use_date_filter">
-                                <label class="form-check-label" for="use_date_filter">
-                                    Zeitraum einschränken
-                                </label>
-                            </div>
-                        </div>
-                        
                         <div id="dateFilterSection" class="row mb-3" style="display: none;">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6">
                                 <label for="start_date" class="form-label">Von</label>
                                 <input type="date" class="form-control" id="start_date" name="start_date">
                             </div>
-                            
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6">
                                 <label for="end_date" class="form-label">Bis</label>
                                 <input type="date" class="form-control" id="end_date" name="end_date">
                             </div>
                         </div>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6 mb-3">
-                                <label for="language" class="form-label">Sprache (optional)</label>
-                                <select class="form-select" id="language" name="language">
-                                    <option value="">Alle Sprachen</option>
-                                    <option value="German">Deutsch</option>
-                                    <option value="English">Englisch</option>
-                                    <option value="French">Französisch</option>
-                                    <option value="Spanish">Spanisch</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="pub_type" class="form-label">Publikationstyp (optional)</label>
-                                <select class="form-select" id="pub_type" name="pub_type">
-                                    <option value="">Alle Typen</option>
-                                    <option value="Journal Article">Journalartikel</option>
-                                    <option value="Review">Review</option>
-                                    <option value="Clinical Trial">Klinische Studie</option>
-                                    <option value="Book">Buch</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="max_results" class="form-label">Max. Anzahl Ergebnisse</label>
-                            <input type="number" class="form-control" id="max_results" name="max_results" min="1" max="10000" value="100">
-                            <small class="form-text">Sie können bis zu 10.000 Ergebnisse anfordern (abhängig von der Datenbank)</small>
-                        </div>
-                        
-                        <div class="row">
-                            <div class="col-md-8">
-                                <button type="submit" class="btn btn-primary me-2" id="searchButton">
-                                    <i class="fas fa-search me-2"></i>Suchen
-                                </button>
-                                <button type="reset" class="btn btn-secondary me-2">
-                                    <i class="fas fa-undo me-2"></i>Zurücksetzen
-                                </button>
-                            </div>
-                            <div class="col-md-4 text-end">
-                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
-                                    <i class="fas fa-save me-2"></i>Suche als Profil speichern
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Suche starten
+                    </button>
+                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#saveProfileModal">
+                        <i class="fas fa-save me-2"></i>Als Profil speichern
+                    </button>
+                </div>
+            </form>
         </div>
-        
-        <!-- Personenbezogene Suche -->
-        <div class="tab-pane fade {% if request.args.get('db') == 'Person' %}show active{% endif %}" id="person" role="tabpanel" aria-labelledby="person-tab">
-            <div class="card mb-4 border-success">
-                <div class="card-header bg-success bg-opacity-75 text-white">
-                    <h5 class="mb-0"><i class="fas fa-user-tie me-2"></i>Personen-Suche</h5>
-                </div>
-                <div class="card-body">
-                    <p class="lead mb-4">Wählen Sie eine Person aus dem Verzeichnis und suchen Sie mit den gespeicherten Suchbegriffen.</p>
-                    
-                    <form id="personSearchForm" method="post" action="/search">
-                        <input type="hidden" name="database" value="Combined" id="person_database">
-                        
-                        <div class="mb-4">
-                            <label for="person_selector" class="form-label">Person auswählen</label>
-                            <select class="form-select form-select-lg mb-3" id="person_selector" required>
-                                <option value="" selected disabled>-- Person auswählen --</option>
-                                <!-- Wird per JavaScript gefüllt -->
-                            </select>
-                            
-                            <div class="d-flex justify-content-end">
-                                <a href="/persons" class="btn btn-outline-success btn-sm">
-                                    <i class="fas fa-user-edit me-1"></i>Personenverzeichnis verwalten
-                                </a>
-                            </div>
-                        </div>
-                        
-                        <div id="personDetails" class="mb-4 p-3 border rounded bg-light" style="display: none;">
-                            <h5 class="mb-3">Suchdetails</h5>
-                            <div class="row">
-                                <div class="col-md-4 mb-2">
-                                    <strong>Name:</strong>
-                                    <input type="text" class="form-control-plaintext" id="person_detail_name" name="person_name" readonly>
-                                </div>
-                                <div class="col-md-8 mb-2">
-                                    <strong>Hauptsuchbegriff:</strong>
-                                    <input type="text" class="form-control-plaintext" id="person_detail_search_term" name="search_term" readonly>
-                                </div>
-                                <div class="col-md-12 mb-2">
-                                    <strong>Zusätzliche Suchbegriffe:</strong>
-                                    <input type="text" class="form-control-plaintext" id="person_detail_additional_terms" name="additional_terms" readonly>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label for="person_search_db" class="form-label">Datenbank</label>
-                                <select class="form-select" id="person_search_db" name="database">
-                                    <option value="Combined" selected>Alle Datenbanken</option>
-                                    <option value="PubMed">Nur PubMed</option>
-                                    <option value="DNB">Nur Deutsche Nationalbibliothek</option>
-                                    <option value="Scopus">Nur Scopus</option>
-                                    <option value="WoS">Nur Web of Science</option>
-                                    <option value="GEPRIS">Nur GEPRIS</option>
+
+        <!-- Person Search -->
+        <div class="tab-pane fade" id="person" role="tabpanel">
+            <form id="personSearchForm" method="post" action="{{ url_for('search') }}" data-search-form>
+                <input type="hidden" name="database" value="Combined" id="person_database">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label for="person_selector" class="form-label">Person auswählen</label>
+                                <select class="form-select" id="person_selector" required>
+                                    <option value="">Person auswählen...</option>
                                 </select>
                             </div>
-                            
-                            <div class="col-md-6">
-                                <label for="person_max_results" class="form-label">Max. Anzahl Ergebnisse pro Datenbank</label>
-                                <input type="number" class="form-control" id="person_max_results" name="max_results" min="1" max="10000" value="100">
-                                <small class="form-text">Sie können bis zu 10.000 Ergebnisse anfordern</small>
+                            <div class="col-md-4">
+                                <label for="person_search_db" class="form-label">Datenbank</label>
+                                <select class="form-select" id="person_search_db">
+                                    <option value="Combined">Alle Datenbanken</option>
+                                    <option value="PubMed">PubMed</option>
+                                    <option value="DNB">DNB</option>
+                                    <option value="Scopus">Scopus</option>
+                                    <option value="WoS">Web of Science</option>
+                                    <option value="GEPRIS">GEPRIS</option>
+                                </select>
                             </div>
                         </div>
-                        
-                        <button type="submit" class="btn btn-success" id="personSearchButton" disabled>
-                            <i class="fas fa-search me-2"></i>Nach Person suchen
-                        </button>
-                    </form>
+
+                        <div id="personDetails" class="mb-3 p-3 border rounded bg-light" style="display: none;">
+                            <h6 class="mb-3">Suchdetails für die ausgewählte Person</h6>
+                            <input type="hidden" id="person_detail_name" name="person_name">
+                            <input type="hidden" id="person_detail_search_term" name="search_term">
+                            <input type="hidden" id="person_detail_additional_terms" name="additional_terms">
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-2"><strong>Hauptsuchbegriff:</strong></p>
+                                    <p class="search-term-display"></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-2"><strong>Zusätzliche Suchbegriffe:</strong></p>
+                                    <p class="additional-terms-display text-muted"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+
+                <button type="submit" class="btn btn-primary" id="personSearchButton" disabled>
+                    <i class="fas fa-search me-2"></i>Suche starten
+                </button>
+            </form>
         </div>
     </div>
-    
-    <!-- Verbesserter Loading Indicator mit Details und Fortschrittsanzeige -->
-    <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" id="loadingIndicator" style="display: none !important; z-index: 9999;">
-        <div class="card p-4 text-center shadow-lg" style="max-width: 500px; width: 100%;">
+
+    <!-- Loading Indicator -->
+    <div class="loading-indicator position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75" 
+         id="loadingIndicator" style="display: none !important; z-index: 9999;">
+        <div class="card p-4 text-center shadow-lg" style="max-width: 500px;">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5 class="m-0">Suche läuft</h5>
                 <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleSearchDetails">
-                    <i class="fas fa-chevron-down" id="toggleSearchDetailsIcon"></i>
+                    <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
             
-            <div class="d-flex justify-content-center align-items-center mb-3">
-                <div class="spinner-border text-primary me-3" role="status">
-                    <span class="visually-hidden">Wird geladen...</span>
-                </div>
-                <div class="text-start">
-                    <div id="searchStatusSimple">Datenbanken werden durchsucht...</div>
-                    <div class="progress mt-2" style="height: 10px;">
-                        <div id="searchProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                    </div>
+            <div class="progress mb-3" style="height: 20px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" id="searchProgressBar" 
+                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                    0%
                 </div>
             </div>
             
-            <!-- Detaillierte Fortschrittsanzeige (anfangs versteckt) -->
-            <div id="searchDetailsPanel" class="mt-3 text-start" style="display: none;">
-                <div class="card bg-dark bg-opacity-25 mb-3">
-                    <div class="card-body p-3">
-                        <h6 class="mb-2 border-bottom pb-2">Status der Datenbanksuche</h6>
-                        <div id="databaseSearchStatus">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span><i class="fas fa-circle-notch fa-spin me-2"></i> PubMed</span>
-                                <span id="pubmed-status">Initialisiere...</span>
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <span><i class="fas fa-circle-notch fa-spin me-2"></i> DNB</span>
-                                <span id="dnb-status">Warte...</span>
-                            </div>
-                        </div>
+            <div id="searchDetailsPanel" class="collapse">
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <h6 class="card-title">Aktuelle Datenbank</h6>
+                        <p id="currentDatabaseStatus" class="mb-0">Initialisiere...</p>
                     </div>
                 </div>
                 
-                <div class="card bg-dark bg-opacity-25">
-                    <div class="card-body p-3">
-                        <h6 class="mb-2 border-bottom pb-2">Suchprotokoll</h6>
-                        <div id="searchLogContainer" style="max-height: 150px; overflow-y: auto;">
-                            <div id="searchLog" class="small">
-                                <!-- Wird dynamisch gefüllt -->
-                                <div class="log-entry"><span class="text-muted">[00:00:00]</span> Suche gestartet...</div>
-                            </div>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">Suchprotokoll</h6>
+                        <div id="searchLog" class="small text-muted" style="max-height: 150px; overflow-y: auto;">
                         </div>
                     </div>
                 </div>
             </div>
             
-            <hr class="my-3">
-            <div class="d-flex justify-content-center">
-                <button type="button" class="btn btn-sm btn-outline-danger me-2" id="cancelSearchButton">
+            <div class="mt-3">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="cancelSearch">
                     <i class="fas fa-times me-1"></i>Abbrechen (ESC)
                 </button>
             </div>
         </div>
     </div>
-    
-    <!-- Modal für das Speichern eines Suchprofils -->
-    <div class="modal fade" id="saveProfileModal" tabindex="-1" aria-labelledby="saveProfileModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="saveProfileModalLabel">Suchprofil speichern</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Schließen"></button>
-                </div>
-                <form action="{{ url_for('search_profiles') }}" method="post">
-                    <input type="hidden" name="action" value="save">
-                    <div class="modal-body">
-                        <p>Speichern Sie Ihre aktuelle Suche als Profil, um sie später wiederverwenden zu können.</p>
-                        
-                        <div class="mb-3">
-                            <label for="profile_name" class="form-label">Name des Suchprofils</label>
-                            <input type="text" class="form-control" id="profile_name" name="profile_name" required>
-                            <div class="form-text">Geben Sie einen aussagekräftigen Namen für dieses Suchprofil ein.</div>
-                        </div>
-                        
-                        <!-- Hidden inputs to collect form data from the active tab -->
-                        <input type="hidden" id="profile_database" name="database">
-                        <input type="hidden" id="profile_search_term" name="search_term">
-                        <input type="hidden" id="profile_additional_terms" name="additional_terms">
-                        <input type="hidden" id="profile_person_name" name="person_name">
-                        <input type="hidden" id="profile_max_results" name="max_results">
-                        <input type="hidden" id="profile_search_field" name="search_field">
-                        <input type="hidden" id="profile_language" name="language">
-                        <input type="hidden" id="profile_pub_type" name="pub_type">
-                        <input type="hidden" id="profile_use_date_filter" name="use_date_filter">
-                        <input type="hidden" id="profile_start_date" name="start_date">
-                        <input type="hidden" id="profile_end_date" name="end_date">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>Profil speichern
-                        </button>
-                    </div>
-                </form>
+</div>
+
+<!-- Save Profile Modal -->
+<div class="modal fade" id="saveProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Suchprofil speichern</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <form action="{{ url_for('save_search_profile') }}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="profile_name" class="form-label">Profilname</label>
+                        <input type="text" class="form-control" id="profile_name" name="profile_name" required>
+                    </div>
+                    <input type="hidden" name="profile_data" id="profile_data">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i>Speichern
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
-<script>
-// Database Selection Management
-document.addEventListener('DOMContentLoaded', function() {
-    const useAllDatabasesCheckbox = document.getElementById('use_all_databases');
-    const databaseSelection = document.getElementById('database_selection');
-    const databaseCheckboxes = document.querySelectorAll('.database-checkbox');
-    
-    if (useAllDatabasesCheckbox && databaseSelection) {
-        useAllDatabasesCheckbox.addEventListener('change', function() {
-            if (this.checked) {
-                // Wenn "Alle Datenbanken" ausgewählt ist, deaktiviere einzelne Datenbankauswahl
-                databaseSelection.style.opacity = '0.5';
-                databaseCheckboxes.forEach(cb => {
-                    cb.disabled = true;
-                    cb.checked = true; // Alle Checkboxen aktivieren
-                });
-            } else {
-                // Wenn "Alle Datenbanken" nicht ausgewählt ist, aktiviere einzelne Datenbankauswahl
-                databaseSelection.style.opacity = '1';
-                databaseCheckboxes.forEach(cb => {
-                    cb.disabled = false;
-                });
-            }
-        });
-    }
-    
-    // Formular-Validierung für kombinierte Suche
-    const combinedSearchForm = document.getElementById('combinedSearchForm');
-    if (combinedSearchForm) {
-        combinedSearchForm.addEventListener('submit', function(event) {
-            const personSelectEl = document.getElementById('combined_persons_select');
-            const personsSelected = personSelectEl && personSelectEl.selectedOptions.length > 0;
-            const searchTerm = document.getElementById('combined_search_term').value.trim();
-            
-            // Bei Submit die ausgewählten Personen in ein Hidden-Feld schreiben
-            if (personsSelected) {
-                const selectedPersons = Array.from(personSelectEl.selectedOptions).map(option => option.value);
-                document.getElementById('combined_persons_names').value = selectedPersons.join(';');
-            }
-            
-            // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
-            if (!personsSelected && !searchTerm) {
-                event.preventDefault();
-                alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
-                return false;
-            }
-            
-            // Prüfen, ob bei deaktivierter "Alle Datenbanken"-Option mindestens eine Datenbank ausgewählt ist
-            const useAllDatabases = document.getElementById('use_all_databases').checked;
-            if (!useAllDatabases) {
-                const selectedDatabases = document.querySelectorAll('.database-checkbox:checked');
-                if (selectedDatabases.length === 0) {
-                    event.preventDefault();
-                    alert('Bitte wählen Sie mindestens eine Datenbank aus.');
-                    return false;
-                }
-            }
-            
-            return true;
-        });
-    }
-    
-    // Formular-Validierung für spezifische Datenbanksuche
-    const specificSearchForm = document.getElementById('specificSearchForm');
-    if (specificSearchForm) {
-        specificSearchForm.addEventListener('submit', function(event) {
-            const personSelectEl = document.getElementById('specific_persons_select');
-            const personsSelected = personSelectEl && personSelectEl.selectedOptions.length > 0;
-            const searchTerm = document.getElementById('search_term').value.trim();
-            
-            // Bei Submit die ausgewählten Personen in ein Hidden-Feld schreiben
-            if (personsSelected) {
-                const selectedPersons = Array.from(personSelectEl.selectedOptions).map(option => option.value);
-                document.getElementById('specific_persons_names').value = selectedPersons.join(';');
-            }
-            
-            // Prüfen, ob mindestens eine Person oder ein Suchbegriff eingegeben wurde
-            if (!personsSelected && !searchTerm) {
-                event.preventDefault();
-                alert('Bitte geben Sie mindestens einen Suchbegriff oder wählen Sie eine Person aus.');
-                return false;
-            }
-            return true;
-        });
-    }
-});
-
-// Person Autocomplete Functionality
-document.addEventListener('DOMContentLoaded', function() {
-    // Fetch all persons from the API
-    fetchPersons();
-    
-    // Setup the autocomplete for all person inputs
-    setupPersonAutocomplete();
-    
-    // Initialisiere die Anzeige der ausgewählten Personen
-    updateSelectedPersons('combined');
-    updateSelectedPersons('specific');
-});
-
-let personsData = [];
-
-// Function to fetch persons from the API
-function fetchPersons() {
-    fetch('/persons/list')
-        .then(response => response.json())
-        .then(data => {
-            personsData = data;
-            // Once we have the data, setup all person selectors
-            setupPersonSelectors();
-        })
-        .catch(error => {
-            console.error('Error fetching persons:', error);
-        });
-}
-
-// Function to setup the person selector in the person tab
-function setupPersonSelectors() {
-    // Handle the single-select person selector in the Person-Tab
-    const personSelector = document.getElementById('person_selector');
-    if (personSelector) {
-        // Clear any existing options (except the first placeholder)
-        while (personSelector.options.length > 1) {
-            personSelector.remove(1);
-        }
-        
-        // Add options for each person
-        personsData.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.Name;
-            option.textContent = person.Name;
-            option.dataset.searchTerm = person['Search Term'];
-            option.dataset.additionalTerms = person['Additional Terms'] || '';
-            personSelector.appendChild(option);
-        });
-        
-        // Handle selection change
-        personSelector.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            const personName = selectedOption.value;
-            const searchTerm = selectedOption.dataset.searchTerm;
-            const additionalTerms = selectedOption.dataset.additionalTerms;
-    
-    // Setup multi-select person selector in the Combined Tab
-    const combinedPersonsSelect = document.getElementById('combined_persons_select');
-    if (combinedPersonsSelect) {
-        // Clear any existing options
-        while (combinedPersonsSelect.options.length > 0) {
-            combinedPersonsSelect.remove(0);
-        }
-        
-        // Add options for each person
-        personsData.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.Name;
-            option.textContent = person.Name;
-            option.dataset.searchTerm = person['Search Term'];
-            option.dataset.additionalTerms = person['Additional Terms'] || '';
-            combinedPersonsSelect.appendChild(option);
-        });
-        
-        // Handle selection changes for multi-select
-        combinedPersonsSelect.addEventListener('change', function() {
-            updateSelectedPersons('combined');
-        });
-    }
-    
-    // Setup multi-select person selector in the Specific Tab
-    const specificPersonsSelect = document.getElementById('specific_persons_select');
-    if (specificPersonsSelect) {
-        // Clear any existing options
-        while (specificPersonsSelect.options.length > 0) {
-            specificPersonsSelect.remove(0);
-        }
-        
-        // Add options for each person
-        personsData.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.Name;
-            option.textContent = person.Name;
-            option.dataset.searchTerm = person['Search Term'];
-            option.dataset.additionalTerms = person['Additional Terms'] || '';
-            specificPersonsSelect.appendChild(option);
-        });
-        
-        // Handle selection changes for multi-select
-        specificPersonsSelect.addEventListener('change', function() {
-            updateSelectedPersons('specific');
-        });
-    }
-            
-            // Populate hidden fields
-            document.getElementById('person_detail_name').value = personName;
-            document.getElementById('person_detail_search_term').value = searchTerm;
-            document.getElementById('person_detail_additional_terms').value = additionalTerms;
-            
-            // Show details section
-            document.getElementById('personDetails').style.display = 'block';
-            
-            // Enable search button
-            document.getElementById('personSearchButton').disabled = false;
-        });
-    }
-    
-    // Handle the multi-select combined persons select
-    const combinedPersonsSelect = document.getElementById('combined_persons_select');
-    if (combinedPersonsSelect) {
-        // Clear existing options
-        combinedPersonsSelect.innerHTML = '';
-        
-        // Add options for each person
-        personsData.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.Name;
-            option.textContent = person.Name;
-            option.dataset.searchTerm = person['Search Term'];
-            option.dataset.additionalTerms = person['Additional Terms'] || '';
-            combinedPersonsSelect.appendChild(option);
-        });
-    }
-    
-    // Handle the multi-select specific persons select
-    const specificPersonsSelect = document.getElementById('specific_persons_select');
-    if (specificPersonsSelect) {
-        // Clear existing options
-        specificPersonsSelect.innerHTML = '';
-        
-        // Add options for each person
-        personsData.forEach(person => {
-            const option = document.createElement('option');
-            option.value = person.Name;
-            option.textContent = person.Name;
-            option.dataset.searchTerm = person['Search Term'];
-            option.dataset.additionalTerms = person['Additional Terms'] || '';
-            specificPersonsSelect.appendChild(option);
-        });
-    }
-}
-
-// Funktion zum Hinzufügen einer Person zur Auswahliste
-function addPersonToSelection(personName, prefix) {
-    // Person zur Auswahlliste hinzufügen
-    const selectedPersons = document.getElementById(`${prefix}_selected_persons`);
-    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
-    
-    if (!selectedPersons || !hiddenInput) return;
-    
-    // Aktuell ausgewählte Personen abrufen
-    let currentSelection = hiddenInput.value ? hiddenInput.value.split(',') : [];
-    
-    // Prüfen, ob die Person bereits ausgewählt ist
-    if (currentSelection.includes(personName)) {
-        return; // Person ist bereits ausgewählt, nichts tun
-    }
-    
-    // Person zur Auswahl hinzufügen
-    currentSelection.push(personName);
-    
-    // Hidden Input aktualisieren
-    hiddenInput.value = currentSelection.join(',');
-    
-    // Leere Nachricht entfernen, wenn vorhanden
-    const emptyMessage = selectedPersons.querySelector('.text-muted.small.fst-italic');
-    if (emptyMessage) {
-        selectedPersons.removeChild(emptyMessage);
-    }
-    
-    // Badge für die neue Person erstellen
-    const badge = document.createElement('span');
-    badge.className = 'selected-person-badge';
-    badge.innerHTML = `
-        ${personName}
-        <span class="remove-person" data-person="${personName}">
-            <i class="fas fa-times-circle"></i>
-        </span>
-    `;
-    selectedPersons.appendChild(badge);
-    
-    // Click-Handler für das Entfernen hinzufügen
-    const removeBtn = badge.querySelector('.remove-person');
-    removeBtn.addEventListener('click', function(e) {
-        removePersonFromSelection(this.dataset.person, prefix);
-        e.stopPropagation();
-    });
-}
-
-// Funktion zum Entfernen einer Person aus der Auswahliste
-function removePersonFromSelection(personName, prefix) {
-    const selectedPersons = document.getElementById(`${prefix}_selected_persons`);
-    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
-    
-    if (!selectedPersons || !hiddenInput) return;
-    
-    // Aktuell ausgewählte Personen abrufen
-    let currentSelection = hiddenInput.value ? hiddenInput.value.split(',') : [];
-    
-    // Person aus der Auswahl entfernen
-    currentSelection = currentSelection.filter(name => name !== personName);
-    
-    // Hidden Input aktualisieren
-    hiddenInput.value = currentSelection.join(',');
-    
-    // Badge für diese Person entfernen
-    const badges = selectedPersons.querySelectorAll('.selected-person-badge');
-    badges.forEach(badge => {
-        const removeBtnDataset = badge.querySelector('.remove-person').dataset;
-        if (removeBtnDataset.person === personName) {
-            selectedPersons.removeChild(badge);
-        }
-    });
-    
-    // Wenn keine Personen mehr ausgewählt sind, Nachricht anzeigen
-    if (currentSelection.length === 0) {
-        const emptyMessage = document.createElement('div');
-        emptyMessage.className = 'text-muted small fst-italic';
-        emptyMessage.textContent = 'Keine Personen ausgewählt';
-        selectedPersons.appendChild(emptyMessage);
-    }
-}
-
-// Funktion zur Aktualisierung der ausgewählten Personen (alte Methode, wird nicht mehr verwendet)
-function updateSelectedPersons(prefix) {
-    // Get the hidden input and the container
-    const hiddenInput = document.getElementById(`${prefix}_persons_names`);
-    const selectedContainer = document.getElementById(`${prefix}_selected_persons`);
-    
-    if (!hiddenInput || !selectedContainer) return;
-    
-    // Clear the container
-    selectedContainer.innerHTML = '';
-    
-    // Get all selected persons
-    const selectedPersons = hiddenInput.value ? hiddenInput.value.split(',') : [];
-    
-    if (selectedPersons.length === 0) {
-        // If no selections, display a message
-        const emptyMessage = document.createElement('div');
-        emptyMessage.className = 'text-muted small fst-italic';
-        emptyMessage.textContent = 'Keine Personen ausgewählt';
-        selectedContainer.appendChild(emptyMessage);
-    } else {
-        // Create badges for each selected person
-        selectedPersons.forEach(personName => {
-            const badge = document.createElement('span');
-            badge.className = 'selected-person-badge';
-            badge.innerHTML = `
-                ${personName}
-                <span class="remove-person" data-person="${personName}">
-                    <i class="fas fa-times-circle"></i>
-                </span>
-            `;
-            selectedContainer.appendChild(badge);
-            
-            // Add click handler for the remove button
-            const removeBtn = badge.querySelector('.remove-person');
-            removeBtn.addEventListener('click', function(e) {
-                removePersonFromSelection(this.dataset.person, prefix);
-                e.stopPropagation();
-            });
-        });
-    }
-}
-
-// Function to setup person autocomplete functionality
-function setupPersonAutocomplete() {
-    const personInputs = document.querySelectorAll('.person-autocomplete');
-    
-    personInputs.forEach(input => {
-        input.addEventListener('input', function() {
-            // Close any already open lists
-            closeAllLists();
-            
-            if (!this.value) { return false; }
-            
-            // Create a DIV element for the items list
-            const autocompleteList = this.parentElement.querySelector('.person-autocomplete-items');
-            autocompleteList.style.display = 'block';
-            autocompleteList.innerHTML = '';
-            
-            // Filter persons based on input
-            const filteredPersons = personsData.filter(person => 
-                person.Name.toLowerCase().includes(this.value.toLowerCase()) ||
-                (person.Firstname && person.Firstname.toLowerCase().includes(this.value.toLowerCase())) ||
-                (person.Lastname && person.Lastname.toLowerCase().includes(this.value.toLowerCase()))
-            );
-            
-            // Create a DIV for each matching person
-            filteredPersons.forEach(person => {
-                const personDiv = document.createElement('div');
-                
-                // Bold the matching parts of the name
-                const personName = person.Name;
-                const searchTerm = this.value;
-                
-                // Create the main person name element
-                const nameElement = document.createElement('div');
-                nameElement.className = 'person-name';
-                
-                // Simple highlighting for exact matches
-                const nameLower = personName.toLowerCase();
-                const searchLower = searchTerm.toLowerCase();
-                const matchIndex = nameLower.indexOf(searchLower);
-                
-                if (matchIndex >= 0) {
-                    const beforeMatch = personName.substring(0, matchIndex);
-                    const match = personName.substring(matchIndex, matchIndex + searchTerm.length);
-                    const afterMatch = personName.substring(matchIndex + searchTerm.length);
-                    nameElement.innerHTML = beforeMatch + '<strong>' + match + '</strong>' + afterMatch;
-                } else {
-                    nameElement.textContent = personName;
-                }
-                
-                personDiv.appendChild(nameElement);
-                
-                // Add search details
-                const detailsElement = document.createElement('div');
-                detailsElement.className = 'person-details';
-                
-                let detailsText = '';
-                if (person['Search Term']) {
-                    detailsText += 'Suchbegriff: ' + person['Search Term'];
-                }
-                
-                if (person['Additional Terms']) {
-                    if (detailsText) detailsText += ' | ';
-                    detailsText += 'Zusätzlich: ' + person['Additional Terms'];
-                }
-                
-                detailsElement.textContent = detailsText;
-                personDiv.appendChild(detailsElement);
-                
-                // Store search information as data attributes
-                personDiv.dataset.name = person.Name;
-                personDiv.dataset.searchTerm = person['Search Term'] || '';
-                personDiv.dataset.additionalTerms = person['Additional Terms'] || '';
-                
-                // Determine the correct container ID based on the input field ID
-                let prefix;
-                if (input.id === 'combined_person_search') {
-                    prefix = 'combined';
-                } else if (input.id === 'specific_person_search') {
-                    prefix = 'specific';
-                }
-                
-                // When someone clicks on an item, add the person to selected list
-                personDiv.addEventListener('click', function() {
-                    input.value = ''; // Clear the input field
-                    
-                    if (prefix) {
-                        // Add the person to the selection list
-                        addPersonToSelection(this.dataset.name, prefix);
-                    }
-                    
-                    closeAllLists();
-                });
-                
-                autocompleteList.appendChild(personDiv);
-            });
-        });
-        
-        // Handle keyboard navigation
-        input.addEventListener('keydown', function(e) {
-            let autocompleteItems = this.parentElement.querySelector('.person-autocomplete-items');
-            if (!autocompleteItems) return;
-            
-            const items = autocompleteItems.getElementsByTagName('div');
-            if (!items.length) return;
-            
-            if (e.key === 'ArrowDown') {
-                currentFocus++;
-                // Make the current item more visible
-                addActive(items);
-            } else if (e.key === 'ArrowUp') {
-                currentFocus--;
-                // Make the current item more visible
-                addActive(items);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (currentFocus > -1) {
-                    // Simulate a click on the active item
-                    if (items[currentFocus]) {
-                        items[currentFocus].click();
-                    }
-                }
-            }
-        });
-    });
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(e) {
-        closeAllLists(e.target);
-    });
-}
-
-// Variable to keep track of the currently focused autocomplete item
-let currentFocus = -1;
-
-// Function to mark an item as "active"
-function addActive(items) {
-    if (!items) return false;
-    
-    // First remove any "active" class
-    removeActive(items);
-    
-    // Adjust currentFocus if out of bounds
-    if (currentFocus >= items.length) currentFocus = 0;
-    if (currentFocus < 0) currentFocus = (items.length - 1);
-    
-    // Add the "active" class
-    items[currentFocus].classList.add('person-autocomplete-active');
-}
-
-// Function to remove the "active" class from all items
-function removeActive(items) {
-    for (let i = 0; i < items.length; i++) {
-        items[i].classList.remove('person-autocomplete-active');
-    }
-}
-
-// Function to close all autocomplete lists except the one passed as an argument
-function closeAllLists(elmnt) {
-    const items = document.getElementsByClassName('person-autocomplete-items');
-    for (let i = 0; i < items.length; i++) {
-        if (elmnt != items[i]) {
-            items[i].style.display = 'none';
-        }
-    }
-    // Reset the current focus
-    currentFocus = -1;
-}
-
-// Funktion zum Verwalten der Escape-Taste bei laufenden Suchvorgängen
-
-// Verbessertes Fortschritts-Tracking während der Suche
-let searchStartTime = null;
-let searchInterval = null;
-let searchLogEntries = [];
-
-function updateSearchElapsedTime() {
-    if (!searchStartTime) return;
-    
-    const now = new Date();
-    const elapsedMs = now - searchStartTime;
-    const elapsedSec = Math.floor(elapsedMs / 1000);
-    
-    const hours = Math.floor(elapsedSec / 3600).toString().padStart(2, '0');
-    const minutes = Math.floor((elapsedSec % 3600) / 60).toString().padStart(2, '0');
-    const seconds = (elapsedSec % 60).toString().padStart(2, '0');
-    
-    return `${hours}:${minutes}:${seconds}`;
-}
-
-function addSearchLogEntry(message, type = 'info') {
-    const timeString = updateSearchElapsedTime() || '00:00:00';
-    const logEntry = {
-        time: timeString,
-        message: message,
-        type: type
-    };
-    
-    searchLogEntries.push(logEntry);
-    
-    // Aktualisiere die Anzeige
-    updateSearchLogDisplay();
-}
-
-function updateSearchLogDisplay() {
-    const searchLog = document.getElementById('searchLog');
-    if (!searchLog) return;
-    
-    searchLog.innerHTML = '';
-    
-    searchLogEntries.forEach(entry => {
-        const logEntryDiv = document.createElement('div');
-        logEntryDiv.className = 'log-entry';
-        
-        if (entry.type === 'error') {
-            logEntryDiv.classList.add('text-danger');
-        } else if (entry.type === 'success') {
-            logEntryDiv.classList.add('text-success');
-        } else if (entry.type === 'warning') {
-            logEntryDiv.classList.add('text-warning');
-        }
-        
-        logEntryDiv.innerHTML = `<span class="text-muted">[${entry.time}]</span> ${entry.message}`;
-        searchLog.appendChild(logEntryDiv);
-    });
-    
-    // Scrolle automatisch nach unten
-    const searchLogContainer = document.getElementById('searchLogContainer');
-    if (searchLogContainer) {
-        searchLogContainer.scrollTop = searchLogContainer.scrollHeight;
-    }
-}
-
-function updateSearchProgress(database, status, progress = null) {
-    // Status für die spezifische Datenbank aktualisieren
-    const databaseStatusElement = document.getElementById(`${database.toLowerCase()}-status`);
-    if (databaseStatusElement) {
-        databaseStatusElement.textContent = status;
-    }
-    
-    // Gesamtfortschritt aktualisieren
-    if (progress !== null) {
-        const progressBar = document.getElementById('searchProgressBar');
-        if (progressBar) {
-            progressBar.style.width = `${progress}%`;
-        }
-    }
-    
-    // Log-Eintrag hinzufügen
-    addSearchLogEntry(`${database}: ${status}`);
-    
-    // Einfachen Status aktualisieren
-    const searchStatusSimple = document.getElementById('searchStatusSimple');
-    if (searchStatusSimple) {
-        searchStatusSimple.textContent = status;
-    }
-}
-
-function startSearchProgress() {
-    // Suchzeit starten
-    searchStartTime = new Date();
-    searchLogEntries = [];
-    
-    // Initialen Log-Eintrag hinzufügen
-    addSearchLogEntry('Suche gestartet...', 'info');
-    
-    // Progress Bar auf 0 setzen
-    const progressBar = document.getElementById('searchProgressBar');
-    if (progressBar) {
-        progressBar.style.width = '0%';
-    }
-    
-    // Zeitaktualisierungsintervall starten
-    searchInterval = setInterval(() => {
-        // Aktuelle Zeit im Log-Header aktualisieren
-        const timeString = updateSearchElapsedTime();
-        document.querySelector('.log-entry:first-child .text-muted').textContent = `[${timeString}]`;
-    }, 1000);
-}
-
-function stopSearchProgress() {
-    clearInterval(searchInterval);
-    searchInterval = null;
-    
-    // Abschlusslog hinzufügen
-    const elapsedTime = updateSearchElapsedTime();
-    addSearchLogEntry(`Suche abgeschlossen nach ${elapsedTime}`, 'success');
-    
-    // Progress Bar auf 100% setzen
-    const progressBar = document.getElementById('searchProgressBar');
-    if (progressBar) {
-        progressBar.style.width = '100%';
-        progressBar.classList.remove('progress-bar-animated');
-    }
-}
-
-function escapeKeyHandler(evt) {
-    if (evt.key === 'Escape') {
-        // Ladeindikator ausblenden mit höchster Priorität
-        const indicator = document.getElementById('loadingIndicator');
-        if (indicator) {
-            indicator.style.setProperty('display', 'none', 'important');
-        }
-        
-        // Submit-Buttons wieder aktivieren
-        const submitButtons = document.querySelectorAll('button[type="submit"]');
-        submitButtons.forEach(button => {
-            button.disabled = false;
-        });
-        
-        // Suchfortschritt stoppen
-        stopSearchProgress();
-        
-        // Event-Listener entfernen
-        document.removeEventListener('keydown', escapeKeyHandler);
-        
-        // Log-Eintrag für Abbruch
-        addSearchLogEntry('Suche wurde vom Benutzer abgebrochen', 'warning');
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Direkt beim Laden der Seite den Ladeindikator sicher verstecken
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        // "!important" über style Attribut und CSS setzen
-        loadingIndicator.style.setProperty('display', 'none', 'important');
-        
-        // Abbrechen-Button konfigurieren
-        const cancelButton = document.getElementById('cancelSearchButton');
-        if (cancelButton) {
-            cancelButton.addEventListener('click', function() {
-                loadingIndicator.style.setProperty('display', 'none', 'important');
-                // Submit-Buttons aktivieren
-                document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = false);
-                // Event-Listener entfernen
-                document.removeEventListener('keydown', escapeKeyHandler);
-                // Suchfortschritt stoppen
-                stopSearchProgress();
-            });
-        }
-        
-        // Toggle für die detaillierte Ansicht
-        const toggleButton = document.getElementById('toggleSearchDetails');
-        const detailsPanel = document.getElementById('searchDetailsPanel');
-        const toggleIcon = document.getElementById('toggleSearchDetailsIcon');
-        
-        if (toggleButton && detailsPanel && toggleIcon) {
-            toggleButton.addEventListener('click', function() {
-                if (detailsPanel.style.display === 'none') {
-                    detailsPanel.style.display = 'block';
-                    toggleIcon.classList.remove('fa-chevron-down');
-                    toggleIcon.classList.add('fa-chevron-up');
-                } else {
-                    detailsPanel.style.display = 'none';
-                    toggleIcon.classList.remove('fa-chevron-up');
-                    toggleIcon.classList.add('fa-chevron-down');
-                }
-            });
-        }
-    }
-
-    // Datum-Filter anzeigen/ausblenden
-    const useFilterCheckbox = document.getElementById('use_date_filter');
-    const dateFilterSection = document.getElementById('dateFilterSection');
-    
-    if (useFilterCheckbox) {
-        useFilterCheckbox.addEventListener('change', function() {
-            dateFilterSection.style.display = this.checked ? 'flex' : 'none';
-        });
-        
-        // Aktuellen Monat als Standardwert setzen
-        const today = new Date();
-        const formatDate = (date) => {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        
-        if (document.getElementById('end_date')) {
-            document.getElementById('end_date').value = formatDate(today);
-            
-            // Ein Jahr zurück als Standardwert für Startdatum
-            const lastYear = new Date();
-            lastYear.setFullYear(today.getFullYear() - 1);
-            document.getElementById('start_date').value = formatDate(lastYear);
-        }
-    }
-    
-    // Suchfelder abhängig von der Datenbank laden
-    const databaseSelect = document.getElementById('database');
-    const searchFieldSelect = document.getElementById('search_field');
-    
-    if (databaseSelect && searchFieldSelect) {
-        function updateSearchFields() {
-            const database = databaseSelect.value;
-            
-            // Datenbankspezifische Anpassungen
-            const pubTypeSelect = document.getElementById('pub_type');
-            const languageSelect = document.getElementById('language');
-            
-            // Standardoptionen für Publikationstypen und Sprachen
-            const defaultPubTypes = [
-                {value: '', text: 'Alle Typen'},
-                {value: 'Journal Article', text: 'Journalartikel'},
-                {value: 'Review', text: 'Review'},
-                {value: 'Clinical Trial', text: 'Klinische Studie'},
-                {value: 'Book', text: 'Buch'}
-            ];
-            
-            const defaultLanguages = [
-                {value: '', text: 'Alle Sprachen'},
-                {value: 'German', text: 'Deutsch'},
-                {value: 'English', text: 'Englisch'},
-                {value: 'French', text: 'Französisch'},
-                {value: 'Spanish', text: 'Spanisch'}
-            ];
-            
-            // Datenbankspezifische Optionen
-            let pubTypes = defaultPubTypes;
-            let languages = defaultLanguages;
-            
-            // Datenbankspezifische Anpassungen
-            switch(database) {
-                case 'PubMed':
-                    pubTypes = [
-                        {value: '', text: 'Alle Typen'},
-                        {value: 'Journal Article', text: 'Journalartikel'},
-                        {value: 'Review', text: 'Review'},
-                        {value: 'Clinical Trial', text: 'Klinische Studie'},
-                        {value: 'Randomized Controlled Trial', text: 'Randomisierte kontrollierte Studie'},
-                        {value: 'Meta-Analysis', text: 'Meta-Analyse'},
-                        {value: 'Practice Guideline', text: 'Praxisleitlinie'}
-                    ];
-                    break;
-                    
-                case 'DNB':
-                    pubTypes = [
-                        {value: '', text: 'Alle Typen'},
-                        {value: 'Book', text: 'Buch'},
-                        {value: 'Article', text: 'Artikel'},
-                        {value: 'Thesis', text: 'Dissertation'},
-                        {value: 'Conference', text: 'Konferenzband'}
-                    ];
-                    
-                    languages = [
-                        {value: '', text: 'Alle Sprachen'},
-                        {value: 'German', text: 'Deutsch'},
-                        {value: 'English', text: 'Englisch'},
-                        {value: 'French', text: 'Französisch'},
-                        {value: 'Italian', text: 'Italienisch'},
-                        {value: 'Spanish', text: 'Spanisch'},
-                        {value: 'Latin', text: 'Latein'}
-                    ];
-                    break;
-                    
-                case 'Scopus':
-                    pubTypes = [
-                        {value: '', text: 'Alle Typen'},
-                        {value: 'Article', text: 'Artikel'},
-                        {value: 'Review', text: 'Review'},
-                        {value: 'Conference Paper', text: 'Konferenzbeitrag'},
-                        {value: 'Book Chapter', text: 'Buchkapitel'},
-                        {value: 'Letter', text: 'Brief'}
-                    ];
-                    break;
-                    
-                case 'WoS':
-                    pubTypes = [
-                        {value: '', text: 'Alle Typen'},
-                        {value: 'Article', text: 'Artikel'},
-                        {value: 'Review', text: 'Review'},
-                        {value: 'Proceedings Paper', text: 'Konferenzbeitrag'},
-                        {value: 'Book Chapter', text: 'Buchkapitel'},
-                        {value: 'Editorial', text: 'Editorial'}
-                    ];
-                    break;
-                    
-                case 'GEPRIS':
-                    pubTypes = [
-                        {value: '', text: 'Alle Typen'},
-                        {value: 'Project', text: 'Projekt'},
-                        {value: 'Institution', text: 'Institution'},
-                        {value: 'Person', text: 'Person'}
-                    ];
-                    break;
-            }
-            
-            // Aktualisiere Publikationstypen
-            if (pubTypeSelect) {
-                // Dropdown-Liste leeren
-                pubTypeSelect.innerHTML = '';
-                
-                // Optionen einfügen
-                pubTypes.forEach(type => {
-                    const option = document.createElement('option');
-                    option.value = type.value;
-                    option.textContent = type.text;
-                    pubTypeSelect.appendChild(option);
-                });
-            }
-            
-            // Aktualisiere Sprachen
-            if (languageSelect) {
-                // Dropdown-Liste leeren
-                languageSelect.innerHTML = '';
-                
-                // Optionen einfügen
-                languages.forEach(lang => {
-                    const option = document.createElement('option');
-                    option.value = lang.value;
-                    option.textContent = lang.text;
-                    languageSelect.appendChild(option);
-                });
-            }
-            
-            // API-Aufruf, um verfügbare Felder für die gewählte Datenbank zu holen
-            fetch(`/api/get_database_fields?database=${database}`)
-                .then(response => response.json())
-                .then(fields => {
-                    // Dropdown-Liste leeren
-                    searchFieldSelect.innerHTML = '';
-                    
-                    // Felder einfügen
-                    fields.forEach(field => {
-                        const option = document.createElement('option');
-                        option.value = field;
-                        option.textContent = field;
-                        searchFieldSelect.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Fehler beim Laden der Suchfelder:', error));
-        }
-        
-        databaseSelect.addEventListener('change', updateSearchFields);
-        updateSearchFields(); // Initial ausführen
-    }
-
-    // Funktion zum Laden und Anzeigen der Personenliste in allen relevanten Auswahlfeldern
-    function loadPersonList() {
-        // Sammle alle Personenauswahl-Elemente (in verschiedenen Tabs oder Formularen)
-        const personSelectors = [
-            document.getElementById('person_selector'),     // Im Personen-Tab
-            document.getElementById('combined_person_name'), // Im Kombinierte-Suche-Tab
-            document.getElementById('person_name')          // Im Spezifische-Suche-Tab
-        ].filter(element => element !== null);
-
-        if (personSelectors.length === 0) return;
-
-        // Lade Personen von der API
-        fetch('/persons/list', { headers: { 'Accept': 'application/json' }})
-            .catch(() => {
-                // Fallback wenn API nicht existiert
-                return { 
-                    json: () => Promise.resolve([
-                        {
-                            "Name": "Beispiel Person",
-                            "Search Term": "Beispiel Suchbegriff",
-                            "Additional Terms": "zusätzlicher Begriff"
-                        }
-                    ]) 
-                };
-            })
-            .then(response => response.json())
-            .then(persons => {
-                // Für das Personen-Tab Dropdown
-                const personSelector = document.getElementById('person_selector');
-                if (personSelector) {
-                    // Bestehende Optionen entfernen (außer die erste "Auswählen" Option)
-                    while (personSelector.options.length > 1) {
-                        personSelector.remove(1);
-                    }
-
-                    if (persons.length === 0) {
-                        // Wenn keine Personen vorhanden, deaktivierte Option hinzufügen
-                        const option = document.createElement('option');
-                        option.disabled = true;
-                        option.textContent = "-- Keine Personen vorhanden --";
-                        personSelector.appendChild(option);
-                        
-                        // Button zum Hinzufügen von Personen
-                        const personSearchButton = document.getElementById('personSearchButton');
-                        if (personSearchButton) {
-                            personSearchButton.disabled = true;
-                        }
-                    } else {
-                        // Personen zur Auswahl hinzufügen
-                        persons.forEach((person, index) => {
-                            const option = document.createElement('option');
-                            option.value = index;
-                            option.textContent = person.Name;
-                            option.dataset.searchTerm = person['Search Term'] || '';
-                            option.dataset.additionalTerms = person['Additional Terms'] || '';
-                            personSelector.appendChild(option);
-                        });
-                        
-                        // Wenn bereits eine Person ausgewählt ist (z.B. nach Seitenneuladen)
-                        if (personSelector.value && personSelector.value !== "") {
-                            const selectedOption = personSelector.options[personSelector.selectedIndex];
-                            const personDetails = document.getElementById('personDetails');
-                            const personDetailName = document.getElementById('person_detail_name');
-                            const personDetailSearchTerm = document.getElementById('person_detail_search_term');
-                            const personDetailAdditionalTerms = document.getElementById('person_detail_additional_terms');
-                            const personSearchButton = document.getElementById('personSearchButton');
-                            
-                            if (personDetails && personDetailName && personDetailSearchTerm && personSearchButton) {
-                                personDetailName.value = selectedOption.textContent;
-                                personDetailSearchTerm.value = selectedOption.dataset.searchTerm;
-                                personDetailAdditionalTerms.value = selectedOption.dataset.additionalTerms;
-                                personDetails.style.display = 'block';
-                                personSearchButton.disabled = false;
-                            }
-                        }
-                    }
-                }
-
-                // Für das Eingabefeld im kombinierten Tab und im spezifischen Tab - bestehende Datalists befüllen
-                // Die Datalist-IDs wurden im HTML definiert als "combined_persons_list" und "specific_persons_list"
-                const datalists = [
-                    document.getElementById('combined_persons_list'),  // Datalist für kombinierte Suche
-                    document.getElementById('specific_persons_list')   // Datalist für spezifische Datenbanksuche
-                ].filter(element => element !== null);
-
-                // Datalists mit Personen befüllen
-                datalists.forEach(datalist => {
-                    // Bestehende Optionen löschen
-                    while (datalist.firstChild) {
-                        datalist.removeChild(datalist.firstChild);
-                    }
-                    
-                    // Personen zur Datalist hinzufügen
-                    persons.forEach(person => {
-                        const option = document.createElement('option');
-                        option.value = person.Name;
-                        option.dataset.searchTerm = person.Search_Term || ''; // Aktualisierte Schlüssel basierend auf der DB
-                        option.dataset.additionalTerms = person.Additional_Terms || '';
-                        option.dataset.firstname = person.Firstname || '';
-                        option.dataset.lastname = person.Lastname || '';
-                        datalist.appendChild(option);
-                    });
-                });
-                
-                // Jetzt Event-Listener für die Eingabefelder hinzufügen
-                const inputFields = [
-                    document.getElementById('combined_person_name'),
-                    document.getElementById('person_name')
-                ].filter(element => element !== null);
-                
-                // Event-Listener für Änderungen in den Eingabefeldern hinzufügen
-                inputFields.forEach(inputField => {
-                    if (!inputField) return;
-                    
-                    const datalistId = inputField.getAttribute('list');
-                    const datalist = document.getElementById(datalistId);
-                    
-                    inputField.addEventListener('input', function() {
-                        const selectedPerson = this.value;
-                        if (!datalist) return;
-                        
-                        const options = datalist.querySelectorAll('option');
-                        
-                        // Suche nach übereinstimmender Option
-                        for (const option of options) {
-                            if (option.value === selectedPerson) {
-                                // Beim Treffer überprüfen, ob es ein zusätzliches Suchfeld im selben Formular gibt
-                                const form = this.closest('form');
-                                if (form) {
-                                    const searchTermInput = form.querySelector('[name="search_term"]');
-                                    const additionalTermsInput = form.querySelector('[name="additional_terms"]');
-                                    
-                                    // Wenn Suchbegriffe vorhanden und Suchfeld leer ist, füllen
-                                    if (searchTermInput && !searchTermInput.value && option.dataset.searchTerm) {
-                                        searchTermInput.value = option.dataset.searchTerm;
-                                    }
-                                    
-                                    // Wenn zusätzliche Begriffe vorhanden und Feld leer ist, füllen
-                                    if (additionalTermsInput && !additionalTermsInput.value && option.dataset.additionalTerms) {
-                                        additionalTermsInput.value = option.dataset.additionalTerms;
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    });
-                });
-            })
-            .catch(error => console.error('Fehler beim Laden der Personen:', error));
-    }
-    
-    // Personen laden für alle relevanten Felder
-    loadPersonList();
-    
-    // Speziell für die Personensuche im Personen-Tab
-    const personSelector = document.getElementById('person_selector');
-    const personSearchDb = document.getElementById('person_search_db');
-    const personSearchButton = document.getElementById('personSearchButton');
-    const personDetails = document.getElementById('personDetails');
-    const personDetailName = document.getElementById('person_detail_name');
-    const personDetailSearchTerm = document.getElementById('person_detail_search_term');
-    const personDetailAdditionalTerms = document.getElementById('person_detail_additional_terms');
-    const personDatabase = document.getElementById('person_database');
-    
-    if (personSelector && personDetails) {
-        // Person auswählen
-        personSelector.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value !== "" && !selectedOption.disabled) {
-                personDetailName.value = selectedOption.textContent;
-                personDetailSearchTerm.value = selectedOption.dataset.searchTerm;
-                personDetailAdditionalTerms.value = selectedOption.dataset.additionalTerms;
-                personDetails.style.display = 'block';
-                personSearchButton.disabled = false;
-            } else {
-                personDetails.style.display = 'none';
-                personSearchButton.disabled = true;
-            }
-        });
-        
-        // Datenbankauswahl aktualisieren
-        if (personSearchDb) {
-            personSearchDb.addEventListener('change', function() {
-                personDatabase.value = this.value;
-            });
-        }
-    }
-    
-    // Suchprofilverarbeitung
-    const saveProfileModal = document.getElementById('saveProfileModal');
-    if (saveProfileModal) {
-        saveProfileModal.addEventListener('show.bs.modal', function() {
-            // Finde das aktive Tab
-            const activeTab = document.querySelector('.tab-pane.active');
-            const activeForm = activeTab ? activeTab.querySelector('form') : null;
-            
-            if (activeForm) {
-                // Erfasse die Formularwerte für das Suchprofil
-                document.getElementById('profile_database').value = activeForm.querySelector('[name="database"]')?.value || 'Combined';
-                document.getElementById('profile_search_term').value = activeForm.querySelector('[name="search_term"]')?.value || '';
-                document.getElementById('profile_additional_terms').value = activeForm.querySelector('[name="additional_terms"]')?.value || '';
-                document.getElementById('profile_person_name').value = activeForm.querySelector('[name="person_name"]')?.value || '';
-                document.getElementById('profile_max_results').value = activeForm.querySelector('[name="max_results"]')?.value || '100';
-                
-                // Spezifische Parameter je nach Tab
-                if (activeTab.id === 'specific') {
-                    document.getElementById('profile_search_field').value = activeForm.querySelector('[name="search_field"]')?.value || 'Alle Felder';
-                    document.getElementById('profile_language').value = activeForm.querySelector('[name="language"]')?.value || '';
-                    document.getElementById('profile_pub_type').value = activeForm.querySelector('[name="pub_type"]')?.value || '';
-                    
-                    // Datumsfilter
-                    const useDateFilter = activeForm.querySelector('[name="use_date_filter"]')?.checked || false;
-                    document.getElementById('profile_use_date_filter').value = useDateFilter ? 'on' : '';
-                    
-                    if (useDateFilter) {
-                        document.getElementById('profile_start_date').value = activeForm.querySelector('[name="start_date"]')?.value || '';
-                        document.getElementById('profile_end_date').value = activeForm.querySelector('[name="end_date"]')?.value || '';
-                    }
-                }
-            }
-        });
-    }
-    
-    // Laden eines vorhandenen Profils
-    const loadProfileData = function(profileData) {
-        if (!profileData) return;
-        
-        console.log('Lade Profil:', profileData);
-        
-        // Je nach Datenbanktyp das passende Tab aktivieren
-        let tabToActivate;
-        if (profileData.database === 'Combined') {
-            tabToActivate = document.getElementById('combined-tab');
-            
-            // Kombinierte-Suche-Formular füllen
-            const combinedForm = document.getElementById('combinedSearchForm');
-            if (combinedForm) {
-                combinedForm.querySelector('[name="search_term"]').value = profileData.search_term || '';
-                combinedForm.querySelector('[name="additional_terms"]').value = profileData.additional_terms || '';
-                combinedForm.querySelector('[name="person_name"]').value = profileData.person_name || '';
-                combinedForm.querySelector('[name="language"]').value = profileData.language || '';
-                combinedForm.querySelector('[name="max_results"]').value = profileData.max_results || '100';
-            }
-        } else {
-            tabToActivate = document.getElementById('specific-tab');
-            
-            // Detaillierte-Suche-Formular füllen
-            const specificForm = document.getElementById('specificSearchForm');
-            if (specificForm) {
-                specificForm.querySelector('[name="database"]').value = profileData.database || 'PubMed';
-                specificForm.querySelector('[name="search_term"]').value = profileData.search_term || '';
-                specificForm.querySelector('[name="additional_terms"]').value = profileData.additional_terms || '';
-                specificForm.querySelector('[name="person_name"]').value = profileData.person_name || '';
-                specificForm.querySelector('[name="max_results"]').value = profileData.max_results || '100';
-                specificForm.querySelector('[name="search_field"]').value = profileData.search_field || 'Alle Felder';
-                specificForm.querySelector('[name="language"]').value = profileData.language || '';
-                specificForm.querySelector('[name="pub_type"]').value = profileData.pub_type || '';
-                
-                // Datumsfilter
-                const useDateFilter = profileData.use_date_filter === 'on';
-                const dateFilterCheckbox = specificForm.querySelector('[name="use_date_filter"]');
-                if (dateFilterCheckbox) {
-                    dateFilterCheckbox.checked = useDateFilter;
-                    
-                    // Event auslösen, um das Datumsfeld anzuzeigen/zu verstecken
-                    const event = new Event('change');
-                    dateFilterCheckbox.dispatchEvent(event);
-                    
-                    if (useDateFilter && profileData.date_range) {
-                        specificForm.querySelector('[name="start_date"]').value = profileData.date_range.start || '';
-                        specificForm.querySelector('[name="end_date"]').value = profileData.date_range.end || '';
-                    }
-                }
-                
-                // Suchfelder neu laden
-                const databaseSelect = specificForm.querySelector('[name="database"]');
-                if (databaseSelect) {
-                    const event = new Event('change');
-                    databaseSelect.dispatchEvent(event);
-                }
-            }
-        }
-        
-        // Tab aktivieren
-        if (tabToActivate) {
-            const tabInstance = new bootstrap.Tab(tabToActivate);
-            tabInstance.show();
-        }
-    };
-    
-    // Profil aus den Seitendaten laden, falls vorhanden
-    const profileData = {{ profile|tojson if profile else 'null' }};
-    if (profileData) {
-        // Kurze Verzögerung, um sicherzustellen, dass das DOM bereit ist
-        setTimeout(() => loadProfileData(profileData), 100);
-    }
-    
-    // Tab-Wechsel Verhalten
-    const searchTabLinks = document.querySelectorAll('#searchTabs button[data-bs-toggle="tab"]');
-    searchTabLinks.forEach(tabLink => {
-        tabLink.addEventListener('click', function() {
-            // Tab-ID speichern für spätere Verwendung
-            localStorage.setItem('lastSearchTab', this.id);
-
-            // Eventuelle Ladeindikatoren ausblenden
-            const loadingIndicatorTab = document.getElementById('loadingIndicator');
-            if (loadingIndicatorTab) {
-                loadingIndicatorTab.style.setProperty('display', 'none', 'important');
-            }
-        });
-    });
-    
-    // Letzten Tab wiederherstellen, wenn vorhanden
-    const lastTab = localStorage.getItem('lastSearchTab');
-    if (lastTab && document.getElementById(lastTab)) {
-        try {
-            const tabToShow = new bootstrap.Tab(document.getElementById(lastTab));
-            tabToShow.show();
-        } catch (error) {
-            console.error('Fehler beim Wiederherstellen des letzten Tabs:', error);
-        }
-    }
-    
-    // Loading-Indikatoren für alle Formulare
-    const allForms = document.querySelectorAll('form');
-    
-    // Der Ladeindikator wurde bereits initial ausgeblendet
-    
-    allForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            // Überprüfen, ob mindestens ein Feld ausgefüllt ist
-            const searchTermInput = form.querySelector('[name="search_term"]');
-            const personNameInput = form.querySelector('[name="person_name"]');
-            
-            if (searchTermInput && !searchTermInput.value.trim() && 
-                personNameInput && !personNameInput.value.trim()) {
-                // Verhindern, dass das Formular gesendet wird, wenn weder Suchbegriff noch Person angegeben wurde
-                e.preventDefault();
-                alert('Bitte geben Sie mindestens einen Suchbegriff oder eine Person ein.');
-                return;
-            }
-            
-            const submitButton = this.querySelector('button[type="submit"]');
-            if (submitButton) {
-                submitButton.disabled = true;
-            }
-            
-            // Ladeindikator-Element neu referenzieren für den Submit-Fall
-            const loadingIndicatorElem = document.getElementById('loadingIndicator');
-            
-            // Nur Ladeindikator anzeigen, wenn es ein normaler POST-Request ist (kein AJAX)
-            if (!this.hasAttribute('data-ajax') && loadingIndicatorElem) {
-                // display: none !important zu entfernen, damit der Indikator sichtbar sein kann
-                loadingIndicatorElem.style.removeProperty('display');
-                loadingIndicatorElem.style.display = 'flex';
-                
-                // Escape-Taste kann den Ladevorgang abbrechen für bessere Benutzererfahrung
-                document.addEventListener('keydown', escapeKeyHandler);
-                
-                // Timeout, um den Loader wieder zu entfernen, falls etwas schief geht
-                setTimeout(() => {
-                    if (loadingIndicatorElem) {
-                        loadingIndicatorElem.style.setProperty('display', 'none', 'important');
-                        if (submitButton) {
-                            submitButton.disabled = false;
-                        }
-                        document.removeEventListener('keydown', escapeKeyHandler);
-                    }
-                }, 10000); // Nach 10 Sekunden den Ladeindikator entfernen
-            }
-        });
-    });
-});
-</script>
+<script src="{{ url_for('static', filename='js/person_selector.js') }}"></script>
+<script src="{{ url_for('static', filename='js/search.js') }}"></script>
 {% endblock %}

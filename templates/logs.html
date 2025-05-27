@@ -4,52 +4,732 @@
 
 {% block content %}
 <div class="container py-4">
-    <h1 class="section-title">Log-Einträge</h1>
+    <h1 class="section-title mb-4">
+        <i class="fas fa-clipboard-list me-2"></i>Logs
+    </h1>
     
-    <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">Anwendungslogs</h2>
-            <div>
-                <form action="/logs/clear" method="post" class="d-inline" onsubmit="return confirmClearLogs()">
-                    <button type="submit" class="btn btn-sm btn-outline-danger me-2">
-                        <i class="fas fa-trash-alt me-2"></i>Log löschen
-                    </button>
-                </form>
-                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard()">
-                    <i class="fas fa-copy me-2"></i>Kopieren
-                </button>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Log-Übersicht</h5>
+                    <div>
+                        <button class="btn btn-sm btn-light" id="refreshLogs">
+                            <i class="fas fa-sync-alt me-1"></i>Aktualisieren
+                        </button>
+                        <button class="btn btn-sm btn-outline-light ms-2" data-bs-toggle="collapse" data-bs-target="#collapseLogHelp" 
+                                aria-expanded="false" aria-controls="collapseLogHelp">
+                            <i class="fas fa-question-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="collapse" id="collapseLogHelp">
+                    <div class="card-body bg-light">
+                        <h6>Über die Log-Anzeige</h6>
+                        <p>Die Log-Anzeige bietet zwei Ansichten:</p>
+                        <ul>
+                            <li><strong>Standard-Log:</strong> Zeigt die wichtigsten Ereignisse und Fehler chronologisch an.</li>
+                            <li><strong>Erweiterter Log:</strong> Enthält detaillierte Informationen, einschließlich Debug-Meldungen, Systemzustand und Ablaufverfolgung.</li>
+                            <li><strong>Systeminformationen:</strong> Zeigt technische Details zur aktuellen Umgebung und Konfiguration an.</li>
+                        </ul>
+                        <p>Verwenden Sie die Suchfunktion und Filter, um bestimmte Ereignisse oder Fehler zu finden.</p>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <!-- Log-Tabs -->
+                    <ul class="nav nav-tabs" id="logTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="standard-tab" data-bs-toggle="tab" data-bs-target="#standard" 
+                                    type="button" role="tab" aria-selected="true">
+                                Standard-Log
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="advanced-tab" data-bs-toggle="tab" data-bs-target="#advanced" 
+                                    type="button" role="tab" aria-selected="false">
+                                Erweiterter Log
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" 
+                                    type="button" role="tab" aria-selected="false">
+                                Systeminformationen
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Filter-Leiste -->
+                    <div class="bg-light p-3 border-bottom">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="logFilter" placeholder="Logeinträge filtern...">
+                                    <button class="btn btn-outline-secondary" type="button" id="clearFilter">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select" id="logLevelFilter">
+                                    <option value="all">Alle Log-Level</option>
+                                    <option value="INFO">Info</option>
+                                    <option value="WARNING">Warnung</option>
+                                    <option value="ERROR">Fehler</option>
+                                    <option value="DEBUG">Debug</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-outline-primary me-2" id="downloadLogs">
+                                    <i class="fas fa-download me-1"></i>Logs herunterladen
+                                </button>
+                                <button class="btn btn-outline-secondary" id="scrollToBottom">
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-8">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="autoScrollCheckbox" checked>
+                                    <label class="form-check-label" for="autoScrollCheckbox">Automatisch nach unten scrollen</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="timeFilterCheckbox">
+                                    <label class="form-check-label" for="timeFilterCheckbox">Zeitfilter aktivieren</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group input-group-sm" id="timeFilterControls" style="display: none;">
+                                    <span class="input-group-text">Ab:</span>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="timeFilterStart">
+                                    <span class="input-group-text">Bis:</span>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="timeFilterEnd">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab-Inhalte -->
+                    <div class="tab-content" id="logTabsContent">
+                        <!-- Standard-Log -->
+                        <div class="tab-pane fade show active" id="standard" role="tabpanel">
+                            <div class="log-container" id="standardLogContainer">
+                                {% if logs %}
+                                    <pre class="log-content p-3"><code id="standardLogContent">{% for log in logs %}{% if 'ERROR' in log or 'WARNING' in log or 'INFO' in log %}{{ log }}{% endif %}{% endfor %}</code></pre>
+                                {% else %}
+                                    <div class="p-5 text-center text-muted">
+                                        <i class="fas fa-clipboard fa-3x mb-3"></i>
+                                        <p>Keine Logeinträge gefunden.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Erweiterter Log -->
+                        <div class="tab-pane fade" id="advanced" role="tabpanel">
+                            <div class="log-container" id="advancedLogContainer">
+                                {% if logs %}
+                                    <pre class="log-content p-3"><code id="advancedLogContent">{% for log in logs %}{{ log }}{% endfor %}</code></pre>
+                                {% else %}
+                                    <div class="p-5 text-center text-muted">
+                                        <i class="fas fa-clipboard fa-3x mb-3"></i>
+                                        <p>Keine Logeinträge gefunden.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Systeminformationen -->
+                        <div class="tab-pane fade" id="system" role="tabpanel">
+                            <div class="p-4">
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Basis-Informationen</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <table class="table table-sm">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th scope="row">Betriebssystem</th>
+                                                            <td>{{ system_info.os }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Plattform</th>
+                                                            <td>{{ system_info.platform }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Prozessor</th>
+                                                            <td>{{ system_info.processor }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Architektur</th>
+                                                            <td>{{ system_info.machine }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Python-Version</th>
+                                                            <td>{{ system_info.python_version }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">App-Version</th>
+                                                            <td>{{ system_info.app_version }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Zeitstempel</th>
+                                                            <td>{{ system_info.timestamp }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Speichernutzung</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div id="memoryUsageChart" style="height: 200px;"></div>
+                                                <table class="table table-sm mt-3">
+                                                    <tbody>
+                                                        <tr>
+                                                            <th scope="row">Physischer Speicher (RAM)</th>
+                                                            <td>{{ system_info.get('memory_usage', {}).get('physical', 'Nicht verfügbar') }}</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <th scope="row">Virtueller Speicher</th>
+                                                            <td>{{ system_info.get('memory_usage', {}).get('virtual', 'Nicht verfügbar') }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mb-4">
+                                    <div class="col-md-12">
+                                        <div class="card">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Anwendungskonfiguration</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <pre class="bg-light p-3 rounded"><code id="configContent">{{ system_info.config | tojson(indent=2) }}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="card">
+                                            <div class="card-header bg-light">
+                                                <h6 class="mb-0">Werkzeuge zur Diagnose</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-outline-primary w-100" id="checkDependencies">
+                                                            <i class="fas fa-check-circle me-2"></i>Abhängigkeiten überprüfen
+                                                        </button>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-outline-primary w-100" id="testConnections">
+                                                            <i class="fas fa-network-wired me-2"></i>Datenbankverbindungen testen
+                                                        </button>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-outline-primary w-100" id="checkStoragePaths">
+                                                            <i class="fas fa-folder me-2"></i>Speicherpfade überprüfen
+                                                        </button>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-outline-primary w-100" id="checkCanIterate">
+                                                            <i class="fas fa-sync-alt me-2"></i>Continue to iterate?
+                                                        </button>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <button class="btn btn-outline-danger w-100" id="clearAllLogs">
+                                                            <i class="fas fa-trash-alt me-2"></i>Alle Logs zurücksetzen
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mt-4 p-3 border rounded bg-light" id="diagnosticResults" style="display: none;">
+                                                    <h6 class="text-primary"><i class="fas fa-info-circle me-2"></i>Diagnoseergebnisse</h6>
+                                                    <pre class="mt-3"><code id="diagnosticResultsContent"></code></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="card-body">
-            <pre id="logContent" class="bg-dark text-light p-3 rounded" style="max-height: 500px; overflow-y: auto;">{{ log_content }}</pre>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script>
-function copyToClipboard() {
-    const logContent = document.getElementById('logContent');
+document.addEventListener('DOMContentLoaded', function() {
+    // Variablen für Log-Container
+    const standardLogContainer = document.getElementById('standardLogContainer');
+    const advancedLogContainer = document.getElementById('advancedLogContainer');
+    const standardLogContent = document.getElementById('standardLogContent');
+    const advancedLogContent = document.getElementById('advancedLogContent');
     
-    // Create a temporary textarea element to copy from
-    const textarea = document.createElement('textarea');
-    textarea.value = logContent.textContent;
-    document.body.appendChild(textarea);
+    // Filter-Funktionalität
+    const logFilter = document.getElementById('logFilter');
+    const logLevelFilter = document.getElementById('logLevelFilter');
+    const clearFilterBtn = document.getElementById('clearFilter');
+    const autoScrollCheckbox = document.getElementById('autoScrollCheckbox');
+    const timeFilterCheckbox = document.getElementById('timeFilterCheckbox');
+    const timeFilterControls = document.getElementById('timeFilterControls');
+    const timeFilterStart = document.getElementById('timeFilterStart');
+    const timeFilterEnd = document.getElementById('timeFilterEnd');
     
-    // Select and copy
-    textarea.select();
-    document.execCommand('copy');
+    // Diagnose-Buttons
+    const checkDependenciesBtn = document.getElementById('checkDependencies');
+    const testConnectionsBtn = document.getElementById('testConnections');
+    const checkStoragePathsBtn = document.getElementById('checkStoragePaths');
+    const checkCanIterateBtn = document.getElementById('checkCanIterate');
+    const clearAllLogsBtn = document.getElementById('clearAllLogs');
+    const diagnosticResults = document.getElementById('diagnosticResults');
+    const diagnosticResultsContent = document.getElementById('diagnosticResultsContent');
     
-    // Clean up
-    document.body.removeChild(textarea);
+    // Hilfsfunktionen
+    function filterLogs() {
+        const filterText = logFilter.value.toLowerCase();
+        const selectedLevel = logLevelFilter.value;
+        const useTimeFilter = timeFilterCheckbox.checked;
+        const startTime = useTimeFilter ? new Date(timeFilterStart.value) : null;
+        const endTime = useTimeFilter ? new Date(timeFilterEnd.value) : null;
+        
+        // Standard-Log filtern
+        if (standardLogContent) {
+            const standardLines = standardLogContent.textContent.split('\n');
+            const filteredStandardLines = standardLines.filter(line => {
+                // Prüfe, ob die Zeile den Filtertext enthält
+                const containsFilterText = !filterText || line.toLowerCase().includes(filterText);
+                
+                // Prüfe, ob die Zeile dem ausgewählten Log-Level entspricht
+                const matchesLogLevel = selectedLevel === 'all' || 
+                    (selectedLevel === 'INFO' && line.includes('INFO')) ||
+                    (selectedLevel === 'WARNING' && line.includes('WARNING')) ||
+                    (selectedLevel === 'ERROR' && line.includes('ERROR')) ||
+                    (selectedLevel === 'DEBUG' && line.includes('DEBUG'));
+                
+                // Prüfe, ob die Zeile im gewählten Zeitraum liegt (falls Zeitfilter aktiviert)
+                let withinTimeRange = true;
+                if (useTimeFilter && startTime && endTime) {
+                    const dateMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+                    if (dateMatch) {
+                        const logDate = new Date(dateMatch[1]);
+                        withinTimeRange = logDate >= startTime && logDate <= endTime;
+                    }
+                }
+                
+                return containsFilterText && matchesLogLevel && withinTimeRange;
+            });
+            
+            // Aktualisiere den Log-Inhalt
+            standardLogContent.textContent = filteredStandardLines.join('\n');
+            
+            // Markiere gefilterte Inhalte, wenn ein Filtertext vorhanden ist
+            if (filterText) {
+                highlightText(standardLogContent, filterText);
+            }
+        }
+        
+        // Erweiterten Log filtern
+        if (advancedLogContent) {
+            const advancedLines = advancedLogContent.textContent.split('\n');
+            const filteredAdvancedLines = advancedLines.filter(line => {
+                // Prüfe, ob die Zeile den Filtertext enthält
+                const containsFilterText = !filterText || line.toLowerCase().includes(filterText);
+                
+                // Prüfe, ob die Zeile dem ausgewählten Log-Level entspricht
+                const matchesLogLevel = selectedLevel === 'all' || 
+                    (selectedLevel === 'INFO' && line.includes('INFO')) ||
+                    (selectedLevel === 'WARNING' && line.includes('WARNING')) ||
+                    (selectedLevel === 'ERROR' && line.includes('ERROR')) ||
+                    (selectedLevel === 'DEBUG' && line.includes('DEBUG'));
+                
+                // Prüfe, ob die Zeile im gewählten Zeitraum liegt (falls Zeitfilter aktiviert)
+                let withinTimeRange = true;
+                if (useTimeFilter && startTime && endTime) {
+                    const dateMatch = line.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+                    if (dateMatch) {
+                        const logDate = new Date(dateMatch[1]);
+                        withinTimeRange = logDate >= startTime && logDate <= endTime;
+                    }
+                }
+                
+                return containsFilterText && matchesLogLevel && withinTimeRange;
+            });
+            
+            // Aktualisiere den Log-Inhalt
+            advancedLogContent.textContent = filteredAdvancedLines.join('\n');
+            
+            // Markiere gefilterte Inhalte
+            if (filterText) {
+                highlightText(advancedLogContent, filterText);
+            }
+        }
+    }
     
-    // Show feedback
-    alert('Log-Inhalt in die Zwischenablage kopiert.');
+    function highlightText(element, searchText) {
+        const text = element.textContent;
+        const regex = new RegExp(searchText, 'gi');
+        
+        // Erstelle eine temporäre Hülle für die Hervorhebung
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text.replace(regex, match => `<mark>${match}</mark>`);
+        
+        // Setze den Inhalt des Elements
+        element.innerHTML = tempDiv.innerHTML;
+    }
+    
+    function colorizeLogLevels() {
+        // Markiere verschiedene Log-Level mit unterschiedlichen Farben
+        if (standardLogContent) {
+            standardLogContent.innerHTML = standardLogContent.innerHTML
+                .replace(/\b(ERROR)\b/g, '<span class="text-danger">$1</span>')
+                .replace(/\b(WARNING)\b/g, '<span class="text-warning">$1</span>')
+                .replace(/\b(INFO)\b/g, '<span class="text-info">$1</span>')
+                .replace(/\b(DEBUG)\b/g, '<span class="text-secondary">$1</span>');
+        }
+        
+        if (advancedLogContent) {
+            advancedLogContent.innerHTML = advancedLogContent.innerHTML
+                .replace(/\b(ERROR)\b/g, '<span class="text-danger">$1</span>')
+                .replace(/\b(WARNING)\b/g, '<span class="text-warning">$1</span>')
+                .replace(/\b(INFO)\b/g, '<span class="text-info">$1</span>')
+                .replace(/\b(DEBUG)\b/g, '<span class="text-secondary">$1</span>');
+        }
+    }
+    
+    function refreshLogs() {
+        // Lade die Logs neu von der Serverseite
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // Aktualisiere Standard-Log
+                if (standardLogContent && doc.getElementById('standardLogContent')) {
+                    standardLogContent.textContent = doc.getElementById('standardLogContent').textContent;
+                }
+                
+                // Aktualisiere Erweiterten Log
+                if (advancedLogContent && doc.getElementById('advancedLogContent')) {
+                    advancedLogContent.textContent = doc.getElementById('advancedLogContent').textContent;
+                }
+                
+                // Wende Filter und Formatierung an
+                filterLogs();
+                colorizeLogLevels();
+                
+                // Scrolle nach unten, wenn Auto-Scroll aktiviert ist
+                if (autoScrollCheckbox.checked) {
+                    scrollToBottom();
+                }
+            })
+            .catch(error => {
+                console.error('Fehler beim Aktualisieren der Logs:', error);
+            });
+    }
+    
+    function scrollToBottom() {
+        if (standardLogContainer && standardLogContainer.classList.contains('show')) {
+            standardLogContainer.scrollTop = standardLogContainer.scrollHeight;
+        }
+        
+        if (advancedLogContainer && advancedLogContainer.classList.contains('show')) {
+            advancedLogContainer.scrollTop = advancedLogContainer.scrollHeight;
+        }
+    }
+    
+    function downloadLogs() {
+        // Erstelle eine Datei mit dem aktuellen Log-Inhalt
+        const logContent = document.getElementById('advancedLogContent')?.textContent || 
+                           document.getElementById('standardLogContent')?.textContent || '';
+        
+        if (logContent) {
+            const blob = new Blob([logContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            
+            a.href = url;
+            a.download = `medicalspytool_logs_${timestamp}.txt`;
+            a.click();
+            
+            window.URL.revokeObjectURL(url);
+        }
+    }
+    
+    // Initialisiere Memory-Usage-Chart (falls Daten vorhanden)
+    if (document.getElementById('memoryUsageChart')) {
+        let memoryData = {
+            physical: {{ system_info.get('memory_usage', {}).get('physical_percent', 0) }},
+            virtual: {{ system_info.get('memory_usage', {}).get('virtual_percent', 0) }}
+        };
+        
+        new Chart(document.getElementById('memoryUsageChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Physischer Speicher (RAM)', 'Virtueller Speicher'],
+                datasets: [{
+                    label: 'Speicherauslastung (%)',
+                    data: [memoryData.physical, memoryData.virtual],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 99, 132, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Prozent (%)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Event-Handler
+    if (logFilter) {
+        logFilter.addEventListener('input', filterLogs);
+    }
+    
+    if (logLevelFilter) {
+        logLevelFilter.addEventListener('change', filterLogs);
+    }
+    
+    if (clearFilterBtn) {
+        clearFilterBtn.addEventListener('click', function() {
+            logFilter.value = '';
+            logLevelFilter.value = 'all';
+            timeFilterCheckbox.checked = false;
+            timeFilterControls.style.display = 'none';
+            refreshLogs();
+        });
+    }
+    
+    if (document.getElementById('refreshLogs')) {
+        document.getElementById('refreshLogs').addEventListener('click', refreshLogs);
+    }
+    
+    if (document.getElementById('downloadLogs')) {
+        document.getElementById('downloadLogs').addEventListener('click', downloadLogs);
+    }
+    
+    if (document.getElementById('scrollToBottom')) {
+        document.getElementById('scrollToBottom').addEventListener('click', scrollToBottom);
+    }
+    
+    // Zeitfilter-Steuerung
+    if (timeFilterCheckbox) {
+        timeFilterCheckbox.addEventListener('change', function() {
+            timeFilterControls.style.display = timeFilterCheckbox.checked ? 'flex' : 'none';
+            if (timeFilterCheckbox.checked) {
+                // Standardmäßig die letzten 24 Stunden anzeigen
+                const now = new Date();
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                
+                timeFilterEnd.value = now.toISOString().slice(0, 16);
+                timeFilterStart.value = yesterday.toISOString().slice(0, 16);
+            }
+            filterLogs();
+        });
+    }
+    
+    if (timeFilterStart) {
+        timeFilterStart.addEventListener('change', filterLogs);
+    }
+    
+    if (timeFilterEnd) {
+        timeFilterEnd.addEventListener('change', filterLogs);
+    }
+    
+    // Diagnose-Buttons
+    if (checkDependenciesBtn) {
+        checkDependenciesBtn.addEventListener('click', function() {
+            diagnosticResults.style.display = 'block';
+            diagnosticResultsContent.textContent = 'Überprüfe Abhängigkeiten...';
+            
+            fetch('/api/check_dependencies')
+                .then(response => response.json())
+                .then(data => {
+                    diagnosticResultsContent.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    diagnosticResultsContent.textContent = 'Fehler bei der Überprüfung: ' + error.message;
+                });
+        });
+    }
+    
+    if (testConnectionsBtn) {
+        testConnectionsBtn.addEventListener('click', function() {
+            diagnosticResults.style.display = 'block';
+            diagnosticResultsContent.textContent = 'Teste Datenbankverbindungen...';
+            
+            fetch('/api/test_connections')
+                .then(response => response.json())
+                .then(data => {
+                    diagnosticResultsContent.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    diagnosticResultsContent.textContent = 'Fehler bei der Überprüfung: ' + error.message;
+                });
+        });
+    }
+    
+    if (checkStoragePathsBtn) {
+        checkStoragePathsBtn.addEventListener('click', function() {
+            diagnosticResults.style.display = 'block';
+            diagnosticResultsContent.textContent = 'Überprüfe Speicherpfade...';
+            
+            fetch('/api/check_storage_paths')
+                .then(response => response.json())
+                .then(data => {
+                    diagnosticResultsContent.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    diagnosticResultsContent.textContent = 'Fehler bei der Überprüfung: ' + error.message;
+                });
+        });
+    }
+    
+    if (checkCanIterateBtn) {
+        checkCanIterateBtn.addEventListener('click', function() {
+            diagnosticResults.style.display = 'block';
+            diagnosticResultsContent.textContent = 'Überprüfe, ob Iteration fortgesetzt werden kann...';
+            
+            fetch('/api/check_can_iterate')
+                .then(response => response.json())
+                .then(data => {
+                    diagnosticResultsContent.textContent = JSON.stringify(data, null, 2);
+                })
+                .catch(error => {
+                    diagnosticResultsContent.textContent = 'Fehler bei der Überprüfung: ' + error.message;
+                });
+        });
+    }
+    
+    if (clearAllLogsBtn) {
+        clearAllLogsBtn.addEventListener('click', function() {
+            if (confirm('Sollen wirklich alle Logs zurückgesetzt werden? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                fetch('/api/clear_logs', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            refreshLogs();
+                            alert('Logs wurden erfolgreich zurückgesetzt.');
+                        } else {
+                            alert('Fehler beim Zurücksetzen der Logs: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Fehler beim Zurücksetzen der Logs: ' + error.message);
+                    });
+            }
+        });
+    }
+    
+    // Initialisierung
+    colorizeLogLevels();
+    scrollToBottom();
+    
+    // Aktualisiere Logs periodisch (alle 30 Sekunden)
+    setInterval(refreshLogs, 30000);
+});
+</script>
+
+<style>
+.log-container {
+    max-height: 600px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-top: none;
 }
 
-function confirmClearLogs() {
-    return confirm('Sind Sie sicher, dass Sie alle Log-Einträge löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.');
+.log-content {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: Consolas, Monaco, 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
 }
-</script>
+
+/* Anpassung der Schriftgröße in Tabellen */
+.table-sm {
+    font-size: 0.9rem;
+}
+
+/* Verbesserte Lesbarkeit für vorformatierte JSON-Blöcke */
+pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+}
+
+/* Tab-Styling */
+.nav-tabs .nav-link {
+    color: #495057;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    font-weight: 500;
+}
+
+/* Filter-Bereich */
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Hervorhebung von gesuchten Begriffen */
+mark {
+    background-color: #ffc107;
+    padding: 0.1rem 0.2rem;
+    border-radius: 0.2rem;
+}
+
+/* Highlighting für Log-Levels */
+.text-danger { color: #dc3545 !important; }
+.text-warning { color: #ffc107 !important; }
+.text-info { color: #0dcaf0 !important; }
+.text-secondary { color: #6c757d !important; }
+</style>
 {% endblock %}

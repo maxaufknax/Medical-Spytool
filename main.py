@@ -8,52 +8,141 @@ advanced search options, result visualization, and export functionality.
 Usage:
     flask run
     or
-    gunicorn -b 0.0.0.0:5000 main:app
+    gunicorn -b 0.0.0:5000 main:app
 """
 
 import os
+import sys
 import logging
 import json
+import atexit
+import tempfile
+import webbrowser
+import threading
+import time
+import glob
+import ctypes
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, flash, session
 from flask_bootstrap import Bootstrap
+
+# Import database connectors
+from database_connectors import (
+    PubMedConnector, DNBConnector, ScopusConnector, 
+    WoSConnector, GeprisConnector
+)
+
+# Import utilities
 from utils.search_profiles import (
     save_search_profile, load_search_profile, delete_search_profile, 
     get_all_search_profiles
 )
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("medicalspytool.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# Initialize Flask
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
-Bootstrap(app)
-
-# Import database connectors
-from database_connectors import DATABASE_CONNECTORS
+from utils.path_manager import get_resource_path, get_writeable_path
 from utils.config_manager import load_settings, save_settings, ensure_directories
 from utils.logging_manager import log_message
 from utils.export_manager import export_to_excel, export_to_csv, get_unique_filename
 
+# Setup logging
+def setup_logging():
+    try:
+        log_path = get_writeable_path("medicalspytool.log")
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler(log_path),
+                logging.StreamHandler()
+            ]
+        )
+        return logging.getLogger(__name__)
+    except Exception as e:
+        # Emergency fallback if logging setup fails
+        print(f"Error setting up logging: {e}")
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler()]
+        )
+        return logging.getLogger(__name__)
+
+logger = setup_logging()
+logger.info(f"MedicalSpyTool starting up. Python version: {sys.version}")
+logger.info(f"Running in frozen mode: {getattr(sys, 'frozen', False)}")
+
+# Initialize Flask app with proper paths for template and static folders
+app = Flask(__name__,
+            template_folder=get_resource_path('templates'),
+            static_folder=get_resource_path('static'))
+app.secret_key = os.environ.get("SESSION_SECRET", "default_secret_key")
+Bootstrap(app)
+
 # Load configuration
-app_config = load_settings()
-ensure_directories(app_config)
+try:
+    app_config = load_settings()
+    ensure_directories(app_config)
+    logger.info("Configuration loaded successfully")
+except Exception as e:
+    logger.error(f"Error loading configuration: {e}", exc_info=True)
+    app_config = {
+        "output_path": get_writeable_path("output"),
+        "person_list_path": get_writeable_path("person_lists"),
+        "unique_filenames": True,
+        "default_database": "PubMed",
+        "search_timeout": 30
+    }
+    logger.info("Using fallback configuration")
 
 # Global variables
 search_results = []
 GLOBAL_LOG = []
+loaded_profile = None
+loaded_profile_name = None
 
 # Timeout für API-Validierungsanfragen (in Sekunden)
 API_VALIDATION_TIMEOUT = 5
+
+# Cleanup temporary files when exiting
+def cleanup_temp_files():
+    """Clean up temporary files when exiting."""
+    try:
+        temp_dir = tempfile.gettempdir()
+        # Lösche nur temporäre Dateien die zu unserer Anwendung gehören
+        patterns = [
+            'medicalspytool*.tmp',
+            'medicalspytool*.bak',
+            'search_results_*.tmp',
+            'export_*.tmp'
+        ]
+        
+        for pattern in patterns:
+            for filename in glob.glob(os.path.join(temp_dir, pattern)):
+                try:
+                    if os.path.exists(filename):
+                        os.remove(filename)
+                        logger.debug(f"Temporäre Datei gelöscht: {filename}")
+                except (PermissionError, OSError) as e:
+                    logger.warning(f"Konnte temporäre Datei nicht löschen: {filename}, Fehler: {e}")
+                    continue
+                    
+        # Lösche auch .tmp und .bak Dateien im Ausgabeverzeichnis
+        output_dir = app_config.get('output_path', './output')
+        if os.path.exists(output_dir):
+            for pattern in patterns:
+                for filename in glob.glob(os.path.join(output_dir, pattern)):
+                    try:
+                        if os.path.exists(filename):
+                            os.remove(filename)
+                            logger.debug(f"Temporäre Datei im Ausgabeverzeichnis gelöscht: {filename}")
+                    except (PermissionError, OSError) as e:
+                        logger.warning(f"Konnte temporäre Datei nicht löschen: {filename}, Fehler: {e}")
+                        continue
+                        
+    except Exception as e:
+        # Ignoriere Fehler beim Aufräumen komplett
+        logger.warning(f"Fehler beim Aufräumen temporärer Dateien: {e}")
+        pass
+
+atexit.register(cleanup_temp_files)
 
 @app.route('/')
 def index():
@@ -64,266 +153,177 @@ def index():
 @app.route('/search', methods=['GET', 'POST'])
 def search():
     """Handle search requests."""
-    global search_results, GLOBAL_LOG
     from datetime import datetime
+    import json
     
-    # Bei GET-Anfragen zeigen wir nur das Suchformular an
-    if request.method == 'GET':
-        return render_template('search.html', config=app_config, now=datetime.now())
+    # Globale Variablen für Suchstatus
+    global search_results
+    global loaded_profile
+    global loaded_profile_name
     
-    # Geladenes Profil aus Session abrufen, falls vorhanden
-    loaded_profile = session.get('loaded_profile', None)
-    loaded_profile_name = session.get('loaded_profile_name', None)
-    
-    # Wenn wir in einem POST sind und ein Profil geladen hatten, dieses aus der Session entfernen
-    if request.method == 'POST' and loaded_profile:
-        session.pop('loaded_profile', None)
-        session.pop('loaded_profile_name', None)
-    
-    if request.method == 'POST':
-        # Get form data
-        database = request.form.get('database', 'PubMed')
-        search_term = request.form.get('search_term', '')
-        additional_terms = request.form.get('additional_terms', '')
-        
-        # Unterstützung für mehrere Personen
-        # Personennamen verarbeiten (entweder aus JSON-Array oder aus älteren Formularversionen)
-        person_names = request.form.get('person_names', '')
-        try:
-            # Versuche, als JSON zu parsen (kommt von der neuen Personenauswahl)
-            if person_names.startswith('['):
-                person_names = json.loads(person_names)
-            elif person_names:
-                # Split die Namen bei Semikolon - kommt von der Multi-Select Liste (alte Version)
-                person_names = person_names.split(';')
-            else:
-                # Fallback für alte Formulare die noch person_name benutzen
-                person_name = request.form.get('person_name', '')
-                person_names = [person_name] if person_name else []
-        except:
-            # Fallback, falls JSON-Parsing fehlschlägt
-            person_name = request.form.get('person_name', '')
-            person_names = [person_name] if person_name else []
-            logger.warning(f"Failed to parse person_names: {person_names}")
+    try:
+        if request.method == 'POST':
+            # Formularvalidierung
+            form_data = {}
+            required_fields = ['database']
             
-        # Für Abwärtskompatibilität und für Anzeige in den Ergebnissen
-        person_name = person_names[0] if person_names else 'General Search'
+            # Sammle alle Formularfelder
+            for field in request.form:
+                form_data[field] = request.form.get(field)
             
-        max_results = int(request.form.get('max_results', 100))
-        
-        # Optional parameters
-        search_field = request.form.get('search_field', 'Alle Felder')
-        language = request.form.get('language', '')
-        pub_type = request.form.get('pub_type', '')
-        use_date_filter = request.form.get('use_date_filter') == 'on'
-        
-        date_range = None
-        if use_date_filter:
-            start_date = request.form.get('start_date', '')
-            end_date = request.form.get('end_date', '')
-            if start_date and end_date:
-                date_range = {
-                    'start': datetime.strptime(start_date, '%Y-%m-%d'),
-                    'end': datetime.strptime(end_date, '%Y-%m-%d')
-                }
-        
-        # Prepare search parameters
-        search_params = {
-            'names': person_names,
-            'max_results': max_results,
-            'field': search_field if search_field != 'Alle Felder' else None
-        }
-        
-        if language:
-            search_params['language'] = language
-        
-        if pub_type:
-            search_params['pub_type'] = pub_type
+            # Validiere Pflichtfelder
+            missing_fields = [field for field in required_fields if not form_data.get(field)]
+            if missing_fields:
+                raise ValueError(f"Fehlende Pflichtfelder: {', '.join(missing_fields)}")
             
-        if date_range:
-            search_params['date_range'] = date_range
-        
-        # Get API key
-        api_key = app_config.get(f"{database.lower()}_api_key", "")
-        
-        # Search based on selected database
-        results = []
-        log_message(None, f"Starting search in {database}")
-        
-        try:
-            if database == 'Combined':
-                # Search in all databases
-                successful_databases = []
-                failed_databases = []
+            database = form_data['database']
+            
+            # Validiere Person oder Suchbegriff
+            search_term = form_data.get('search_term', '').strip()
+            person_names = form_data.get('person_names', '').strip()
+            
+            if not search_term and not person_names:
+                raise ValueError("Bitte geben Sie mindestens einen Suchbegriff oder eine Person ein")
+            
+            # Validiere maximale Ergebnisse
+            try:
+                max_results = int(form_data.get('max_results', 100))
+                if max_results < 1 or max_results > 10000:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("Ungültige Anzahl maximaler Ergebnisse (1-10000)")
+            
+            # Initialisiere Suchvorgang
+            log_message(None, f"Starting search in {database}")
+            
+            try:
+                # Führe Suche basierend auf Datenbankauswahl durch
+                results = []
                 
-                for db_name, connector_class in DATABASE_CONNECTORS.items():
-                    db_api_key = app_config.get(f"{db_name.lower()}_api_key", "")
+                if database == 'Combined':
+                    # Kombinierte Suche über alle Datenbanken
+                    database_connectors = {
+                        'PubMed': PubMedConnector(),
+                        'DNB': DNBConnector(),
+                        'Scopus': ScopusConnector(),
+                        'WoS': WoSConnector(),
+                        'GEPRIS': GeprisConnector()
+                    }
                     
-                    try:
-                        # Initialisieren des Connectors
-                        connector = connector_class(api_key=db_api_key, settings=app_config)
-                        
-                        # API-Key Validierung (falls implementiert)
-                        if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
-                            valid_key = connector.validate_api_key()
-                            if not valid_key and db_api_key:  # Nur warnen, wenn ein Key angegeben aber ungültig ist
-                                log_message(None, f"Warnung: Ungültiger API-Key für {db_name}")
-                                logger.warning(f"Invalid API key for {db_name}")
-                                
-                        # Construct query
-                        query = connector.construct_query(
-                            search_term, 
-                            additional_terms=additional_terms,
-                            date_range=date_range,
-                            language=language,
-                            pub_type=pub_type,
-                            field=search_field
-                        )
-                        
-                        # Führe Suche mit Timeout aus
-                        search_timeout = app_config.get("search_timeout", 30)  # Standard-Timeout: 30 Sekunden
-                        
-                        import concurrent.futures
-                        import time
-                        
-                        def search_with_timeout():
-                            return connector.search(query, params=search_params)
-                        
-                        # Zeitmessung starten
-                        start_time = time.time()
-                        
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(search_with_timeout)
-                            try:
-                                db_results = future.result(timeout=search_timeout)
-                                
-                                # Erfolg markieren und Ergebnisse hinzufügen
-                                successful_databases.append(db_name)
-                                # Datenbank-Name zu jedem Ergebnis hinzufügen
-                                for result in db_results:
-                                    result['Database'] = db_name
-                                    
-                                results.extend(db_results)
-                                
-                                # Zeitmessung beenden und loggen
-                                elapsed_time = time.time() - start_time
-                                log_message(None, f"Gefunden: {len(db_results)} Ergebnisse in {db_name} ({elapsed_time:.2f}s)")
-                                logger.info(f"Found {len(db_results)} results in {db_name} in {elapsed_time:.2f}s")
-                                
-                            except concurrent.futures.TimeoutError:
-                                failed_databases.append(f"{db_name} (Timeout)")
-                                log_message(None, f"Fehler: Zeitüberschreitung bei der Suche in {db_name} nach {search_timeout} Sekunden")
-                                logger.error(f"Search timeout in {db_name} after {search_timeout} seconds")
-                            except Exception as e:
-                                failed_databases.append(f"{db_name} ({str(e)})")
-                                log_message(None, f"Fehler bei der Suche in {db_name}: {str(e)}")
-                                logger.error(f"Search error in {db_name}: {str(e)}", exc_info=True)
-                                
-                    except Exception as e:
-                        failed_databases.append(f"{db_name} ({str(e)})")
-                        log_message(None, f"Fehler beim Initialisieren des Connectors für {db_name}: {str(e)}")
-                        logger.error(f"Error initializing connector for {db_name}: {str(e)}", exc_info=True)
-                
-                # Zusammenfassung nach der Suche
-                if successful_databases:
-                    log_message(None, f"Erfolgreiche Suche in {len(successful_databases)} Datenbanken: {', '.join(successful_databases)}")
-                
-                if failed_databases:
-                    log_message(None, f"Fehler bei der Suche in {len(failed_databases)} Datenbanken: {', '.join(failed_databases)}")
-            else:
-                # Search in specific database
-                connector_class = DATABASE_CONNECTORS.get(database)
-                if connector_class:
-                    try:
-                        # Initialisieren des Connectors
-                        connector = connector_class(api_key=api_key, settings=app_config)
-                        
-                        # API-Key Validierung (falls implementiert)
-                        if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
-                            valid_key = connector.validate_api_key()
-                            if not valid_key and api_key:  # Nur warnen, wenn ein Key angegeben aber ungültig ist
-                                log_message(None, f"Warnung: Ungültiger API-Key für {database}")
-                                logger.warning(f"Invalid API key for {database}")
-                        
-                        # Construct query
-                        query = connector.construct_query(
-                            search_term, 
-                            additional_terms=additional_terms,
-                            date_range=date_range,
-                            language=language,
-                            pub_type=pub_type,
-                            field=search_field
-                        )
-                        
-                        # Zeitmessung und Timeout
-                        search_timeout = app_config.get("search_timeout", 30)  # Standard-Timeout: 30 Sekunden
-                        import concurrent.futures
-                        import time
-                        
-                        def search_with_timeout():
-                            return connector.search(query, params=search_params)
-                        
-                        # Zeitmessung starten
-                        start_time = time.time()
-                        
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(search_with_timeout)
-                            try:
-                                results = future.result(timeout=search_timeout)
-                                
-                                # Datenbank-Name zu jedem Ergebnis hinzufügen
-                                for result in results:
-                                    result['Database'] = database
-                                
-                                # Zeitmessung beenden und loggen
-                                elapsed_time = time.time() - start_time
-                                log_message(None, f"Gefunden: {len(results)} Ergebnisse in {database} ({elapsed_time:.2f}s)")
-                                logger.info(f"Found {len(results)} results in {database} in {elapsed_time:.2f}s")
-                                
-                            except concurrent.futures.TimeoutError:
-                                raise Exception(f"Zeitüberschreitung bei der Suche in {database} nach {search_timeout} Sekunden")
+                    # Validiere API-Keys vor der Suche
+                    for db_name, connector in database_connectors.items():
+                        api_key = app_config.get(f'{db_name.lower()}_api_key')
+                        if not connector.validate_api_key(api_key):
+                            log_message(None, f"Warning: Invalid API key for {db_name}")
+                            flash(f"Warnung: Ungültiger API-Schlüssel für {db_name}", "warning")
                     
-                    except Exception as e:
-                        error_msg = f"Fehler bei der Suche in {database}: {str(e)}"
-                        log_message(None, error_msg)
-                        logger.error(error_msg, exc_info=True)
-                        raise Exception(error_msg)
-            
-            # Update global results
-            search_results = results
-            
-            return render_template('results.html', 
-                                   results=results, 
-                                   count=len(results),
-                                   search_term=search_term,
-                                   database=database,
-                                   config=app_config,
-                                   now=datetime.now())
-            
-        except Exception as e:
-            logger.error(f"Search error: {e}", exc_info=True)
-            log_message(None, f"Error during search: {str(e)}")
-            return render_template('search.html', 
-                                   error=str(e), 
-                                   database=database,
-                                   config=app_config,
-                                   now=datetime.now())
-    
-    # GET request, show search form
-    profile_data = None
-    profile_name = None
-    
-    # Verwende das aus der Session geladene Profil, falls vorhanden
-    if loaded_profile:
-        profile_data = loaded_profile
-        profile_name = loaded_profile_name
-        flash(f'Suchprofil "{profile_name}" geladen. Sie können jetzt die Suche starten.', 'success')
-    
-    return render_template('search.html', 
-                          config=app_config, 
-                          now=datetime.now(),
-                          profile=profile_data,
-                          profile_name=profile_name)
+                    # Führe parallele Suchen durch
+                    search_tasks = []
+                    for db_name, connector in database_connectors.items():
+                        try:
+                            search_results = connector.search(
+                                search_term=search_term,
+                                person_names=person_names.split(',') if person_names else None,
+                                max_results=max_results,
+                                **form_data
+                            )
+                            results.extend(search_results)
+                        except Exception as db_error:
+                            log_message(None, f"Error in {db_name}: {str(db_error)}")
+                            flash(f"Fehler bei {db_name}: {str(db_error)}", "warning")
+                
+                else:
+                    # Einzeldatenbanksuche
+                    connector_class = {
+                        'PubMed': PubMedConnector,
+                        'DNB': DNBConnector,
+                        'Scopus': ScopusConnector,
+                        'WoS': WoSConnector,
+                        'GEPRIS': GeprisConnector
+                    }.get(database)
+                    
+                    if not connector_class:
+                        raise ValueError(f"Unbekannte Datenbank: {database}")
+                    
+                    connector = connector_class()
+                    api_key = app_config.get(f'{database.lower()}_api_key')
+                    
+                    if not connector.validate_api_key(api_key):
+                        raise ValueError(f"Ungültiger API-Schlüssel für {database}")
+                    
+                    results = connector.search(
+                        search_term=search_term,
+                        person_names=person_names.split(',') if person_names else None,
+                        max_results=max_results,
+                        **form_data
+                    )
+                
+                # Aktualisiere globale Ergebnisse
+                search_results = results
+                
+                # Erfolgs- oder Warnmeldung
+                if len(results) > 0:
+                    flash(f"{len(results)} Ergebnisse gefunden.", "success")
+                else:
+                    flash("Keine Ergebnisse gefunden. Versuchen Sie andere Suchbegriffe oder Datenbanken.", "warning")
+                
+                return render_template('results.html', 
+                                    results=results, 
+                                    count=len(results),
+                                    search_term=search_term,
+                                    database=database,
+                                    config=app_config,
+                                    now=datetime.now())
+                
+            except Exception as search_error:
+                error_msg = str(search_error)
+                logger.error(f"Search error: {error_msg}", exc_info=True)
+                log_message(None, f"Error during search: {error_msg}")
+                return render_template('search.html', 
+                                    error=error_msg,
+                                    config=app_config,
+                                    form_data=form_data,
+                                    profile=loaded_profile,
+                                    now=datetime.now())
+        
+        # GET request oder Form-Validierungsfehler
+        profile_data = None
+        if loaded_profile:
+            profile_data = loaded_profile
+            # Profile nach Verwendung zurücksetzen
+            loaded_profile = None
+            loaded_profile_name = None
+        
+        return render_template('search.html',
+                            config=app_config,
+                            profile=profile_data,
+                            now=datetime.now())
+                            
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Unexpected error in search route: {error_msg}", exc_info=True)
+        flash(error_msg, "danger")
+        return render_template('search.html',
+                            error=error_msg,
+                            config=app_config,
+                            profile=loaded_profile,
+                            now=datetime.now())
+
+@app.route('/cancel_search', methods=['POST'])
+def cancel_search():
+    """Cancel an ongoing search operation."""
+    global search_results
+    try:
+        # Setze globale Suchergebnisse zurück
+        search_results = []
+        
+        # Logge den Abbruch
+        log_message(None, "Search cancelled by user")
+        
+        return jsonify({'status': 'success', 'message': 'Search cancelled'})
+    except Exception as e:
+        logger.error(f"Error cancelling search: {e}", exc_info=True)
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/results')
 def results():
@@ -469,7 +469,16 @@ def export(format):
     
     # Create output directory if it doesn't exist
     output_path = app_config.get('output_path', './output')
-    os.makedirs(output_path, exist_ok=True)
+    try:
+        os.makedirs(output_path, exist_ok=True)
+    except PermissionError as e:
+        logger.error(f"Keine Berechtigung zum Erstellen des Ausgabeverzeichnisses: {str(e)}")
+        flash(f"Keine Berechtigung zum Erstellen des Ausgabeverzeichnisses: {str(e)}", "danger")
+        return redirect(url_for('export_page'))
+    except Exception as e:
+        logger.error(f"Fehler beim Erstellen des Ausgabeverzeichnisses: {str(e)}", exc_info=True)
+        flash(f"Fehler beim Erstellen des Ausgabeverzeichnisses: {str(e)}", "danger")
+        return redirect(url_for('export_page'))
     
     # Get file path
     filename_prefix = app_config.get('filename_prefix', 'medical_spytool_export')
@@ -496,10 +505,29 @@ def export(format):
             }
             
             # Export durchführen mit Optionen
-            export_to_excel(search_results, file_path, options=excel_options)
+            success = export_to_excel(search_results, file_path, options=excel_options)
+            if not success:
+                flash("Fehler beim Excel-Export. Versuche CSV als Alternative.", "warning")
+                # Fallback zu CSV
+                file_path = f"{os.path.splitext(file_path)[0]}.csv"
+                csv_options = {
+                    'delimiter': app_config.get('csv_delimiter', ','),
+                    'encoding': app_config.get('csv_encoding', 'utf-8'),
+                    'output_columns': app_config.get('output_columns', [])
+                }
+                success = export_to_csv(search_results, file_path, options=csv_options)
+                if not success:
+                    flash("Auch der CSV-Export ist fehlgeschlagen. Bitte überprüfen Sie die Logs.", "danger")
+                    return redirect(url_for('export_page'))
             
             # Datei zum Download anbieten
-            return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+            try:
+                return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+            except Exception as download_e:
+                logger.error(f"Fehler beim Bereitstellen der Datei zum Download: {str(download_e)}", exc_info=True)
+                flash(f"Die Datei wurde erstellt, kann aber nicht heruntergeladen werden: {str(download_e)}", "warning")
+                flash(f"Sie finden die exportierte Datei hier: {file_path}", "info")
+                return redirect(url_for('export_page'))
             
         elif format == 'csv':
             file_path = f"{file_path}.csv"
@@ -512,10 +540,19 @@ def export(format):
             }
             
             # Export durchführen mit Optionen
-            export_to_csv(search_results, file_path, options=csv_options)
+            success = export_to_csv(search_results, file_path, options=csv_options)
+            if not success:
+                flash("Fehler beim CSV-Export. Bitte überprüfen Sie die Logs.", "danger")
+                return redirect(url_for('export_page'))
             
             # Datei zum Download anbieten
-            return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+            try:
+                return send_file(file_path, as_attachment=True, download_name=os.path.basename(file_path))
+            except Exception as download_e:
+                logger.error(f"Fehler beim Bereitstellen der Datei zum Download: {str(download_e)}", exc_info=True)
+                flash(f"Die Datei wurde erstellt, kann aber nicht heruntergeladen werden: {str(download_e)}", "warning")
+                flash(f"Sie finden die exportierte Datei hier: {file_path}", "info")
+                return redirect(url_for('export_page'))
             
         else:
             flash('Ungültiges Exportformat. Bitte wählen Sie Excel oder CSV.', 'danger')
@@ -530,27 +567,98 @@ def export(format):
 def persons():
     """Handle person management."""
     from datetime import datetime
+    
+    # Personenlistendatei definieren
     persons_file = os.path.join(app_config.get('person_list_path', './person_lists'), 'persons.json')
     
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(persons_file), exist_ok=True)
+    # Stelle sicher, dass das Verzeichnis existiert
+    try:
+        os.makedirs(os.path.dirname(persons_file), exist_ok=True)
+        logger.info(f"Personenverzeichnis sichergestellt: {os.path.dirname(persons_file)}")
+    except PermissionError as e:
+        error_msg = f"Keine Berechtigung zum Erstellen des Personenverzeichnisses: {str(e)}"
+        logger.error(error_msg)
+        return render_template('persons.html', 
+                               persons=[], 
+                               error=error_msg,
+                               config=app_config,
+                               now=datetime.now())
+    except OSError as e:
+        error_msg = f"Betriebssystemfehler beim Erstellen des Personenverzeichnisses: {str(e)}"
+        logger.error(error_msg)
+        return render_template('persons.html', 
+                               persons=[], 
+                               error=error_msg,
+                               config=app_config,
+                               now=datetime.now())
     
-    # Initialize persons list
+    # Personenliste initialisieren
     person_list = []
     
-    # Load existing persons if file exists
+    # Lade existierende Personen, falls Datei existiert
     if os.path.exists(persons_file):
         try:
+            # Sichere Dateioperationen mit Fehlerbehandlung
             with open(persons_file, 'r', encoding='utf-8') as f:
-                person_list = json.load(f)
+                file_content = f.read()
+                if not file_content.strip():
+                    # Leere Datei behandeln
+                    logger.warning(f"Personenliste {persons_file} ist leer, initialisiere neue Liste")
+                    person_list = []
+                else:
+                    person_list = json.loads(file_content)
+            
+            # Validiere, dass person_list tatsächlich eine Liste ist
+            if not isinstance(person_list, list):
+                logger.warning(f"Personenliste hat falsches Format (kein Array), initialisiere neue Liste")
+                person_list = []
+                
+            logger.info(f"Personenliste aus {persons_file} geladen: {len(person_list)} Einträge")
+        except json.JSONDecodeError as e:
+            error_msg = f"Fehler beim Parsen der Personenliste: {str(e)}"
+            logger.error(error_msg)
+            
+            # Erstelle Backup der defekten Datei
+            try:
+                backup_path = f"{persons_file}.backup-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                with open(persons_file, 'r', encoding='utf-8') as src, open(backup_path, 'w', encoding='utf-8') as dst:
+                    dst.write(src.read())
+                logger.info(f"Backup der defekten Personenliste erstellt: {backup_path}")
+            except Exception as backup_e:
+                logger.error(f"Fehler beim Erstellen des Backups der defekten Personenliste: {str(backup_e)}")
+                
+            return render_template('persons.html', 
+                                  persons=person_list, 
+                                  error=error_msg,
+                                  config=app_config,
+                                  now=datetime.now())
+        except PermissionError as e:
+            error_msg = f"Keine Berechtigung zum Lesen der Personenliste: {str(e)}"
+            logger.error(error_msg)
+            return render_template('persons.html', 
+                                  persons=person_list, 
+                                  error=error_msg,
+                                  config=app_config,
+                                  now=datetime.now())
+        except FileNotFoundError as e:
+            error_msg = f"Personenliste nicht gefunden: {str(e)}"
+            logger.error(error_msg)
+            # Kein Fehler dem Benutzer anzeigen, da wir dann einfach eine leere Liste verwenden
         except Exception as e:
-            logger.error(f"Error loading persons: {e}", exc_info=True)
+            error_msg = f"Unerwarteter Fehler beim Laden der Personenliste: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            return render_template('persons.html', 
+                                  persons=person_list, 
+                                  error=error_msg,
+                                  config=app_config,
+                                  now=datetime.now())
     
+    # Verarbeite POST-Anfragen für Aktionen
     if request.method == 'POST':
         action = request.form.get('action')
         
         if action == 'add':
-            # Add a new person
+            # Füge eine neue Person hinzu
             firstname = request.form.get('firstname', '').strip()
             lastname = request.form.get('lastname', '').strip()
             search_term = request.form.get('search_term', '').strip()
@@ -572,77 +680,226 @@ def persons():
                     'Additional Terms': additional_terms if additional_terms else None
                 }
                 
-                # Check for duplicates
+                # Auf Duplikate prüfen
                 if not any(p.get('Name') == full_name for p in person_list):
                     person_list.append(person)
                     
-                    # Save updated list
+                    # Speichere die aktualisierte Liste mit sicheren Dateioperationen
                     try:
-                        with open(persons_file, 'w', encoding='utf-8') as f:
-                            json.dump(person_list, f, indent=2)
-                    except Exception as e:
-                        logger.error(f"Error saving persons: {e}", exc_info=True)
+                        # Sichere Dateioperationen mit temporärer Datei
+                        temp_file = f"{persons_file}.tmp"
+                        with open(temp_file, 'w', encoding='utf-8') as f:
+                            json.dump(person_list, f, indent=2, ensure_ascii=False)
+                        
+                        # Überprüfe, ob die temporäre Datei korrekt geschrieben wurde
+                        if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                            # Erstelle Backup der alten Datei, falls vorhanden
+                            if os.path.exists(persons_file):
+                                backup_path = f"{persons_file}.bak"
+                                try:
+                                    with open(persons_file, 'r', encoding='utf-8') as src, open(backup_path, 'w', encoding='utf-8') as dst:
+                                        dst.write(src.read())
+                                except Exception as e:
+                                    logger.warning(f"Konnte kein Backup der alten Personenliste erstellen: {str(e)}")
+                            
+                            # Ersetze die alte Datei durch die neue
+                            if os.path.exists(persons_file):
+                                os.replace(temp_file, persons_file)
+                            else:
+                                os.rename(temp_file, persons_file)
+                                
+                            logger.info(f"Person '{full_name}' hinzugefügt und Liste gespeichert")
+                            flash(f"Person '{full_name}' erfolgreich hinzugefügt.", "success")
+                        else:
+                            # Temporäre Datei wurde nicht korrekt geschrieben
+                            error_msg = "Fehler beim Speichern: Temporäre Datei konnte nicht erstellt werden"
+                            logger.error(error_msg)
+                            if os.path.exists(temp_file):
+                                os.remove(temp_file)  # Entferne fehlerhafte temporäre Datei
+                            return render_template('persons.html', 
+                                                  persons=person_list, 
+                                                  error=error_msg,
+                                                  config=app_config,
+                                                  now=datetime.now())
+                    except PermissionError as e:
+                        error_msg = f"Keine Berechtigung zum Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg)
                         return render_template('persons.html', 
                                               persons=person_list, 
-                                              error=f"Error saving: {str(e)}",
+                                              error=error_msg,
                                               config=app_config,
                                               now=datetime.now())
+                    except OSError as e:
+                        error_msg = f"Betriebssystemfehler beim Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg)
+                        return render_template('persons.html', 
+                                              persons=person_list, 
+                                              error=error_msg,
+                                              config=app_config,
+                                              now=datetime.now())
+                    except Exception as e:
+                        error_msg = f"Unerwarteter Fehler beim Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg, exc_info=True)
+                        return render_template('persons.html', 
+                                              persons=person_list, 
+                                              error=error_msg,
+                                              config=app_config,
+                                              now=datetime.now())
+                else:
+                    # Person existiert bereits
+                    flash(f"Person '{full_name}' existiert bereits.", "warning")
+            else:
+                # Vorname oder Nachname fehlt
+                flash("Bitte geben Sie Vor- und Nachnamen ein.", "warning")
         
         elif action == 'delete':
-            # Delete a person
-            index = int(request.form.get('index', -1))
-            if 0 <= index < len(person_list):
-                del person_list[index]
-                
-                # Save updated list
-                try:
-                    with open(persons_file, 'w', encoding='utf-8') as f:
-                        json.dump(person_list, f, indent=2)
-                except Exception as e:
-                    logger.error(f"Error saving persons: {e}", exc_info=True)
-                    return render_template('persons.html', 
-                                          persons=person_list, 
-                                          error=f"Error saving: {str(e)}",
-                                          config=app_config,
-                                          now=datetime.now())
+            # Lösche eine Person
+            try:
+                index = int(request.form.get('index', -1))
+                if 0 <= index < len(person_list):
+                    deleted_name = person_list[index].get('Name', 'Unbekannt')
+                    del person_list[index]
+                    
+                    # Speichere die aktualisierte Liste mit sicheren Dateioperationen
+                    try:
+                        # Sichere Dateioperationen mit temporärer Datei
+                        temp_file = f"{persons_file}.tmp"
+                        with open(temp_file, 'w', encoding='utf-8') as f:
+                            json.dump(person_list, f, indent=2, ensure_ascii=False)
+                        
+                        # Überprüfe, ob die temporäre Datei korrekt geschrieben wurde
+                        if os.path.exists(temp_file) and os.path.getsize(temp_file) > 0:
+                            # Erstelle Backup der alten Datei
+                            if os.path.exists(persons_file):
+                                backup_path = f"{persons_file}.bak"
+                                try:
+                                    with open(persons_file, 'r', encoding='utf-8') as src, open(backup_path, 'w', encoding='utf-8') as dst:
+                                        dst.write(src.read())
+                                except Exception as e:
+                                    logger.warning(f"Konnte kein Backup der alten Personenliste erstellen: {str(e)}")
+                            
+                            # Ersetze die alte Datei durch die neue
+                            if os.path.exists(persons_file):
+                                os.replace(temp_file, persons_file)
+                            else:
+                                os.rename(temp_file, persons_file)
+                                
+                            logger.info(f"Person '{deleted_name}' gelöscht und Liste gespeichert")
+                            flash(f"Person '{deleted_name}' erfolgreich gelöscht.", "success")
+                        else:
+                            # Temporäre Datei wurde nicht korrekt geschrieben
+                            error_msg = "Fehler beim Speichern: Temporäre Datei konnte nicht erstellt werden"
+                            logger.error(error_msg)
+                            if os.path.exists(temp_file):
+                                os.remove(temp_file)  # Entferne fehlerhafte temporäre Datei
+                            return render_template('persons.html', 
+                                                  persons=person_list, 
+                                                  error=error_msg,
+                                                  config=app_config,
+                                                  now=datetime.now())
+                    except PermissionError as e:
+                        error_msg = f"Keine Berechtigung zum Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg)
+                        return render_template('persons.html', 
+                                              persons=person_list, 
+                                              error=error_msg,
+                                              config=app_config,
+                                              now=datetime.now())
+                    except OSError as e:
+                        error_msg = f"Betriebssystemfehler beim Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg)
+                        return render_template('persons.html', 
+                                              persons=person_list, 
+                                              error=error_msg,
+                                              config=app_config,
+                                              now=datetime.now())
+                    except Exception as e:
+                        error_msg = f"Unerwarteter Fehler beim Speichern der Personenliste: {str(e)}"
+                        logger.error(error_msg, exc_info=True)
+                        return render_template('persons.html', 
+                                              persons=person_list, 
+                                              error=error_msg,
+                                              config=app_config,
+                                              now=datetime.now())
+                else:
+                    flash("Ungültiger Index für Löschvorgang.", "danger")
+            except ValueError:
+                flash("Ungültiger Index-Wert.", "danger")
     
     return render_template('persons.html', persons=person_list, config=app_config, now=datetime.now())
 
 @app.route('/api/persons')
 def api_persons_list():
-    """API-Endpunkt für die Personenauswahl mit Autocomplete.
+    """API endpoint for person selection with autocomplete.
     
-    Wenn ein 'query' Parameter angegeben ist, werden nur Personen zurückgegeben,
-    deren Name den Suchbegriff enthält (Filterung für Autocomplete).
+    Returns:
+        JSON response with filtered persons or error message
     """
-    query = request.args.get('query', '').lower()
-    
     try:
-        # Personenliste aus der JSON-Datei laden
-        persons_path = os.path.join(app_config.get('person_list_path', 'person_lists'), 'persons.json')
+        # Get query parameter
+        query = request.args.get('query', '').lower()
         
-        if not os.path.exists(persons_path):
-            # Wenn die Datei nicht existiert, leere Liste zurückgeben
-            return jsonify([])
+        # Try to get persons from session cache first
+        persons = session.get('cached_persons')
         
-        with open(persons_path, 'r', encoding='utf-8') as f:
-            persons = json.load(f)
+        if persons is None:
+            # Load from file if not in cache
+            persons_path = os.path.join(app_config.get('person_list_path', 'person_lists'), 'persons.json')
+            
+            if not os.path.exists(persons_path):
+                # Return empty list if file doesn't exist
+                session['cached_persons'] = []
+                return jsonify([])
+            
+            try:
+                with open(persons_path, 'r', encoding='utf-8') as f:
+                    persons = json.load(f)
+                    
+                # Validate data structure
+                if not isinstance(persons, list):
+                    logger.error("Invalid persons data structure: not a list")
+                    return jsonify([]), 500
+                    
+                # Cache the results
+                session['cached_persons'] = persons
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing error in persons file: {e}")
+                return jsonify({'error': 'Invalid persons data format'}), 500
+            except Exception as e:
+                logger.error(f"Error reading persons file: {e}", exc_info=True)
+                return jsonify({'error': 'Internal server error'}), 500
         
-        # Wenn ein Suchbegriff angegeben ist, filtern wir die Personen
+        # Filter persons if query is provided
         if query:
-            persons = [p for p in persons if query in p.get('name', '').lower()]
+            filtered_persons = []
+            for person in persons:
+                name = person.get('Name', '').lower()
+                firstname = person.get('Firstname', '').lower()
+                lastname = person.get('Lastname', '').lower()
+                
+                if (query in name or 
+                    query in firstname or 
+                    query in lastname):
+                    filtered_persons.append(person)
             
-            # Sortiere Ergebnisse: Exakte Treffer zuerst, dann nach Alphabet
-            persons.sort(key=lambda p: (0 if p.get('name', '').lower().startswith(query) else 1, p.get('name', '')))
+            # Sort results: exact matches first, then by alphabet
+            filtered_persons.sort(
+                key=lambda p: (
+                    0 if p.get('Name', '').lower().startswith(query) else 1,
+                    p.get('Name', '')
+                )
+            )
             
-            # Begrenze die Anzahl der Ergebnisse
-            persons = persons[:10]
+            # Limit results
+            persons = filtered_persons[:10]
         
         return jsonify(persons)
-    except Exception as e:
-        logger.error(f"Error loading persons: {e}", exc_info=True)
-        return jsonify([]), 500
         
+    except Exception as e:
+        logger.error(f"Unexpected error in api_persons_list: {e}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/persons/list')
 def persons_list():
     """Return the list of persons as JSON for API usage."""
@@ -662,441 +919,515 @@ def persons_list():
     
     return jsonify(person_list)
 
+@app.route('/search_profiles', methods=['GET'])
+def search_profiles():
+    """Handle search profiles page."""
+    from datetime import datetime
+    
+    profiles = get_all_search_profiles()
+    return render_template('search_profiles.html', 
+                         profiles=profiles,
+                         config=app_config,
+                         now=datetime.now())
+
+@app.route('/save_search_profile', methods=['POST'])
+def save_search_profile():
+    """Save a search profile."""
+    profile_name = request.form.get('profile_name')
+    profile_data = request.form.get('profile_data')
+    
+    if not profile_name or not profile_data:
+        flash('Profilname und Daten sind erforderlich.', 'danger')
+        return redirect(url_for('search'))
+    
+    try:
+        # Konvertiere Profildaten zu JSON
+        profile_data = json.loads(profile_data)
+        
+        # Speichere das Profil
+        success = save_search_profile(profile_name, profile_data)
+        
+        if success:
+            flash(f'Suchprofil "{profile_name}" erfolgreich gespeichert.', 'success')
+        else:
+            flash('Fehler beim Speichern des Suchprofils.', 'danger')
+    except Exception as e:
+        logger.error(f"Error saving search profile: {e}", exc_info=True)
+        flash(f'Fehler beim Speichern des Suchprofils: {str(e)}', 'danger')
+    
+    return redirect(url_for('search'))
+
+@app.route('/load_search_profile/<profile_name>', methods=['GET'])
+def load_search_profile_endpoint(profile_name):
+    """Load a search profile."""
+    global loaded_profile
+    global loaded_profile_name
+    
+    try:
+        profile_data = load_search_profile(profile_name)
+        
+        if profile_data:
+            loaded_profile = profile_data
+            loaded_profile_name = profile_name
+            flash(f'Suchprofil "{profile_name}" geladen.', 'success')
+        else:
+            flash(f'Suchprofil "{profile_name}" nicht gefunden.', 'warning')
+    except Exception as e:
+        logger.error(f"Error loading search profile: {e}", exc_info=True)
+        flash(f'Fehler beim Laden des Suchprofils: {str(e)}', 'danger')
+    
+    return redirect(url_for('search'))
+
+@app.route('/delete_search_profile/<profile_name>', methods=['POST'])
+def delete_search_profile_endpoint(profile_name):
+    """Delete a search profile."""
+    try:
+        success = delete_search_profile(profile_name)
+        
+        if success:
+            flash(f'Suchprofil "{profile_name}" erfolgreich gelöscht.', 'success')
+        else:
+            flash(f'Suchprofil "{profile_name}" nicht gefunden.', 'warning')
+    except Exception as e:
+        logger.error(f"Error deleting search profile: {e}", exc_info=True)
+        flash(f'Fehler beim Löschen des Suchprofils: {str(e)}', 'danger')
+    
+    return redirect(url_for('search_profiles'))
+
 @app.route('/logs')
 def logs():
     """Show application logs."""
     global GLOBAL_LOG
     from datetime import datetime
     
+    log_file = get_writeable_path("medicalspytool.log")
+    log_content = []
+    
     # Try to read log file content
     try:
-        with open('medicalspytool.log', 'r', encoding='utf-8') as f:
-            log_content = f.read()
+        if os.path.exists(log_file):
+            with open(log_file, 'r', encoding='utf-8') as f:
+                log_content = f.readlines()
+                # Beschränke auf die letzten 1000 Zeilen
+                log_content = log_content[-1000:]
     except Exception as e:
         logger.error(f"Error reading log file: {e}", exc_info=True)
-        log_content = "Error loading log file."
+        flash(f"Fehler beim Lesen der Logdatei: {str(e)}", "danger")
     
-    return render_template('logs.html', log_content=log_content, config=app_config, now=datetime.now())
-
-@app.route('/logs/clear', methods=['POST'])
-def clear_logs():
-    """Clear the application log file."""
+    # Kombiniere Datei-Logs mit In-Memory-Logs
+    all_logs = GLOBAL_LOG + log_content
+    
+    # Get detailed system info for advanced log
+    system_info = {
+        "os": sys.platform,
+        "python_version": sys.version,
+        "app_version": "2.0.0",
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "config": app_config
+    }
+    
     try:
-        # Öffne die Logdatei im Schreibmodus, um sie zu leeren
-        with open('medicalspytool.log', 'w', encoding='utf-8') as f:
-            f.write(f"Log cleared at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        import platform
+        system_info["platform"] = platform.platform()
+        system_info["processor"] = platform.processor()
+        system_info["machine"] = platform.machine()
+    except:
+        pass
+    
+    return render_template('logs.html',
+                          logs=all_logs,
+                          system_info=system_info,
+                          config=app_config,
+                          now=datetime.now())
+
+@app.route('/api/check_dependencies')
+def check_dependencies():
+    """API endpoint to check dependencies and their versions."""
+    try:
+        import pkg_resources
+        import platform
+        import sys
         
-        logger.info("Log file cleared successfully.")
-        flash("Log-Datei wurde erfolgreich geleert.", "success")
+        # Get installed packages and their versions
+        installed_packages = {pkg.key: pkg.version for pkg in pkg_resources.working_set}
+        
+        # Check required packages (based on the imports in this application)
+        required_packages = [
+            'flask', 'flask-bootstrap', 'requests', 'pandas', 
+            'numpy', 'lxml', 'beautifulsoup4', 'openpyxl', 
+            'matplotlib', 'seaborn'
+        ]
+        
+        dependencies_status = {}
+        for package in required_packages:
+            if package in installed_packages:
+                dependencies_status[package] = {
+                    'installed': True,
+                    'version': installed_packages.get(package, 'Unknown'),
+                    'status': 'OK'
+                }
+            else:
+                dependencies_status[package] = {
+                    'installed': False,
+                    'version': None,
+                    'status': 'Missing'
+                }
+        
+        # Add system information
+        system_info = {
+            'python_version': platform.python_version(),
+            'system': platform.system(),
+            'platform': platform.platform(),
+            'machine': platform.machine(),
+            'processor': platform.processor()
+        }
+        
+        log_message(None, f"Dependencies check completed successfully")
+        return jsonify({
+            'success': True,
+            'dependencies': dependencies_status,
+            'system_info': system_info,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
     except Exception as e:
-        logger.error(f"Error clearing log file: {e}", exc_info=True)
-        flash(f"Fehler beim Leeren der Log-Datei: {str(e)}", "danger")
+        log_message(None, f"Error checking dependencies: {str(e)}", level=logging.ERROR)
+        return jsonify({
+            'success': False,
+            'message': f"Error checking dependencies: {str(e)}",
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+@app.route('/api/test_connections')
+def test_connections():
+    """API endpoint to test database connections."""
+    try:
+        results = {}
+        
+        # Test PubMed connection
+        pubmed = PubMedConnector()
+        pubmed_result = pubmed.test_connection()
+        results['PubMed'] = pubmed_result
+        
+        # Test DNB connection
+        dnb = DNBConnector()
+        dnb_result = dnb.test_connection()
+        results['DNB'] = dnb_result
+        
+        # Test Scopus connection if API key is available
+        scopus_api_key = app_config.get('scopus_api_key')
+        if scopus_api_key:
+            scopus = ScopusConnector()
+            scopus_result = scopus.test_connection()
+            results['Scopus'] = scopus_result
+        else:
+            results['Scopus'] = {
+                'status': 'Not Tested',
+                'message': 'API key not configured',
+                'response_time': None
+            }
+        
+        # Test Web of Science connection if API key is available
+        wos_api_key = app_config.get('wos_api_key')
+        if wos_api_key:
+            wos = WoSConnector()
+            wos_result = wos.test_connection()
+            results['Web of Science'] = wos_result
+        else:
+            results['Web of Science'] = {
+                'status': 'Not Tested',
+                'message': 'API key not configured',
+                'response_time': None
+            }
+        
+        # Test GEPRIS connection
+        gepris = GeprisConnector()
+        gepris_result = gepris.test_connection()
+        results['GEPRIS'] = gepris_result
+        
+        log_message(None, f"Database connection tests completed")
+        return jsonify({
+            'success': True,
+            'connections': results,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        log_message(None, f"Error testing database connections: {str(e)}", level=logging.ERROR)
+        return jsonify({
+            'success': False,
+            'message': f"Error testing database connections: {str(e)}",
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+@app.route('/api/check_storage_paths')
+def check_storage_paths():
+    """API endpoint to check storage paths and their write permissions."""
+    try:
+        paths_to_check = {
+            'output_directory': get_writeable_path(app_config.get('output_path', 'output')),
+            'person_list_directory': get_writeable_path(app_config.get('person_list_path', 'person_lists')),
+            'logs_directory': os.path.dirname(get_writeable_path('medicalspytool.log')),
+            'temp_directory': tempfile.gettempdir()
+        }
+        
+        path_status = {}
+        for name, path in paths_to_check.items():
+            try:
+                # Check if path exists
+                exists = os.path.exists(path)
+                
+                # Check if directory
+                is_dir = os.path.isdir(path) if exists else False
+                
+                # Check write permissions by attempting to create a test file
+                writable = False
+                if exists and is_dir:
+                    test_file = os.path.join(path, f"write_test_{int(time.time())}.tmp")
+                    try:
+                        with open(test_file, 'w') as f:
+                            f.write('test')
+                        writable = True
+                        # Clean up test file
+                        if os.path.exists(test_file):
+                            os.remove(test_file)
+                    except (IOError, PermissionError):
+                        writable = False
+                
+                # Get free space in MB
+                free_space_mb = None
+                if exists:
+                    try:
+                        if sys.platform == 'win32':
+                            free_bytes = ctypes.c_ulonglong(0)
+                            ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(path), None, None, ctypes.pointer(free_bytes))
+                            free_space_mb = free_bytes.value / (1024 * 1024)
+                        else:
+                            st = os.statvfs(path)
+                            free_space_mb = (st.f_bavail * st.f_frsize) / (1024 * 1024)
+                    except Exception:
+                        free_space_mb = "Unknown"
+                
+                path_status[name] = {
+                    'path': path,
+                    'exists': exists,
+                    'is_directory': is_dir,
+                    'writable': writable,
+                    'free_space_mb': free_space_mb,
+                    'status': 'OK' if (exists and is_dir and writable) else 'Problem'
+                }
+                
+            except Exception as path_error:
+                path_status[name] = {
+                    'path': path,
+                    'error': str(path_error),
+                    'status': 'Error'
+                }
+        
+        log_message(None, f"Storage paths check completed")
+        return jsonify({
+            'success': True,
+            'paths': path_status,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+    except Exception as e:
+        log_message(None, f"Error checking storage paths: {str(e)}", level=logging.ERROR)
+        return jsonify({
+            'success': False,
+            'message': f"Error checking storage paths: {str(e)}",
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+@app.route('/api/check_can_iterate')
+def check_can_iterate():
+    """API endpoint to check if the system can continue to iterate.
     
-    return redirect(url_for('logs'))
-    
-@app.route('/select_folder', methods=['POST'])
-def select_folder():
+    This diagnostic tool checks:
+    1. If there are more search results to process
+    2. If any background tasks are running
+    3. If system resources are available for continued processing
+    4. If there are any errors or warnings that would prevent iteration
     """
-    Öffnet einen Ordner-Auswahl-Dialog.
-    Dieser Endpunkt wird vom Pfad-Auswahl-Widget im Frontend aufgerufen.
-    """
-    import tkinter as tk
-    from tkinter import filedialog
-    import os
-    import json
-    
-    if not request.is_json:
-        return jsonify({'success': False, 'error': 'Erfordert JSON-Anfrage'}), 400
-    
-    data = request.get_json()
-    field_id = data.get('field_id', '')
-    current_path = data.get('current_path', '')
-    
-    if not field_id:
-        return jsonify({'success': False, 'error': 'Feld-ID fehlt'}), 400
-    
-    # Initialisieren von Tkinter ohne das Hauptfenster zu zeigen
-    root = tk.Tk()
-    root.withdraw()
-    
-    # Wenn der aktuelle Pfad existiert, dort starten
-    initial_dir = current_path if os.path.exists(current_path) else os.getcwd()
-    
-    # Dialog öffnen
-    selected_path = filedialog.askdirectory(
-        initialdir=initial_dir,
-        title="Ordner auswählen"
-    )
-    
-    # Aufräumen
-    root.destroy()
-    
-    if selected_path:
-        # Normalisiere den Pfad für die Konsistenz
-        selected_path = os.path.normpath(selected_path)
-        # Wenn der Benutzer ein Windows-System verwendet, führen wir eine zusätzliche Normalisierung durch
-        if os.name == 'nt':
-            selected_path = selected_path.replace('\\', '/')
+    try:
+        global search_results
+        
+        # Check for search results
+        has_search_results = len(search_results) > 0
+        processed_results = getattr(search_results, 'processed_count', 0)
+        total_results = len(search_results)
+        
+        # Check system resources
+        import psutil
+        memory_available = True
+        cpu_available = True
+        
+        try:
+            memory = psutil.virtual_memory()
+            memory_available = memory.percent < 90  # Consider memory available if usage is below 90%
+            
+            cpu = psutil.cpu_percent(interval=0.5)
+            cpu_available = cpu < 80  # Consider CPU available if usage is below 80%
+        except:
+            # If psutil fails, assume resources are available
+            pass
+        
+        # Check for any errors in log that might prevent iteration
+        error_count = 0
+        warning_count = 0
+        
+        try:
+            log_path = get_writeable_path("medicalspytool.log")
+            if os.path.exists(log_path):
+                with open(log_path, 'r') as log_file:
+                    log_contents = log_file.read()
+                    error_count = log_contents.count('ERROR')
+                    warning_count = log_contents.count('WARNING')
+        except:
+            # If log file can't be read, assume no errors
+            pass
+        
+        # Check database connectors status
+        connectors_available = {
+            'PubMed': True,
+            'DNB': True,
+            'Scopus': True,
+            'WoS': True,
+            'GEPRIS': True
+        }
+        
+        # Quick API key validation (without making external calls)
+        for db_name in connectors_available.keys():
+            api_key = app_config.get(f'{db_name.lower()}_api_key', '')
+            connectors_available[db_name] = bool(api_key)
+        
+        # Determine if iteration can continue
+        can_iterate = has_search_results and memory_available and cpu_available
+        
+        # Identify any blocking issues
+        blocking_issues = []
+        
+        if not has_search_results:
+            blocking_issues.append("No search results available to process")
+        
+        if not memory_available:
+            blocking_issues.append("System memory usage is too high (>90%)")
+        
+        if not cpu_available:
+            blocking_issues.append("CPU usage is too high (>80%)")
+        
+        if error_count > 10:
+            blocking_issues.append(f"High number of errors detected in logs ({error_count})")
+        
+        # Return comprehensive status information
+        return jsonify({
+            'status': 'success',
+            'can_iterate': can_iterate,
+            'search_results': {
+                'available': has_search_results,
+                'count': total_results,
+                'processed': processed_results,
+                'remaining': total_results - processed_results if hasattr(search_results, 'processed_count') else 'unknown'
+            },
+            'system_resources': {
+                'memory_available': memory_available,
+                'cpu_available': cpu_available
+            },
+            'log_status': {
+                'error_count': error_count,
+                'warning_count': warning_count
+            },
+            'connectors_available': connectors_available,
+            'blocking_issues': blocking_issues
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking iteration status: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'can_iterate': False
+        }), 500
+
+@app.route('/api/clear_logs', methods=['POST'])
+def clear_logs():
+    """API endpoint to clear all logs."""
+    try:
+        log_path = get_writeable_path("medicalspytool.log")
+        
+        # First, log the operation before clearing
+        log_message(None, "Log file cleared by user request", level=logging.WARNING)
+        
+        # Clear the log file
+        with open(log_path, 'w') as f:
+            f.write(f"Log file cleared on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        
+        # Reset the global log array
+        global GLOBAL_LOG
+        GLOBAL_LOG = [f"Log file cleared on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"]
         
         return jsonify({
             'success': True,
-            'selected_path': selected_path,
-            'field_id': field_id
+            'message': 'Logs successfully cleared',
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
-    else:
+    except Exception as e:
+        log_message(None, f"Error clearing logs: {str(e)}", level=logging.ERROR)
         return jsonify({
             'success': False,
-            'error': 'Keine Auswahl getroffen'
+            'message': f"Error clearing logs: {str(e)}",
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
 
-@app.route('/validate_api_key/<database>', methods=['POST'])
-def validate_api_key(database):
-    """
-    Validiert einen API-Key für die angegebene Datenbank.
-    Dieser Endpunkt wird vom API-Key-Validator im Frontend aufgerufen.
-    
-    Args:
-        database (str): Name der Datenbank (pubmed, dnb, etc.)
-    """
-    import concurrent.futures
-    import time
-    
-    if not request.is_json:
-        return jsonify({'valid': False, 'message': 'Erfordert JSON-Anfrage'}), 400
-    
-    data = request.get_json()
-    api_key = data.get('api_key', '')
-    
-    if not api_key:
-        return jsonify({'valid': True, 'message': 'Kein API-Key angegeben'})
-    
-    # Database-Name mit ersten Buchstaben Großgeschrieben
-    database_name = database.lower()
-    if database_name in ['pubmed', 'dnb', 'scopus', 'wos', 'gepris']:
-        normalized_db_name = None
-        
-        # Normalisiere den Datenbankname für den Connector
-        if database_name == 'pubmed':
-            normalized_db_name = 'PubMed'
-        elif database_name == 'dnb':
-            normalized_db_name = 'DNB'
-        elif database_name == 'scopus':
-            normalized_db_name = 'Scopus'
-        elif database_name == 'wos':
-            normalized_db_name = 'WoS'
-        elif database_name == 'gepris':
-            normalized_db_name = 'GEPRIS'
-            
-        connector_class = DATABASE_CONNECTORS.get(normalized_db_name)
-        if connector_class:
-            try:
-                connector = connector_class(api_key=api_key, settings=app_config)
-                
-                # Prüfe, ob die validate_api_key-Methode implementiert ist
-                if hasattr(connector, 'validate_api_key') and callable(connector.validate_api_key):
-                    try:
-                        # Führe Validierung mit Timeout aus
-                        def validation_task():
-                            return connector.validate_api_key()
-                            
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(validation_task)
-                            try:
-                                valid = future.result(timeout=API_VALIDATION_TIMEOUT)
-                                if valid:
-                                    return jsonify({'valid': True, 'message': 'API-Key ist gültig'})
-                                else:
-                                    return jsonify({'valid': False, 'message': 'API-Key ist ungültig'})
-                            except concurrent.futures.TimeoutError:
-                                return jsonify({'valid': False, 'message': f'Zeitüberschreitung bei der Validierung nach {API_VALIDATION_TIMEOUT} Sekunden'})
-                    except Exception as e:
-                        logger.error(f"Error validating API key for {database_name}: {e}", exc_info=True)
-                        return jsonify({'valid': False, 'message': f'Fehler bei der Validierung: {str(e)}'})
-                else:
-                    # Wenn keine Validierungsmethode implementiert ist, gehen wir davon aus, dass der Key gültig ist
-                    return jsonify({'valid': True, 'message': 'API-Key angenommen (keine Validierung verfügbar)'})
-            except Exception as e:
-                logger.error(f"Error initializing connector for {database_name}: {e}", exc_info=True)
-                return jsonify({'valid': False, 'message': f'Fehler beim Initialisieren des Connectors: {str(e)}'})
-    
-    return jsonify({'valid': False, 'message': f'Unbekannte Datenbank: {database}'}), 400
-
-@app.route('/api/get_database_fields')
-def get_database_fields():
-    """API endpoint to get available fields for a database."""
-    database = request.args.get('database', 'PubMed')
-    
-    if database == 'Combined':
-        # For combined search, use common fields
-        fields = ["Alle Felder", "Autor", "Titel"]
-    else:
-        # Get fields from the selected database connector
-        connector_class = DATABASE_CONNECTORS.get(database)
-        if connector_class:
-            connector = connector_class()
-            fields = connector.get_available_fields()
-        else:
-            fields = ["Alle Felder"]
-    
-    return jsonify(fields)
-
-@app.route('/search_profiles', methods=['GET', 'POST', 'DELETE'])
-def search_profiles():
-    """Handle search profile management."""
+@app.route('/info')
+def info():
+    """Show information about the application."""
     from datetime import datetime
-    
-    if request.method == 'GET':
-        # Alle Suchprofile abrufen
-        profiles = get_all_search_profiles()
-        return render_template('search_profiles.html', 
-                              profiles=profiles,
-                              config=app_config,
-                              now=datetime.now())
-    
-    elif request.method == 'POST':
-        # Entweder ein Profil speichern oder laden
-        action = request.form.get('action', '')
-        
-        if action == 'save':
-            # Aktuelles Suchformular als Profil speichern
-            profile_name = request.form.get('profile_name', '')
-            
-            if not profile_name.strip():
-                flash('Bitte geben Sie einen Namen für das Suchprofil ein.', 'danger')
-                return redirect(url_for('search_profiles'))
-            
-            # Suchparameter sammeln
-            search_params = {
-                'database': request.form.get('database', 'PubMed'),
-                'search_term': request.form.get('search_term', ''),
-                'additional_terms': request.form.get('additional_terms', ''),
-                'person_name': request.form.get('person_name', ''),
-                'max_results': request.form.get('max_results', '100'),
-                'search_field': request.form.get('search_field', 'Alle Felder'),
-                'language': request.form.get('language', ''),
-                'pub_type': request.form.get('pub_type', ''),
-                'use_date_filter': request.form.get('use_date_filter') == 'on'
-            }
-            
-            # Datum-Filter hinzufügen, wenn aktiviert
-            if search_params['use_date_filter']:
-                start_date = request.form.get('start_date', '')
-                end_date = request.form.get('end_date', '')
-                if start_date and end_date:
-                    search_params['date_range'] = {
-                        'start': start_date,
-                        'end': end_date
-                    }
-            
-            # Profil speichern
-            success = save_search_profile(profile_name, search_params)
-            
-            if success:
-                flash(f'Suchprofil "{profile_name}" erfolgreich gespeichert.', 'success')
-            else:
-                flash(f'Fehler beim Speichern des Suchprofils "{profile_name}".', 'danger')
-            
-            return redirect(url_for('search_profiles'))
-            
-        elif action == 'load':
-            # Ausgewähltes Profil laden
-            profile_name = request.form.get('profile_name', '')
-            
-            if not profile_name:
-                flash('Bitte wählen Sie ein Suchprofil aus.', 'danger')
-                return redirect(url_for('search_profiles'))
-            
-            # Profil laden
-            profile_data = load_search_profile(profile_name)
-            
-            if not profile_data:
-                flash(f'Suchprofil "{profile_name}" konnte nicht geladen werden.', 'danger')
-                return redirect(url_for('search_profiles'))
-            
-            # Profildaten in der Session speichern für die Suche-Seite
-            session['loaded_profile'] = profile_data
-            session['loaded_profile_name'] = profile_name
-            
-            flash(f'Suchprofil "{profile_name}" geladen. Sie können jetzt die Suche starten.', 'success')
-            return redirect(url_for('search'))
-            
-    elif request.method == 'DELETE' or (request.method == 'POST' and request.form.get('action') == 'delete'):
-        # Profil löschen
-        if request.method == 'DELETE':
-            # API-Aufruf
-            data = request.get_json()
-            profile_name = data.get('profile_name', '')
-        else:
-            # Formular-Aufruf
-            profile_name = request.form.get('profile_name', '')
-        
-        if not profile_name:
-            if request.method == 'DELETE':
-                return jsonify({'error': 'No profile name provided'}), 400
-            else:
-                flash('Bitte wählen Sie ein Suchprofil zum Löschen aus.', 'danger')
-                return redirect(url_for('search_profiles'))
-        
-        # Profil löschen
-        success = delete_search_profile(profile_name)
-        
-        if request.method == 'DELETE':
-            if success:
-                return jsonify({'success': True, 'message': f'Profil "{profile_name}" gelöscht'})
-            else:
-                return jsonify({'error': f'Fehler beim Löschen des Profils "{profile_name}"'}), 500
-        else:
-            if success:
-                flash(f'Suchprofil "{profile_name}" erfolgreich gelöscht.', 'success')
-            else:
-                flash(f'Fehler beim Löschen des Suchprofils "{profile_name}".', 'danger')
-            return redirect(url_for('search_profiles'))
-    
-    # Fallback
-    return redirect(url_for('search_profiles'))
+    return render_template('info.html', 
+                         config=app_config,
+                         now=datetime.now(),
+                         version="2.0.0")  # Add version information
 
-@app.route('/api/search_profiles', methods=['GET'])
-def api_search_profiles():
-    """API endpoint to get all search profiles."""
-    profiles = get_all_search_profiles()
-    return jsonify(profiles)
+# Globale Fehlerbehandlung
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('error.html',
+                          error="404 - Seite nicht gefunden",
+                          message="Die angeforderte Seite wurde nicht gefunden.",
+                          config=app_config,
+                          now=datetime.now()), 404
 
-@app.route('/api/search_profiles/<profile_name>', methods=['GET'])
-def api_search_profile(profile_name):
-    """API endpoint to get a specific search profile."""
-    profile = load_search_profile(profile_name)
-    if profile:
-        return jsonify(profile)
-    else:
-        return jsonify({'error': f'Profil "{profile_name}" nicht gefunden'}), 404
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('error.html',
+                          error="500 - Interner Serverfehler",
+                          message="Ein interner Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.",
+                          config=app_config,
+                          now=datetime.now()), 500
 
-@app.route('/api/get_visualization')
-def get_visualization():
-    """API endpoint to generate visualizations."""
-    global search_results
-    
-    chart_type = request.args.get('type', 'year')
-    
-    if not search_results:
-        return jsonify({'error': 'No data available'})
-    
-    try:
-        import matplotlib.pyplot as plt
-        import io
-        import base64
-        from collections import Counter
-        
-        # Create figure
-        plt.figure(figsize=(10, 6))
-        
-        if chart_type == 'year':
-            # Extract publication years
-            years = [int(r.get("Publication Year")) for r in search_results 
-                    if r.get("Publication Year", "").isdigit()]
-            
-            if not years:
-                return jsonify({'error': 'No year data available'})
-            
-            # Count publications by year
-            year_counter = Counter(years)
-            
-            # Sort by year
-            sorted_years = sorted(year_counter.items())
-            x, y = zip(*sorted_years)
-            
-            # Create bar chart
-            plt.bar(x, y, color='navy')
-            plt.xlabel('Publication Year')
-            plt.ylabel('Number of Publications')
-            plt.title('Publications by Year')
-            plt.grid(axis='y', linestyle='--', alpha=0.7)
-            
-        elif chart_type == 'database':
-            # Extract databases
-            databases = [r.get("Database", "Unknown") for r in search_results]
-            
-            if not databases:
-                return jsonify({'error': 'No database data available'})
-            
-            # Count publications by database
-            db_counter = Counter(databases)
-            
-            # Sort by count (descending)
-            sorted_dbs = sorted(db_counter.items(), key=lambda x: x[1], reverse=True)
-            x, y = zip(*sorted_dbs)
-            
-            # Create bar chart
-            plt.bar(x, y, color='lightseagreen')
-            plt.xlabel('Database')
-            plt.ylabel('Number of Publications')
-            plt.title('Publications by Database')
-            plt.grid(axis='y', linestyle='--', alpha=0.7)
-            
-        elif chart_type == 'person':
-            # Extract persons
-            persons = [r.get("Name", "Unknown") for r in search_results]
-            
-            if not persons:
-                return jsonify({'error': 'No person data available'})
-            
-            # Count publications by person
-            person_counter = Counter(persons)
-            
-            # Sort by count (descending) and take top 15
-            sorted_persons = sorted(person_counter.items(), key=lambda x: x[1], reverse=True)[:15]
-            x, y = zip(*sorted_persons)
-            
-            # Create horizontal bar chart
-            plt.barh(x, y, color='darkgreen')
-            plt.xlabel('Number of Publications')
-            plt.ylabel('Person')
-            plt.title('Top 15 Persons by Number of Publications')
-            plt.grid(axis='x', linestyle='--', alpha=0.7)
-            
-        else:
-            return jsonify({'error': 'Invalid chart type'})
-        
-        # Save plot to a buffer
-        buf = io.BytesIO()
-        plt.tight_layout()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        
-        # Convert to base64 string
-        image_base64 = base64.b64encode(buf.getvalue()).decode('utf-8')
-        plt.close()
-        
-        return jsonify({'image': image_base64})
-        
-    except Exception as e:
-        logger.error(f"Visualization error: {e}", exc_info=True)
-        return jsonify({'error': str(e)})
+@app.errorhandler(Exception)
+def unhandled_exception(e):
+    logger.error(f"Unbehandelter Fehler: {str(e)}", exc_info=True)
+    return render_template('error.html',
+                          error="Unerwarteter Fehler",
+                          message=f"Ein unerwarteter Fehler ist aufgetreten: {str(e)}",
+                          config=app_config,
+                          now=datetime.now()), 500
 
 if __name__ == '__main__':
-    """
-    Entry point for the application.
-    """
     try:
-        logger.info("Starting application")
-        # Check if needed directories exist, create if they don't
+        # Stelle sicher, dass alle benötigten Verzeichnisse existieren
         ensure_directories(app_config)
-        # Run the application
-        # Prüfen, ob der Port bereits verwendet wird
-        import socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(("0.0.0.0", 5000))
-            port_available = True
-        except socket.error:
-            port_available = False
-        finally:
-            s.close()
         
-        # Alternative Port verwenden, wenn 5000 bereits belegt ist
-        if port_available:
-            app.run(host="0.0.0.0", port=5000, debug=True)
+        # Server im Entwicklungsmodus starten
+        if not getattr(sys, 'frozen', False):
+            # Öffne Browser nur im Entwicklungsmodus
+            webbrowser.open('http://127.0.0.1:5000/')
+            app.run(debug=True)
         else:
-            logger.info("Port 5000 bereits belegt, verwende Port 5001")
-            app.run(host="0.0.0.0", port=5001, debug=True)
+            # Im gefrorenen Zustand (exe) ohne Debug-Modus starten
+            app.run(debug=False)
+            
     except Exception as e:
-        logger.error(f"Application error: {e}", exc_info=True)
+        logger.error(f"Application startup error: {e}", exc_info=True)
+        # Zeige Fehlermeldung für 10 Sekunden an
+        print(f"\nFehler beim Starten der Anwendung: {e}")
+        print("\nDie Anwendung wird in 10 Sekunden beendet...")
+        time.sleep(10)

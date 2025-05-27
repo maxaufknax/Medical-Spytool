@@ -1,128 +1,147 @@
 """
-Base Database Connector
+Base Connector Module
 
-This module provides a base class for database connectors.
+This module provides the base class for all database connectors.
+Each specific database connector should inherit from this class
+and implement the required methods.
 """
 
+from typing import List, Dict, Any, Optional, Union
 import logging
 
 logger = logging.getLogger(__name__)
 
-class DatabaseConnector:
-    """
-    Base class for database connectors.
-    """
+class BaseConnector:
+    """Base class for database connectors."""
     
-    def __init__(self, api_key=None, settings=None):
+    def __init__(self, api_key: str = None, settings: dict = None):
         """
-        Initialize the database connector.
+        Initialize the connector.
         
         Args:
-            api_key (str, optional): API key for the database.
-            settings (dict, optional): Additional settings.
+            api_key (str, optional): API key for the database service
+            settings (dict, optional): Additional settings for the connector
         """
         self.api_key = api_key
         self.settings = settings or {}
-        self.name = "Base"
-        self.max_results_per_page = 100
-        self.search_fields = ["Alle Felder"]
-        self.requires_api_key = False  # Default: kein API-Key erforderlich
+        self.max_results = 100
         
-    def validate_api_key(self):
+    def construct_query(self, search_term: str, **kwargs) -> str:
         """
-        Überprüft die Gültigkeit des API-Keys.
-        
-        Dies ist eine Basisimplementierung, die immer True zurückgibt.
-        Überschreiben Sie diese Methode in Unterklassen, um datenbankspezifische
-        API-Key-Validierung zu implementieren.
-        
-        Returns:
-            bool: True wenn der API-Key gültig ist oder kein Key benötigt wird,
-                  False wenn der Key ungültig ist.
-        """
-        # Wenn kein API-Key benötigt wird, ist jeder (oder kein) Key gültig
-        if not self.requires_api_key:
-            return True
-            
-        # Wenn ein Key benötigt wird, aber keiner vorhanden ist
-        if self.requires_api_key and not self.api_key:
-            return False
-            
-        # Standard: Annahme, dass der Key gültig ist
-        return True
-    
-    def get_available_fields(self):
-        """
-        Get available search fields.
-        
-        Returns:
-            list: List of available search fields.
-        """
-        return self.search_fields
-    
-    def construct_query(self, base_query, additional_terms="", date_range=None, 
-                       language=None, pub_type=None, field=None):
-        """
-        Construct a search query.
+        Construct a query string for the database.
         
         Args:
-            base_query (str): Base query.
-            additional_terms (str, optional): Additional search terms.
-            date_range (dict, optional): Date range with 'start' and 'end' keys.
-            language (str, optional): Language filter.
-            pub_type (str, optional): Publication type filter.
-            field (str, optional): Field to search in.
+            search_term (str): The main search term
+            **kwargs: Additional search parameters
+                - person_names (list): List of person names to include in search
+                - additional_terms (str): Additional search terms
+                - date_range (dict): Date range with 'start' and 'end' keys
+                - language (str): Language filter
+                - pub_type (str): Publication type filter
             
         Returns:
-            str: Constructed query.
+            str: The constructed query string
+            
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses
         """
-        # Base implementation simply returns the input query
-        # Override in subclasses for database-specific query construction
-        return base_query
-    
-    def get_citation_count(self, identifier):
+        raise NotImplementedError("Subclasses must implement construct_query()")
+        
+    def search(self, search_term: str = None, query: str = None, params: Dict[str, Any] = None, 
+               person_names: List[str] = None, max_results: int = None, **kwargs) -> List[Dict[str, Any]]:
         """
-        Get citation count for a publication.
+        Perform a search in the database.
+        
+        This method supports two calling conventions:
+        1. search(query, params) - Traditional interface
+        2. search(search_term, person_names, max_results, **kwargs) - Interface used in main.py
         
         Args:
-            identifier (str): Publication identifier.
+            search_term (str, optional): The main search term
+            query (str, optional): A pre-constructed query string
+            params (dict, optional): Additional search parameters
+            person_names (list, optional): List of person names to include in search
+            max_results (int, optional): Maximum number of results to return
+            **kwargs: Any additional parameters for the search
             
         Returns:
-            int or str: Citation count or error message.
+            list: List of search results as dictionaries
+            
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses
         """
-        # Base implementation returns N/A
-        # Override in subclasses for database-specific citation counting
-        return "N/A"
-    
-    def search(self, query, params=None, log_widget=None):
+        raise NotImplementedError("Subclasses must implement search()")
+        
+    def validate_api_key(self, api_key: str = None) -> bool:
         """
-        Search the database with the given query.
+        Validate the API key.
         
         Args:
-            query (str): Search query.
-            params (dict, optional): Additional search parameters.
-            log_widget: Widget or object for logging messages (optional).
+            api_key (str, optional): The API key to validate. If None, use the one from the instance.
             
         Returns:
-            list: Search results.
+            bool: True if the API key is valid, False otherwise
+            
+        Note:
+            This is an optional method that subclasses can implement
+            if they support API key validation.
         """
-        # Base implementation returns empty list
-        # Override in subclasses for database-specific searching
-        logger.warning(f"Search method not implemented for {self.name}")
-        return []
+        return True  # Default implementation assumes no API key is needed
     
-    def parse_results(self, response, params=None):
+    def test_connection(self) -> Dict[str, Any]:
         """
-        Parse search results.
+        Test the connection to the database.
+        
+        Returns:
+            dict: A dictionary containing the test results including:
+                - status: 'OK', 'Error', or 'Not Available'
+                - message: A message describing the test result
+                - response_time: The time it took to get a response (in seconds)
+                
+        Note:
+            This method should be implemented by subclasses to provide
+            more specific connection testing. The base implementation
+            returns a generic "Not Implemented" status.
+        """
+        return {
+            'status': 'Not Implemented',
+            'message': 'Connection test not implemented for this database connector',
+            'response_time': None
+        }
+        
+    def format_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Format and standardize search results.
+        
+        This method ensures all results have a consistent structure
+        and all required fields are present.
         
         Args:
-            response: Response from the database.
-            params (dict, optional): Additional parameters.
+            results (list): The raw search results from the database
             
         Returns:
-            list: Parsed publications.
+            list: Formatted and standardized results
+            
+        Note:
+            This is a helper method that subclasses can override if needed.
+            The base implementation returns the results as is.
         """
-        # Base implementation returns empty list
-        # Override in subclasses for database-specific parsing
-        logger.warning(f"Parse results method not implemented for {self.name}")
-        return []
+        standard_fields = [
+            'Title', 'Authors', 'Journal', 'Publication Year', 'Publication Month',
+            'Abstract', 'DOI', 'URL', 'Database', 'Publication Type', 'Language',
+            'Keywords', 'Citation Count'
+        ]
+        
+        formatted_results = []
+        for result in results:
+            # Ensure all standard fields exist (with None as default)
+            formatted_result = {field: result.get(field) for field in standard_fields}
+            
+            # Copy any additional fields that aren't in the standard set
+            for key, value in result.items():
+                if key not in standard_fields:
+                    formatted_result[key] = value
+                    
+            formatted_results.append(formatted_result)
+            
+        return formatted_results

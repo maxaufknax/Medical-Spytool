@@ -71,8 +71,18 @@ def export_to_excel(results, filepath, options=None):
     
     try:
         if PANDAS_AVAILABLE:
+            # Normalisiere die Ergebnisse, um sicherzustellen, dass alle Eintru00e4ge die gleichen Schlu00fcssel haben
+            all_keys = set()
+            for result in results:
+                all_keys.update(result.keys())
+            
+            normalized_results = []
+            for result in results:
+                normalized_result = {key: result.get(key, "") for key in all_keys}
+                normalized_results.append(normalized_result)
+            
             # Use pandas for better Excel formatting
-            df = pd.DataFrame(results)
+            df = pd.DataFrame(normalized_results)
             
             # Filter columns if specified
             if output_columns:
@@ -80,52 +90,20 @@ def export_to_excel(results, filepath, options=None):
                 columns_to_keep = [col for col in output_columns if col in df.columns]
                 if columns_to_keep:
                     df = df[columns_to_keep]
-            
-            # Create a writer with options
-            writer = pd.ExcelWriter(filepath, engine='openpyxl')
-            
-            # Write the data
-            df.to_excel(writer, index=False, sheet_name='Search Results')
-            
-            # Get the workbook and worksheet
-            workbook = writer.book
-            worksheet = writer.sheets['Search Results']
-            
-            if formatting:
-                # Define some styles
-                header_font = workbook.add_format({'bold': True, 'bg_color': '#0D6EFD', 'font_color': '#FFFFFF'})
-                alt_row_color = workbook.add_format({'bg_color': '#F8F9FA'})
-                
-                # Apply header style
-                for col_num, value in enumerate(df.columns.values):
-                    worksheet.write(0, col_num, value, header_font)
-                
-                # Add zebra striping to rows
-                for row_num in range(1, len(df) + 1, 2):
-                    worksheet.set_row(row_num, None, alt_row_color)
-            
-            # Auto-adjust columns' width
-            for column in df:
-                column_width = max(df[column].astype(str).map(len).max(), len(column)) + 2
-                col_idx = df.columns.get_loc(column) + 1
-                if hasattr(worksheet, 'column_dimensions'):
-                    # Openpyxl style
-                    worksheet.column_dimensions[chr(64 + col_idx)].width = min(column_width, 60)
                 else:
-                    # XlsxWriter style
-                    worksheet.set_column(col_idx - 1, col_idx - 1, min(column_width, 60))
+                    logger.warning("None of the specified output columns exist in the results. Using all columns.")
             
-            # Add autofilter if requested
-            if autofilter and hasattr(worksheet, 'auto_filter'):
-                worksheet.auto_filter.ref = f"A1:{chr(64 + len(df.columns))}{len(df) + 1}"
-            
-            # Freeze header row if requested
-            if freeze_header and hasattr(worksheet, 'freeze_panes'):
-                worksheet.freeze_panes = 'A2'
-            
-            writer.close()
-            logger.info(f"Exported {len(results)} results to Excel: {filepath}")
-            return True
+            # Create Excel file
+            try:
+                df.to_excel(filepath, index=False, sheet_name='Search Results', engine='openpyxl')
+                logger.info(f"Exported {len(results)} results to Excel: {filepath}")
+                return True
+            except Exception as excel_e:
+                logger.error(f"Error writing Excel file with pandas: {excel_e}", exc_info=True)
+                # Fallback to CSV if Excel writing fails
+                csv_path = filepath.replace('.xlsx', '.csv')
+                logger.warning(f"Falling back to CSV export: {csv_path}")
+                return export_to_csv(results, csv_path, options)
         else:
             # Fallback to CSV if pandas is not available
             logger.warning("Pandas not available. Exporting to CSV instead.")
@@ -133,7 +111,14 @@ def export_to_excel(results, filepath, options=None):
             
     except Exception as e:
         logger.error(f"Error exporting to Excel: {e}", exc_info=True)
-        return False
+        # Try CSV as last resort
+        try:
+            csv_path = filepath.replace('.xlsx', '.csv')
+            logger.warning(f"Attempting emergency CSV export: {csv_path}")
+            return export_to_csv(results, csv_path, options)
+        except Exception as csv_e:
+            logger.error(f"Emergency CSV export also failed: {csv_e}", exc_info=True)
+            return False
 
 def export_to_csv(results, filepath, options=None):
     """
@@ -163,38 +148,65 @@ def export_to_csv(results, filepath, options=None):
     output_columns = options.get('output_columns', [])
     
     try:
-        # Process results based on output_columns
-        processed_results = []
+        # Sammle alle möglichen Schlüssel aus allen Ergebnissen
+        all_keys = set()
+        for result in results:
+            all_keys.update(result.keys())
         
+        # Wenn output_columns angegeben sind, filtere die Schlüssel
         if output_columns:
-            # Filter results to include only specified columns
-            for result in results:
-                filtered_result = {}
-                for column in output_columns:
-                    if column in result:
-                        filtered_result[column] = result[column]
-                processed_results.append(filtered_result)
-            
-            # Get fieldnames from the columns that actually exist
-            if processed_results:
-                fieldnames = list(processed_results[0].keys())
-            else:
-                # If no columns matched, use original results
-                processed_results = results
-                fieldnames = list(results[0].keys())
+            # Behalte nur die Spalten, die tatsächlich in den Ergebnissen existieren
+            fieldnames = [col for col in output_columns if col in all_keys]
+            if not fieldnames:
+                logger.warning("None of the specified output columns exist in the results. Using all columns.")
+                fieldnames = sorted(list(all_keys))
         else:
-            # Use all columns
-            processed_results = results
-            fieldnames = list(results[0].keys())
+            # Verwende alle Schlüssel, sortiert für Konsistenz
+            fieldnames = sorted(list(all_keys))
         
+        # Normalisiere die Ergebnisse, damit alle die gleichen Schlüssel haben
+        normalized_results = []
+        for result in results:
+            normalized_result = {}
+            for key in fieldnames:
+                normalized_result[key] = result.get(key, "")
+            normalized_results.append(normalized_result)
+        
+        # Schreibe die CSV-Datei
         with open(filepath, 'w', newline='', encoding=encoding) as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
             writer.writeheader()
-            writer.writerows(processed_results)
+            writer.writerows(normalized_results)
             
         logger.info(f"Exported {len(results)} results to CSV: {filepath}")
         return True
         
     except Exception as e:
         logger.error(f"Error exporting to CSV: {e}", exc_info=True)
-        return False
+        
+        # Versuche einen Fallback mit minimalen Daten
+        try:
+            fallback_path = f"{os.path.splitext(filepath)[0]}_fallback.csv"
+            logger.warning(f"Attempting fallback CSV export with minimal data: {fallback_path}")
+            
+            # Extrahiere nur die wichtigsten Felder
+            minimal_results = []
+            for result in results:
+                minimal_result = {
+                    "Title": result.get("Title", ""),
+                    "Authors": result.get("Authors", ""),
+                    "Year": result.get("Publication Year", ""),
+                    "Database": result.get("Database", "")
+                }
+                minimal_results.append(minimal_result)
+            
+            with open(fallback_path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.DictWriter(f, fieldnames=["Title", "Authors", "Year", "Database"], delimiter=',')
+                writer.writeheader()
+                writer.writerows(minimal_results)
+                
+            logger.info(f"Fallback export successful: {fallback_path}")
+            return True
+        except Exception as fallback_e:
+            logger.error(f"Fallback CSV export also failed: {fallback_e}", exc_info=True)
+            return False

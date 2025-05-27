@@ -6,7 +6,7 @@
     <title>{% block title %}Medical Spytool{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -57,15 +57,45 @@
             background-color: rgba(255, 255, 255, 0.05);
         }
         
+        /* Improved Loading Indicator */
         .loading-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
             display: none;
-            text-align: center;
-            margin: 2rem 0;
         }
         
-        .spinner-border {
-            width: 3rem;
-            height: 3rem;
+        .loading-indicator.show {
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-content {
+            background: var(--bs-dark);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            max-width: 90%;
+            width: 400px;
+        }
+        
+        /* Error State Handling */
+        .error-state {
+            display: none;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            background-color: var(--bs-danger-bg-subtle);
+            border: 1px solid var(--bs-danger);
+        }
+        
+        .error-state.show {
+            display: block;
         }
         
         /* Person Autocomplete Styles */
@@ -144,6 +174,11 @@
     </style>
     
     {% block extra_css %}{% endblock %}
+    
+    <!-- Preload critical JavaScript -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='js/person_selector.js') }}" as="script">
+    <link rel="preload" href="{{ url_for('static', filename='js/search.js') }}" as="script">
 </head>
 <body>
     <!-- Navbar -->
@@ -181,10 +216,37 @@
                     <li class="nav-item">
                         <a class="nav-link {% if '/settings' in request.path %}active{% endif %}" href="/settings"><i class="fas fa-cog"></i> Einstellungen</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/info">Über</a>
+                    </li>
                 </ul>
             </div>
         </div>
     </nav>
+
+    <!-- Improved Loading Indicator -->
+    <div class="loading-indicator" id="globalLoadingIndicator">
+        <div class="loading-content text-center">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Lädt...</span>
+            </div>
+            <h5 class="mb-2" id="loadingMessage">Wird geladen...</h5>
+            <div class="progress" style="height: 5px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Error State Container -->
+    <div class="error-state" id="globalErrorState">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+            <div>
+                <h6 class="mb-1">Ein Fehler ist aufgetreten</h6>
+                <p class="mb-0" id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container">
@@ -206,7 +268,73 @@
     </footer>
 
     <!-- Bootstrap JavaScript Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Global Error and Loading Handler -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Global loading indicator management
+        window.showLoading = function(message = 'Wird geladen...') {
+            const indicator = document.getElementById('globalLoadingIndicator');
+            const messageEl = document.getElementById('loadingMessage');
+            if (indicator && messageEl) {
+                messageEl.textContent = message;
+                indicator.classList.add('show');
+            }
+        };
+        
+        window.hideLoading = function() {
+            const indicator = document.getElementById('globalLoadingIndicator');
+            if (indicator) {
+                indicator.classList.remove('show');
+            }
+        };
+        
+        // Global error state management
+        window.showError = function(message) {
+            const errorState = document.getElementById('globalErrorState');
+            const errorMessage = document.getElementById('errorMessage');
+            if (errorState && errorMessage) {
+                errorMessage.textContent = message;
+                errorState.classList.add('show');
+            }
+        };
+        
+        window.hideError = function() {
+            const errorState = document.getElementById('globalErrorState');
+            if (errorState) {
+                errorState.classList.remove('show');
+            }
+        };
+        
+        // Handle all form submissions
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                // Don't show loading for forms with data-no-loading attribute
+                if (!this.hasAttribute('data-no-loading')) {
+                    showLoading('Verarbeite Anfrage...');
+                }
+            });
+        });
+        
+        // Handle page unload
+        window.addEventListener('beforeunload', function() {
+            hideLoading();
+            hideError();
+        });
+        
+        // Handle escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideLoading();
+            }
+        });
+    });
+    </script>
+    
+    <!-- Application Scripts -->
+    <script src="{{ url_for('static', filename='js/person_selector.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/search.js') }}"></script>
     
     {% block scripts %}{% endblock %}
 </body>
