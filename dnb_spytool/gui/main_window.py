@@ -44,10 +44,17 @@ class DNBSpytoolGUI:
         self.search_thread = None
         self.result_queue = queue.Queue()
         
+        # Timer management
+        self.after_id = None
+        self.is_running = True
+        
         # Create GUI elements
         self.create_styles()
         self.create_widgets()
         self.setup_bindings()
+        
+        # Bind close event to cleanup timer
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Start result checker
         self.check_results()
@@ -675,6 +682,9 @@ License: MIT License
     
     def check_results(self):
         """Check for results from the search thread."""
+        if not self.is_running:
+            return
+            
         try:
             while True:
                 msg_type, data = self.result_queue.get_nowait()
@@ -690,9 +700,18 @@ License: MIT License
                     
         except queue.Empty:
             pass
+        except tk.TclError:
+            # Widget has been destroyed, stop the timer
+            self.is_running = False
+            return
         
-        # Schedule next check
-        self.root.after(100, self.check_results)
+        # Schedule next check only if still running
+        if self.is_running:
+            try:
+                self.after_id = self.root.after(100, self.check_results)
+            except tk.TclError:
+                # GUI has been destroyed
+                self.is_running = False
     
     def handle_search_results(self, results):
         """Handle search results with enhanced validation and error handling."""
@@ -912,9 +931,20 @@ License: MIT License
         """Show detailed information about a publication."""
         self.details_text.delete(1.0, tk.END)
         
+        # Helper function to safely join values
+        def safe_join(value, default='N/A'):
+            if value is None:
+                return default
+            elif isinstance(value, list):
+                return ', '.join(str(item) for item in value if item) or default
+            elif isinstance(value, str):
+                return value or default
+            else:
+                return str(value) or default
+
         details = f"""Title: {publication.get('title', 'N/A')}
 
-Authors: {', '.join(publication.get('author', ['N/A']))}
+Authors: {safe_join(publication.get('author', ['N/A']))}
 
 Publication Year: {publication.get('publication_year', 'N/A')}
 
@@ -922,17 +952,17 @@ Publisher: {publication.get('publisher', 'N/A')}
 
 Type: {publication.get('type', 'N/A')}
 
-Database Source: {publication.get('database_source', 'N/A').upper()}
+Database Source: {str(publication.get('database_source', 'N/A')).upper()}
 
-ISBN: {', '.join(publication.get('isbn', ['N/A']))}
+ISBN: {safe_join(publication.get('isbn', ['N/A']))}
 
-Languages: {', '.join(publication.get('language', ['N/A']))}
+Languages: {safe_join(publication.get('language', ['N/A']))}
 
-Subjects: {', '.join(publication.get('subject', ['N/A']))}
+Subjects: {safe_join(publication.get('subject', ['N/A']))}
 
 Description: {publication.get('description', 'N/A')}
 
-URLs: {', '.join(publication.get('url', ['N/A']))}
+URLs: {safe_join(publication.get('url', ['N/A']))}
 
 Record ID: {publication.get('id', 'N/A')}
 """
@@ -1131,6 +1161,26 @@ Record ID: {publication.get('id', 'N/A')}
                 
         except Exception as e:
             messagebox.showerror("Export Error", f"Report export failed:\n{str(e)}")
+    
+    def on_closing(self):
+        """Handle application closing with proper cleanup."""
+        # Stop the timer loop
+        self.is_running = False
+        
+        # Cancel any pending after calls
+        if self.after_id:
+            try:
+                self.root.after_cancel(self.after_id)
+            except tk.TclError:
+                pass  # Already cancelled or window destroyed
+        
+        # Stop any running search threads
+        if self.search_thread and self.search_thread.is_alive():
+            # Note: In a more sophisticated implementation, you would use threading.Event
+            pass
+        
+        # Destroy the window
+        self.root.destroy()
 
 
 def main():
