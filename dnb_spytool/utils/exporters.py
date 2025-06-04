@@ -128,16 +128,10 @@ class DataExporter:
                 else:
                     language_list = [str(language_data)]
                     
-                # URLs - handle string, list, or None
+                # URLs - expected to be a list of strings after normalization
                 url_data = pub.get('url', [])
-                if url_data is None:
-                    url_list = []
-                elif isinstance(url_data, str):
-                    url_list = [url_data]
-                elif isinstance(url_data, list):
-                    url_list = url_data
-                else:
-                    url_list = [str(url_data)]
+                # Ensure all elements are strings and filter out empty ones before joining
+                url_list = [str(u) for u in url_data if u and str(u).strip()]
                 
                 flat_pub = {
                     'id': pub.get('id', ''),
@@ -303,16 +297,10 @@ class DataExporter:
                 else:
                     language_list = [str(language_data)]
                     
-                # URLs - handle string, list, or None
+                # URLs - expected to be a list of strings after normalization
                 url_data = pub.get('url', [])
-                if url_data is None:
-                    url_list = []
-                elif isinstance(url_data, str):
-                    url_list = [url_data]
-                elif isinstance(url_data, list):
-                    url_list = url_data
-                else:
-                    url_list = [str(url_data)]
+                # Ensure all elements are strings and filter out empty ones before joining
+                url_list = [str(u) for u in url_data if u and str(u).strip()]
                 
                 flat_pub = {
                     'ID': pub.get('id', ''),

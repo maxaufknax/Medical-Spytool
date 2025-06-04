@@ -129,13 +129,55 @@ class MARCXMLParser:
                 'publisher': self._extract_publisher(record),
                 'isbn': self._extract_isbn(record),
                 'subjects': self._extract_subjects(record),
-                'language': self._extract_language(record)            }
+                'language': self._extract_language(record),
+                'url': self._extract_urls(record)
+            }
             
             return publication
             
         except Exception as e:
             print(f"Error parsing MARC record: {e}")
             return None
+
+    def _extract_urls(self, record: ET.Element) -> List[str]:
+        """Extract various URLs from MARC record."""
+        urls = []
+
+        # DNB Portal URL from control field 001
+        dnb_id_elem = record.find('.//marc:controlfield[@tag="001"]', self.namespaces)
+        if dnb_id_elem is not None and dnb_id_elem.text:
+            dnb_id = dnb_id_elem.text.strip()
+            if dnb_id:
+                urls.append(f"https://portal.dnb.de/opac/showRecord?cqlQuery=nid%3D{dnb_id}")
+
+        # URLs and URNs from datafield 856
+        for field_856 in record.findall('.//marc:datafield[@tag="856"]', self.namespaces):
+            url_subfield_u = field_856.find('.//marc:subfield[@code="u"]', self.namespaces)
+            if url_subfield_u is not None and url_subfield_u.text:
+                urls.append(url_subfield_u.text.strip())
+
+            # Check for URNs in subfield 'a' if subfield 'q' indicates URN
+            # This is a basic check; DNB's URN representation might be more complex.
+            subfield_q = field_856.find('.//marc:subfield[@code="q"]', self.namespaces)
+            if subfield_q is not None and subfield_q.text and "urn" in subfield_q.text.lower():
+                subfield_a = field_856.find('.//marc:subfield[@code="a"]', self.namespaces)
+                if subfield_a is not None and subfield_a.text:
+                    urn_value = subfield_a.text.strip()
+                    if urn_value.startswith("urn:nbn:"):
+                        urls.append(f"https://nbn-resolving.org/{urn_value}")
+
+        # DOI URLs from datafield 024
+        for field_024 in record.findall('.//marc:datafield[@tag="024"]', self.namespaces):
+            subfield_2 = field_024.find('.//marc:subfield[@code="2"]', self.namespaces)
+            if subfield_2 is not None and subfield_2.text and subfield_2.text.strip().lower() == "doi":
+                subfield_a = field_024.find('.//marc:subfield[@code="a"]', self.namespaces)
+                if subfield_a is not None and subfield_a.text:
+                    doi_value = subfield_a.text.strip()
+                    if doi_value: # Ensure DOI value is not empty
+                        urls.append(f"https://doi.org/{doi_value}")
+
+        # Return unique, stripped URLs
+        return list(set([url.strip() for url in urls if url]))
 
     def _get_record_id(self, record: ET.Element) -> str:
         """Extract record ID from control field 001."""

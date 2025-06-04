@@ -344,12 +344,66 @@ class PubMedClient(DatabaseInterface):
             issn_elem = article_elem.find('.//ISSN')
             pub['issn'] = issn_elem.text if issn_elem is not None else None
             
+            # URLs
+            pub['url'] = self._extract_urls_from_article(article_elem, pub.get('pmid'))
+
             return pub
             
         except Exception as e:
             print(f"Error extracting publication data: {e}")
             return None
-    
+
+    def _extract_urls_from_article(self, article_elem: ET.Element, pmid: Optional[str]) -> List[str]:
+        """Extract various URLs from a PubMed article element."""
+        urls = []
+
+        # PubMed URL from PMID
+        if pmid and pmid.strip():
+            urls.append(f"https://pubmed.ncbi.nlm.nih.gov/{pmid.strip()}/")
+
+        # DOI and PMC URLs from ArticleIdList
+        # Path: PubmedArticleSet/PubmedArticle/PubmedData/ArticleIdList/ArticleId
+        article_id_list = article_elem.find('.//PubmedData/ArticleIdList')
+        if article_id_list is not None:
+            for id_elem in article_id_list.findall('./ArticleId'):
+                id_type = id_elem.get('IdType')
+                id_value = id_elem.text
+
+                if id_value: # Ensure id_value is not None
+                    id_value = id_value.strip()
+                    if not id_value: # Ensure id_value is not empty after stripping
+                        continue
+
+                    if id_type == 'doi':
+                        urls.append(f"https://doi.org/{id_value}")
+                    elif id_type == 'pmc':
+                        # Ensure PMC IDs are prefixed with 'PMC' if not already
+                        if not id_value.upper().startswith('PMC'):
+                            id_value = f"PMC{id_value}"
+                        urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{id_value}/")
+
+        # Also check MedlineCitation/Article/ELocationID for DOIs (often without 'doi' IdType)
+        # Path: PubmedArticleSet/PubmedArticle/MedlineCitation/Article/ELocationID
+        elocation_ids = article_elem.findall('.//MedlineCitation/Article/ELocationID')
+        for eloc_id_elem in elocation_ids:
+            if eloc_id_elem.get('EIdType') == 'doi' and eloc_id_elem.text:
+                doi_value = eloc_id_elem.text.strip()
+                if doi_value:
+                    # Avoid duplicating if already found via ArticleIdList
+                    doi_url = f"https://doi.org/{doi_value}"
+                    if doi_url not in urls:
+                         urls.append(doi_url)
+            # Sometimes DOI is in ELocationID without EIdType="doi", but looks like a DOI
+            elif eloc_id_elem.text and ("/" in eloc_id_elem.text and eloc_id_elem.text.startswith("10.")):
+                potential_doi = eloc_id_elem.text.strip()
+                if potential_doi:
+                    doi_url = f"https://doi.org/{potential_doi}"
+                    if doi_url not in urls:
+                        urls.append(doi_url)
+
+        # Return unique, stripped URLs, filtering out any empty ones
+        return list(set(url for url in urls if url and url.strip()))
+
     def search_publications(self, query: str, max_results: int = 100, **kwargs) -> List[Dict]:
         """
         Search for publications in PubMed.

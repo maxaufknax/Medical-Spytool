@@ -155,5 +155,25 @@ class PublicationSchema:
                 normalized['publication_year'] = int(normalized['publication_year'])
             except (ValueError, TypeError):
                 normalized['publication_year'] = None
+
+        # Normalize 'url' field to be a list of non-empty, stripped strings
+        raw_urls = normalized.get('url')
+        processed_urls = []
+        if isinstance(raw_urls, str):
+            stripped_url = raw_urls.strip()
+            if stripped_url:
+                processed_urls.append(stripped_url)
+        elif isinstance(raw_urls, list):
+            for item in raw_urls:
+                if item is not None: # Ensure item is not None before str()
+                    str_item = str(item).strip()
+                    if str_item: # Ensure not empty after stripping
+                        processed_urls.append(str_item)
+        elif raw_urls is not None: # Handle other types that might be a single URL
+            str_url = str(raw_urls).strip()
+            if str_url:
+                processed_urls.append(str_url)
+
+        normalized['url'] = processed_urls
         
         return normalized

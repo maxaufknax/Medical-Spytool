@@ -259,9 +259,22 @@ class DNBSpytoolGUI:
         self.details_text = scrolledtext.ScrolledText(details_frame, height=6, 
                                                     font=('Arial', 9), wrap=tk.WORD)
         self.details_text.pack(fill=tk.BOTH, expand=True)
+
+        # URL actions frame
+        url_actions_frame = ttk.Frame(details_frame)
+        url_actions_frame.pack(fill=tk.X, pady=(5,0))
+
+        self.open_url_button = ttk.Button(url_actions_frame, text="🔗 Publikation öffnen",
+                                          command=self.open_selected_publication_url, state=tk.DISABLED)
+        self.open_url_button.pack(side=tk.LEFT, padx=(0,5))
+
+        self.copy_url_button = ttk.Button(url_actions_frame, text="📋 URL kopieren",
+                                          command=self.copy_selected_publication_url, state=tk.DISABLED)
+        self.copy_url_button.pack(side=tk.LEFT)
         
-        # Bind selection
+        # Bind selection and double-click
         self.results_tree.bind('<<TreeviewSelect>>', self.on_result_select)
+        self.results_tree.bind('<Double-1>', self.on_publication_double_click)
     
     def create_analytics_tab(self):
         """Create the analytics tab."""
@@ -475,6 +488,7 @@ License: MIT License
         
         # Bind format changes to update file extensions
         self.export_format_var.trace('w', self.on_export_format_change)
+        # self.results_tree.bind('<Double-1>', self.on_publication_double_click) # Moved to create_results_tab
         self.report_format_var.trace('w', self.on_report_format_change)
     
     def on_search_mode_change(self):
@@ -705,13 +719,19 @@ License: MIT License
             self.is_running = False
             return
         
-        # Schedule next check only if still running
+        # Only schedule the next check if the application is still marked as running.
+        # This check is crucial to prevent scheduling if is_running was set to False
+        # during queue processing (e.g., by an error handler) or by the on_closing method.
         if self.is_running:
             try:
+                # Attempt to schedule the next execution of check_results.
                 self.after_id = self.root.after(100, self.check_results)
             except tk.TclError:
-                # GUI has been destroyed
+                # This exception typically occurs if the root window (self.root) has been
+                # destroyed between the check of self.is_running and this call.
+                # In such a case, ensure is_running is False and do not attempt to reschedule.
                 self.is_running = False
+        # If self.is_running is False at this point, the method ends, and the recurring check stops.
     
     def handle_search_results(self, results):
         """Handle search results with enhanced validation and error handling."""
@@ -926,25 +946,52 @@ License: MIT License
         if 0 <= index < len(self.current_publications):
             pub = self.current_publications[index]
             self.show_publication_details(pub)
+
+            # Enable/disable URL buttons
+            if pub and pub.get('url'): # Check if 'url' key exists and list is not empty
+                self.open_url_button.config(state=tk.NORMAL)
+                self.copy_url_button.config(state=tk.NORMAL)
+            else:
+                self.open_url_button.config(state=tk.DISABLED)
+                self.copy_url_button.config(state=tk.DISABLED)
     
     def show_publication_details(self, publication: Dict):
         """Show detailed information about a publication."""
         self.details_text.delete(1.0, tk.END)
         
-        # Helper function to safely join values
-        def safe_join(value, default='N/A'):
+        # Helper function to safely join values (remains useful for other fields)
+        def safe_join(value, default='N/A', separator=', '):
             if value is None:
                 return default
             elif isinstance(value, list):
-                return ', '.join(str(item) for item in value if item) or default
+                processed_list = [str(item).strip() for item in value if item is not None]
+                processed_list = [item for item in processed_list if item]
+                if not processed_list:
+                    return default
+                return separator.join(processed_list)
             elif isinstance(value, str):
-                return value or default
+                stripped_value = value.strip()
+                return stripped_value if stripped_value else default
             else:
-                return str(value) or default
+                try:
+                    str_value = str(value).strip()
+                    return str_value if str_value else default
+                except Exception:
+                    return default
+
+        # URL display enhancement
+        urls_list = publication.get('url')
+        urls_display = "URLs:\n"
+        if urls_list and isinstance(urls_list, list):
+            for u in urls_list:
+                urls_display += f" - {u}\n"
+            urls_display = urls_display.rstrip('\n') # Remove last newline
+        else:
+            urls_display = "URLs: N/A"
 
         details = f"""Title: {publication.get('title', 'N/A')}
 
-Authors: {safe_join(publication.get('author', ['N/A']))}
+Authors: {safe_join(publication.get('authors'), default='N/A')}
 
 Publication Year: {publication.get('publication_year', 'N/A')}
 
@@ -954,21 +1001,88 @@ Type: {publication.get('type', 'N/A')}
 
 Database Source: {str(publication.get('database_source', 'N/A')).upper()}
 
-ISBN: {safe_join(publication.get('isbn', ['N/A']))}
+ISBN: {safe_join(publication.get('isbn'), default='N/A')}
 
-Languages: {safe_join(publication.get('language', ['N/A']))}
+Languages: {safe_join(publication.get('language'), default='N/A')}
 
-Subjects: {safe_join(publication.get('subject', ['N/A']))}
+Subjects: {safe_join(publication.get('subject'), default='N/A')}
 
 Description: {publication.get('description', 'N/A')}
 
-URLs: {safe_join(publication.get('url', ['N/A']))}
+{urls_display}
 
 Record ID: {publication.get('id', 'N/A')}
 """
         
         self.details_text.insert(1.0, details)
-    
+
+    def on_publication_double_click(self, event):
+        """Handle double-click on a publication in the results tree."""
+        selection = self.results_tree.selection()
+        if not selection:
+            return
+
+        item = selection[0]
+        index = self.results_tree.index(item)
+
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            urls = pub.get('url')
+            if urls and isinstance(urls, list) and urls[0]: # Check if list and has at least one URL
+                url_to_open = urls[0] # Take the first URL
+                try:
+                    webbrowser.open(url_to_open, new=2)
+                except Exception as e:
+                    messagebox.showerror("Web Browser Error", f"Could not open URL {url_to_open}:\n{e}")
+            else:
+                messagebox.showinfo("No URL", "Selected publication has no URL to open.")
+
+    def open_selected_publication_url(self):
+        """Open the first URL of the selected publication."""
+        selection = self.results_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a publication first.")
+            return
+
+        item = selection[0]
+        index = self.results_tree.index(item)
+
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            urls = pub.get('url')
+            if urls and isinstance(urls, list) and urls[0]:
+                url_to_open = urls[0]
+                try:
+                    webbrowser.open(url_to_open, new=2)
+                except Exception as e:
+                    messagebox.showerror("Web Browser Error", f"Could not open URL {url_to_open}:\n{e}")
+            else:
+                messagebox.showinfo("No URL", "Selected publication has no URL to open.")
+
+    def copy_selected_publication_url(self):
+        """Copy the first URL of the selected publication to clipboard."""
+        selection = self.results_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select a publication first.")
+            return
+
+        item = selection[0]
+        index = self.results_tree.index(item)
+
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            urls = pub.get('url')
+            if urls and isinstance(urls, list) and urls[0]:
+                url_to_copy = urls[0]
+                try:
+                    self.root.clipboard_clear()
+                    self.root.clipboard_append(url_to_copy)
+                    self.update_status(f"URL copied: {url_to_copy}")
+                except tk.TclError:
+                    messagebox.showerror("Clipboard Error", "Could not access clipboard.")
+            else:
+                messagebox.showinfo("No URL", "Selected publication has no URL to copy.")
+
     def generate_analytics(self):
         """Generate analytics for current publications."""
         if not self.current_publications:
