@@ -19,12 +19,14 @@ class ScopusConnector(BaseConnector):
     """
     Connector for searching the Scopus database.
     """
+    requires_api_key = True # Scopus API requires an API key
     
     def __init__(self, api_key: str = None, settings: dict = None):
         """Initialize the Scopus connector."""
         super().__init__(api_key, settings)
         self.base_url = "https://api.elsevier.com/content/search/scopus"
         self.max_results = 100
+        self.name = "Scopus" # Added for api_key_manager
         
     def construct_query(self, search_term: str, **kwargs) -> str:
         """
@@ -156,9 +158,12 @@ class ScopusConnector(BaseConnector):
                 self.max_results = max_results
             
             # Get the API key from kwargs, app_config, or self
-            api_key = kwargs.get('api_key') or kwargs.get('scopus_api_key') or self.api_key
-            if not api_key:
-                raise Exception("No Scopus API key provided")
+            # Ensure self.api_key is used if available and validated
+            current_api_key = self.api_key or kwargs.get('api_key') or kwargs.get('scopus_api_key')
+
+            if not current_api_key:
+                logger.error("Scopus API key is missing.")
+                raise ValueError("Scopus API key is required for searching.")
             
             # If a query is not provided directly, construct it from search_term and other parameters
             if not query:
@@ -173,7 +178,7 @@ class ScopusConnector(BaseConnector):
             logger.info(f"Scopus search query: {query}")
             
             headers = {
-                'X-ELS-APIKey': api_key,
+                'X-ELS-APIKey': current_api_key,
                 'Accept': 'application/json'
             }
             

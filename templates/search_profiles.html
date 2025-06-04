@@ -4,27 +4,7 @@
 
 {% block styles %}
 {{ super() }}
-<style>
-    .profile-card {
-        transition: all 0.3s ease;
-    }
-    .profile-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
-    }
-    .profile-badge {
-        font-size: 0.8em;
-        margin-right: 5px;
-    }
-    .profile-date {
-        font-size: 0.8em;
-        color: #6c757d;
-    }
-    .action-button {
-        width: 100%;
-        margin-bottom: 5px;
-    }
-</style>
+<!-- Styles moved to custom.css -->
 {% endblock %}
 
 {% block content %}
@@ -37,16 +17,7 @@
                 Suchparameter zu speichern und später wiederzuverwenden.
             </p>
             
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+            <!-- Flash messages are now handled by base.html -->
         </div>
     </div>
     
@@ -87,18 +58,17 @@
                                             </p>
                                         </div>
                                         <div class="card-footer bg-white">
-                                            <form action="{{ url_for('search_profiles') }}" method="post">
-                                                <input type="hidden" name="profile_name" value="{{ profile.name }}">
-                                                <div class="d-grid gap-2">
-                                                    <button type="submit" name="action" value="load" class="btn btn-sm btn-outline-primary action-button">
-                                                        <i class="fas fa-search me-1"></i>Suche starten
-                                                    </button>
-                                                    <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger action-button" 
-                                                        onclick="return confirm('Möchten Sie das Profil {{ profile.name }} wirklich löschen?')">
+                                            <div class="d-grid gap-2">
+                                                <a href="{{ url_for('load_search_profile_endpoint', profile_name=profile.name) }}" class="btn btn-sm btn-outline-primary action-button">
+                                                    <i class="fas fa-play-circle me-1"></i>Profil laden & Suchen
+                                                </a>
+                                                <form action="{{ url_for('delete_search_profile_endpoint', profile_name=profile.name) }}" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger profile-action-button"
+                                                            onclick="return confirm('Möchten Sie das Profil \'{{ profile.name }}\' wirklich löschen?')">
                                                         <i class="fas fa-trash-alt me-1"></i>Löschen
                                                     </button>
-                                                </div>
-                                            </form>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

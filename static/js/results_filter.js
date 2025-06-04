@@ -362,20 +362,29 @@ function applyFilters() {
 }
 
 /**
- * Update filter statistics
+ * Update filter statistics and visibility of "no matching results" message.
  */
 function updateFilterStats(visibleCount, totalCount) {
     const filterStatsElement = document.getElementById('filterStats');
+    const tableFooter = document.getElementById('resultsTableFooter');
+
     if (filterStatsElement) {
         filterStatsElement.textContent = `Angezeigt: ${visibleCount} von ${totalCount} Ergebnissen`;
         
-        // Change text color based on filtering
-        if (visibleCount < totalCount) {
+        if (visibleCount < totalCount && visibleCount > 0) {
             filterStatsElement.classList.add('text-warning');
             filterStatsElement.classList.remove('text-muted');
         } else {
             filterStatsElement.classList.add('text-muted');
             filterStatsElement.classList.remove('text-warning');
+        }
+    }
+
+    if (tableFooter) {
+        if (visibleCount === 0 && totalCount > 0) { // Show message only if there were rows to filter but none matched
+            tableFooter.style.display = '';
+        } else {
+            tableFooter.style.display = 'none';
         }
     }
 }

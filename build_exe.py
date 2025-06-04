@@ -24,19 +24,42 @@ PYINSTALLER_ARGS = [
     '--add-data=templates;templates',  # Include templates
     '--add-data=static;static',  # Include static files
     '--add-data=assets;assets',  # Include assets
+    # Core dependencies often needing hidden imports
     '--hidden-import=pandas',
     '--hidden-import=openpyxl',
-    '--hidden-import=xlsxwriter',
-    '--hidden-import=flask_bootstrap',
+    # '--hidden-import=xlsxwriter', # Commented out as it was removed from requirements.txt
+    '--hidden-import=bootstrap_flask', # Changed from flask_bootstrap
     '--hidden-import=waitress',
+    '--hidden-import=matplotlib',
+    '--hidden-import=matplotlib.backends.backend_agg', # Common backend for charts
+    '--hidden-import=seaborn',
+    '--hidden-import=psutil',
+    '--hidden-import=pkg_resources.py2_warn', # Sometimes needed by various packages
+
+    # Application modules (ensure PyInstaller finds them)
     '--hidden-import=database_connectors',
     '--hidden-import=utils',
+    '--hidden-import=utils.api_key_manager',
+    '--hidden-import=utils.config_manager',
+    '--hidden-import=utils.export_manager',
+    '--hidden-import=utils.logging_manager',
+    '--hidden-import=utils.path_manager',
+    '--hidden-import=utils.search_profiles',
+
+    # Explicitly list all connectors
     '--hidden-import=database_connectors.base_connector',
     '--hidden-import=database_connectors.dnb_connector',
+    '--hidden-import=database_connectors.gepris_connector',
     '--hidden-import=database_connectors.pubmed_connector',
     '--hidden-import=database_connectors.scopus_connector',
     '--hidden-import=database_connectors.wos_connector',
-    '--hidden-import=database_connectors.gepris_connector',
+
+    # Other potential hidden imports that might arise from libraries
+    '--hidden-import=sklearn.utils._cython_blas', # Seaborn might pull this
+    '--hidden-import=scipy.sparse.csgraph._validation', # Scipy is often a dep of stats/data libs
+    '--hidden-import=scipy.integrate',
+    '--hidden-import=PIL._imagingtk', # Pillow (PIL) often used by matplotlib or other image libs
+    '--hidden-import=PIL._tkinter_finder',
     '--clean',  # Clean PyInstaller cache
     'main.py'  # Main script
 ]

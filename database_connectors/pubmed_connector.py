@@ -18,12 +18,14 @@ class PubMedConnector(BaseConnector):
     """
     Connector for searching the PubMed database.
     """
+    requires_api_key = False  # PubMed can be used without an API key, but it's recommended for higher rate limits
     
     def __init__(self, api_key: str = None, settings: dict = None):
         """Initialize the PubMed connector."""
         super().__init__(api_key, settings)
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
         self.max_results = 100
+        self.name = "PubMed" # Added for api_key_manager
         
     def construct_query(self, search_term: str, **kwargs) -> str:
         """

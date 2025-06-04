@@ -82,23 +82,12 @@
                                 <h3 class="h5 mb-3">Dateioptionen</h3>
                                 <div class="mb-3">
                                     <label for="output_path" class="form-label">Exportpfad</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="output_path" name="output_path" 
-                                               value="{{ config.get('output_path', './output') }}">
-                                        <button class="btn btn-outline-secondary" type="button" id="choose_output_path" onclick="selectFolder()">
-                                            <i class="fas fa-folder-open"></i>Ordner auswählen
-                                        </button>
-                                    </div>
-                                    <small class="form-text">Der Ordner, in dem exportierte Dateien gespeichert werden.</small>
+                                    <input type="text" class="form-control" id="output_path" name="output_path"
+                                           value="{{ config.get('output_path', './output') }}">
+                                    <small class="form-text text-muted">Der Ordner auf dem Server, in dem exportierte Dateien gespeichert werden (z.B. ./output oder absoluter Pfad bei entsprechender Konfiguration).</small>
                                 </div>
                                 
-                                <div class="form-group">
-                                    <label for="persons_list_path">Pfad zur Personenliste:</label>
-                                    <div class="input-group">
-                                        <input type="text" id="persons_list_path" name="persons_list_path" class="form-control">
-                                        <button type="button" class="btn btn-secondary" onclick="selectFile()">Datei auswählen</button>
-                                    </div>
-                                </div>
+                                <!-- Removed persons_list_path input, as it's a general setting -->
                                 
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" name="unique_filenames" id="unique_filenames"
@@ -224,21 +213,5 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <!-- Eigene JavaScript-Dateien -->
 <script src="{{ url_for('static', filename='js/export_page.js') }}"></script>
-<script>
-    function selectFolder() {
-        fetch('/select-folder')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('output_path').value = data.path;
-            });
-    }
-
-    function selectFile() {
-        fetch('/select-file')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('persons_list_path').value = data.path;
-            });
-    }
-</script>
+<!-- Removed selectFolder() and selectFile() JavaScript as they are not suitable for web context -->
 {% endblock %}

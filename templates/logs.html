@@ -253,7 +253,7 @@
                                                         </button>
                                                     </div>
                                                     <div class="col-md-6">
-                                                        <button class="btn btn-outline-danger w-100" id="clearAllLogs">
+                                                        <button class="btn btn-danger w-100" id="clearAllLogs">
                                                             <i class="fas fa-trash-alt me-2"></i>Alle Logs zurücksetzen
                                                         </button>
                                                     </div>
@@ -675,8 +675,8 @@ document.addEventListener('DOMContentLoaded', function() {
 .log-container {
     max-height: 600px;
     overflow-y: auto;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background-color: #f8f9fa; /* Consider using Bootstrap variable var(--bs-light) or similar if theme changes */
+    border: 1px solid #dee2e6; /* Consider var(--bs-border-color) */
     border-top: none;
 }
 
@@ -685,51 +685,36 @@ document.addEventListener('DOMContentLoaded', function() {
     white-space: pre-wrap;
     word-wrap: break-word;
     font-family: Consolas, Monaco, 'Courier New', monospace;
-    font-size: 0.85rem;
+    font-size: 0.85rem; /* Specific to log content */
     line-height: 1.5;
 }
 
-/* Anpassung der Schriftgröße in Tabellen */
-.table-sm {
+/* Anpassung der Schriftgröße in Tabellen innerhalb von logs.html */
+#system .table-sm { /* More specific selector */
     font-size: 0.9rem;
 }
 
-/* Verbesserte Lesbarkeit für vorformatierte JSON-Blöcke */
-pre {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.25rem;
-    overflow-x: auto;
-    font-size: 0.85rem;
-}
-
-/* Tab-Styling */
-.nav-tabs .nav-link {
+/* Tab-Styling for logs.html - kept local as it might be specific */
+#logTabs .nav-link { /* More specific selector */
     color: #495057;
     border-color: #dee2e6 #dee2e6 #fff;
 }
 
-.nav-tabs .nav-link.active {
-    color: #0d6efd;
+#logTabs .nav-link.active { /* More specific selector */
+    color: #0d6efd; /* var(--bs-primary) */
     font-weight: 500;
 }
 
-/* Filter-Bereich */
-.form-control:focus, .form-select:focus {
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+/* Filter-Bereich focus - this is a general Bootstrap improvement, could be in custom.css */
+/* For now, keeping it local to see its effect here first. */
+#logs .form-control:focus, #logs .form-select:focus { /* Scoped to logs page */
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* var(--bs-primary-rgb) */
 }
 
-/* Hervorhebung von gesuchten Begriffen */
-mark {
-    background-color: #ffc107;
-    padding: 0.1rem 0.2rem;
-    border-radius: 0.2rem;
-}
-
-/* Highlighting für Log-Levels */
-.text-danger { color: #dc3545 !important; }
-.text-warning { color: #ffc107 !important; }
-.text-info { color: #0dcaf0 !important; }
-.text-secondary { color: #6c757d !important; }
+/*
+General 'pre' and 'mark' styles should be in custom.css.
+Redundant text color definitions for .text-danger etc. removed as they are Bootstrap classes.
+The JS colorizeLogLevels() applies these Bootstrap classes.
+*/
 </style>
 {% endblock %}

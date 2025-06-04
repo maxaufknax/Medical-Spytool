@@ -122,12 +122,22 @@
                         {% for result in sorted_results[:10] %}
                         <tr>
                             <td>
-                                <a href="{{ result.URL }}" target="_blank" class="text-decoration-none">{{ result.Title }}</a>
+                                {% if result.URL and result.URL != "No URL" %}
+                                <a href="{{ result.URL }}" target="_blank" class="text-decoration-none" title="{{ result.Title }}">{{ result.Title }}</a>
+                                {% else %}
+                                {{ result.Title }}
+                                {% endif %}
                             </td>
                             <td>{{ result.Authors }}</td>
                             <td>{{ result["Publication Year"] }}</td>
-                            <td>{{ result["Citation Count"] }}</td>
+                            <td>{{ result["Citation Count"] | default('N/A') }}</td>
                             <td>{{ result.Database }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted p-3">
+                                <i class="fas fa-info-circle me-2"></i>Keine Zitationsdaten verfügbar oder keine Publikationen in den Ergebnissen.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

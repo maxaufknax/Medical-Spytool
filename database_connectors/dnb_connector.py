@@ -15,12 +15,14 @@ class DNBConnector(BaseConnector):
     """
     Connector for searching the Deutsche Nationalbibliothek (DNB) catalog.
     """
+    requires_api_key = True # DNB SRU requires an access token (API key)
     
     def __init__(self, api_key: str = None, settings: dict = None):
         """Initialize the DNB connector."""
         super().__init__(api_key, settings)
         self.base_url = "https://services.dnb.de/sru/dnb"
         self.max_results = 100
+        self.name = "DNB" # Added for api_key_manager
         
     def construct_query(self, search_term: str, **kwargs) -> str:
         """
@@ -161,12 +163,17 @@ class DNBConnector(BaseConnector):
                 'version': '1.1',
                 'recordSchema': 'MARC21-xml',
                 'maximumRecords': str(self.max_results),
-                'query': query
+                'query': query,
+                'accessToken': self.api_key # Add API key for DNB
             }
             
             # Update with any additional parameters
             if params:
                 search_params.update(params)
+
+            if not self.api_key:
+                logger.error("DNB API key is missing.")
+                raise ValueError("DNB API key is required for searching.")
             
             response = requests.get(self.base_url, params=search_params)
             response.raise_for_status()
@@ -307,8 +314,12 @@ class DNBConnector(BaseConnector):
             bool: True if the API key is valid, False otherwise
         """
         try:
-            # DNB generally doesn't require an API key for basic SRU searches
-            # So this is just checking if the service is available
+            # DNB generally doesn't require an API key for basic SRU searches,
+            # but for real usage, an access token is often needed.
+            # This validation checks if the key is provided and if a basic query works.
+            key_to_validate = api_key if api_key else self.api_key
+            if not key_to_validate:
+                return False # API key is required
             
             # Make a simple test query
             test_query = "*"
@@ -317,7 +328,8 @@ class DNBConnector(BaseConnector):
                 'version': '1.1',
                 'recordSchema': 'MARC21-xml',
                 'maximumRecords': '1',
-                'query': test_query
+                'query': test_query,
+                'accessToken': key_to_validate
             }
             
             response = requests.get(self.base_url, params=search_params)

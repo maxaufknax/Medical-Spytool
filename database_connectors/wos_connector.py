@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class WoSConnector(BaseConnector):
     """Connector for the Web of Science database."""
+    requires_api_key = True # Web of Science API requires an API key
     
     def __init__(self, api_key=None, settings=None):
         """Initialize the Web of Science connector.
@@ -24,8 +25,11 @@ class WoSConnector(BaseConnector):
             settings (dict, optional): Additional settings.
         """
         super().__init__(api_key, settings)
-        self.base_url = "https://wos-api.clarivate.com/api/woslite"
-        self.citation_url = "https://wos-api.clarivate.com/api/woslite/references"
+        self.base_url = "https://wos-api.clarivate.com/api/woslite" # For WOS Lite API
+        # For full WOS API, might be: "https://wos-api.clarivate.com/api/wos"
+        self.citation_url = "https://wos-api.clarivate.com/api/woslite/references" # This seems specific, might not be needed for general search
+        self.name = "WoS" # Added for api_key_manager
+        self.max_results = 100 # Default, can be overridden
         
     def get_available_fields(self) -> List[str]:
         """Get the available search fields for Web of Science.
@@ -45,382 +49,509 @@ class WoSConnector(BaseConnector):
             "Journal",
             "Konferenz"
         ]
-        
-    def construct_query(self, base_query, additional_terms="", date_range=None, 
-                         language=None, pub_type=None, field=None):
-        """Construct a Web of Science query.
-        
-        Args:
-            base_query (str): The base query.
-            additional_terms (str, optional): Additional search terms.
-            date_range (dict, optional): The date range for the search.
-            language (str, optional): The language filter.
-            pub_type (str, optional): The publication type filter.
-            field (str, optional): The field to search in.
-            
-        Returns:
-            str: The constructed query.
+
+    def construct_query(self, search_term: str, **kwargs) -> str:
         """
-        # Map fields to WoS search fields
-        field_map = {
-            "Autor": "AU",
-            "Titel": "TI",
-            "Abstract": "AB",
-            "Keywords": "KW",
-            "Adresse": "AD",
-            "DOI": "DO",
-            "ISSN": "IS",
-            "Journal": "SO",
-            "Konferenz": "CF"
-        }
-        
-        # If no field specified or "Alle Felder" is chosen, search in all fields
-        search_field = field_map.get(field, "TS")
-        
-        # Start with base query
+        Construct a Web of Science query string.
+        Compatible with BaseConnector.
+
+        Args:
+            search_term (str): The main search term.
+            **kwargs: Additional search parameters including:
+                - additional_terms (str): Additional search terms.
+                - date_range (dict): Date range with 'start' and 'end' keys (YYYY-MM-DD strings or datetime objects).
+                - language (str): Language filter.
+                - pub_type (str): Publication type filter.
+                - field (str): Specific field to search in.
+                - person_names (list): List of person names to include in search.
+        Returns:
+            str: The constructed WoS query string.
+        """
         query_parts = []
-        
-        # Add the main search term
-        if base_query:
-            query_parts.append(f"{search_field}=({base_query})")
-        
-        # Add additional terms if provided
+
+        # Field mapping
+        field_map = {
+            "author": "AU", "autor": "AU",
+            "title": "TI", "titel": "TI",
+            "abstract": "AB",
+            "keywords": "KP", "keyword": "KP", # KP for Author Keywords, IK for Keywords Plus
+            "address": "AD", "adresse": "AD", "affiliation": "AD",
+            "doi": "DO",
+            "issn": "IS",
+            "journal": "SO", "source": "SO",
+            "conference": "CF", "konferenz": "CF",
+            "all fields": "TS", "alle felder": "TS"
+        }
+
+        # Main search term and field
+        field_arg = kwargs.get('field', kwargs.get('search_field', 'all fields')).lower()
+        wos_field_code = field_map.get(field_arg, "TS") # Default to Topic Search (TS)
+
+        if search_term:
+            query_parts.append(f"{wos_field_code}=({search_term})")
+
+        # Person names (Authors)
+        person_names = kwargs.get('person_names', [])
+        if person_names and isinstance(person_names, list):
+            author_queries = []
+            for person in person_names:
+                if isinstance(person, str) and person.strip():
+                    # WoS author format is typically Lastname F* or Lastname Firstname I*
+                    # Simple approach: use the name as is, assuming users format it correctly or WoS is flexible.
+                    author_queries.append(f"AU=({person.strip()})")
+            if author_queries:
+                # If there was already a search term, AND these authors. Otherwise, OR them.
+                conjunction = "AND" if search_term else "OR"
+                query_parts.append(f"{conjunction} ({' OR '.join(author_queries)})")
+
+
+        # Additional terms (treat as general topic search, ANDed)
+        additional_terms = kwargs.get('additional_terms')
         if additional_terms:
-            query_parts.append(f"AND ({additional_terms})")
-            
-        # Add date range filter
-        if date_range:
-            start_year = date_range.get('start').year
-            end_year = date_range.get('end').year
-            query_parts.append(f"AND PY=({start_year}-{end_year})")
-            
-        # Add language filter
+            query_parts.append(f"AND TS=({additional_terms})")
+
+        # Date range
+        date_range = kwargs.get('date_range')
+        # Also check for direct start_date/end_date from form which might not be in a dict
+        start_date_str = kwargs.get('start_date', date_range.get('start') if date_range else None)
+        end_date_str = kwargs.get('end_date', date_range.get('end') if date_range else None)
+
+        if start_date_str and end_date_str:
+            try:
+                # Assuming YYYY or YYYY-MM-DD format
+                start_year = str(start_date_str)[:4]
+                end_year = str(end_date_str)[:4]
+                if start_year.isdigit() and end_year.isdigit():
+                     query_parts.append(f"AND PY=({start_year}-{end_year})")
+                else:
+                    logger.warning(f"Invalid date format for WoS query: {start_date_str}, {end_date_str}")
+            except Exception as e:
+                logger.warning(f"Error processing date range for WoS: {e}")
+
+
+        # Language filter
+        language = kwargs.get('language')
         if language:
-            lang_map = {
-                "English": "English",
-                "German": "German",
-                "French": "French",
-                "Spanish": "Spanish"
-            }
-            wos_lang = lang_map.get(language)
-            if wos_lang:
-                query_parts.append(f"AND LA=({wos_lang})")
-                
-        # Add publication type filter
+            # WoS uses full language names e.g., "English", "German"
+            query_parts.append(f"AND LA=({language})")
+
+        # Publication type filter
+        pub_type = kwargs.get('pub_type')
         if pub_type:
-            type_map = {
-                "Article": "Article",
-                "Review": "Review",
-                "Proceedings Paper": "Proceedings Paper",
-                "Book Chapter": "Book Chapter",
-                "Editorial": "Editorial"
-            }
-            wos_type = type_map.get(pub_type)
-            if wos_type:
-                query_parts.append(f"AND DT=({wos_type})")
-                
+            # WoS uses specific document type codes, e.g., "Article", "Review"
+            # Assuming pub_type is passed directly as WoS expects
+            query_parts.append(f"AND DT=({pub_type})")
+
         # Join all parts to form the final query
-        final_query = " ".join(query_parts)
+        # WoS uses "AND", "OR", "NOT" as operators. Default to AND if multiple parts.
+        final_query = " AND ".join(filter(None, query_parts))
         
+        if not final_query: # Handle empty query case
+            return "TS=(*) AND PY=(2000-2024)" # Example: search everything in a recent range. Or raise error.
+
+        logger.debug(f"Constructed WoS Query: {final_query}")
         return final_query
-        
-    def search(self, query, params=None, log_widget=None):
+
+    def search(self, search_term: str = None, query: str = None, params: Dict[str, Any] = None,
+               person_names: List[str] = None, max_results: int = None, **kwargs) -> List[Dict[str, Any]]:
         """Search the Web of Science database.
+        Compatible with BaseConnector.
         
         Args:
-            query (str): The query string.
-            params (dict, optional): Additional search parameters.
-            log_widget (object, optional): A widget for logging messages.
+            search_term (str, optional): The main search term
+            query (str, optional): A pre-constructed query string (alternative to search_term)
+            params (dict, optional): Additional search parameters (largely superseded by kwargs for this connector)
+            person_names (list, optional): List of person names to include in the search
+            max_results (int, optional): Maximum number of results to return
+            **kwargs: Any additional parameters for the search
             
         Returns:
             List[Dict[str, Any]]: The search results.
         """
-        if params is None:
-            params = {}
-            
-        # Get parameters
-        max_results = params.get('max_results', 100)
-        names = params.get('names', [])
-        
-        # If using test mode without API key, generate dummy results
         if not self.api_key:
-            from utils.logging_manager import log_message
-            log_message(log_widget, "Kein API-Schlüssel für Web of Science. Verwende Dummy-Ergebnisse für Testzwecke.")
-            return self._dummy_search(query, params, log_widget)
-            
-        # Get API key
+            logger.warning("No API key for Web of Science. Using dummy search.")
+            # Construct a query for dummy search to have some context
+            dummy_query_context = query
+            if not dummy_query_context:
+                 dummy_query_context = self.construct_query(search_term, person_names=person_names, **kwargs)
+            # Use effective_max_results for dummy search as well
+            effective_max_results = max_results if max_results is not None else self.max_results
+            return self._dummy_search(dummy_query_context, effective_max_results, person_names)
+
+        # Determine the query to use
+        if not query:
+            current_query = self.construct_query(search_term, person_names=person_names, **kwargs)
+        else:
+            current_query = query
+
+        if not current_query or (current_query.strip() == "TS=(*)" and not person_names): # Avoid empty or too broad queries if not intended
+             logger.warning(f"WoS query '{current_query}' is empty or too broad without specific person names. Aborting search.")
+             return []
+
+        logger.info(f"Web of Science search query: {current_query}")
+
         headers = {
             "X-APIKey": self.api_key,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         
-        all_results = []
+        effective_max_results = max_results if max_results is not None else self.max_results
         
+        all_results = []
+        total_fetched = 0
+        current_record = 1
+        API_PAGE_LIMIT = 100
+
         try:
-            # Use person names for person-specific queries
-            if names:
-                from utils.logging_manager import log_message
-                
-                # Search for each person
-                for name in names:
-                    if not name:
-                        continue
-                        
-                    log_message(log_widget, f"Suche nach Person: {name} in Web of Science...")
-                    
-                    # Person name query: Look for author name
-                    person_query = f"AU=({name})" if query == "" else f"AU=({name}) AND ({query})"
-                    
-                    # Prepare search parameters
-                    payload = {
-                        "databaseId": "WOS",
-                        "usrQuery": person_query,
-                        "count": min(max_results, 100),  # WoS API limit per request
-                        "firstRecord": 1
-                    }
-                    
-                    total_fetched = 0
-                    
-                    # Paginate through results
-                    while total_fetched < max_results:
-                        payload["firstRecord"] = total_fetched + 1
-                        
-                        response = requests.post(
-                            self.base_url,
-                            headers=headers,
-                            json=payload
-                        )
-                        
-                        # Check if request was successful
-                        if response.status_code != 200:
-                            log_message(log_widget, f"Fehler bei WoS-Anfrage: {response.status_code} - {response.text}")
-                            break
-                            
-                        # Parse response
-                        try:
-                            data = response.json()
-                            records = data.get("Data", {}).get("Records", {}).get("records", [])
-                            
-                            if not records:
-                                break
-                                
-                            # Parse results
-                            parsed_results = self.parse_results(records, name, log_widget)
-                            all_results.extend(parsed_results)
-                            
-                            total_fetched += len(records)
-                            
-                            # Check if we have more results
-                            record_count = data.get("QueryResult", {}).get("RecordsFound", 0)
-                            if total_fetched >= record_count:
-                                break
-                                
-                            log_message(log_widget, f"Abgerufen: {total_fetched}/{record_count} Ergebnisse für {name}...")
-                            
-                        except Exception as e:
-                            log_message(log_widget, f"Fehler beim Verarbeiten der WoS-Antwort: {str(e)}")
-                            break
-            else:
-                # Regular query without person specification
-                from utils.logging_manager import log_message
-                log_message(log_widget, f"Suche in Web of Science mit Abfrage: {query}")
-                
-                # Prepare search parameters
+            while total_fetched < effective_max_results:
+                count_this_request = min(API_PAGE_LIMIT, effective_max_results - total_fetched)
+                if count_this_request <= 0:
+                    break
+
                 payload = {
                     "databaseId": "WOS",
-                    "usrQuery": query,
-                    "count": min(max_results, 100),  # WoS API limit per request
-                    "firstRecord": 1
+                    "usrQuery": current_query,
+                    "count": count_this_request,
+                    "firstRecord": current_record
                 }
                 
-                total_fetched = 0
+                logger.debug(f"WoS API Request Payload: {payload}")
+                response = requests.post(self.base_url, headers=headers, json=payload, timeout=30)
                 
-                # Paginate through results
-                while total_fetched < max_results:
-                    payload["firstRecord"] = total_fetched + 1
-                    
-                    response = requests.post(
-                        self.base_url,
-                        headers=headers,
-                        json=payload
-                    )
-                    
-                    # Check if request was successful
-                    if response.status_code != 200:
-                        log_message(log_widget, f"Fehler bei WoS-Anfrage: {response.status_code} - {response.text}")
-                        break
-                        
-                    # Parse response
+                if response.status_code == 401: # Unauthorized
+                    logger.error(f"WoS API Key is invalid or expired: {response.text}")
+                    raise Exception("Web of Science API Key invalid or expired.")
+                if response.status_code == 403: # Forbidden
+                    logger.error(f"WoS API Key does not have access or exceeded quota: {response.text}")
+                    raise Exception(f"Forbidden: WoS API Key lacks permission or quota exceeded. Details: {response.text}")
+                if response.status_code != 200:
+                    logger.error(f"Error in WoS API request: {response.status_code} - {response.text}")
                     try:
-                        data = response.json()
-                        records = data.get("Data", {}).get("Records", {}).get("records", [])
-                        
-                        if not records:
-                            break
-                            
-                        # Parse results
-                        parsed_results = self.parse_results(records, "General Search", log_widget)
-                        all_results.extend(parsed_results)
-                        
-                        total_fetched += len(records)
-                        
-                        # Check if we have more results
-                        record_count = data.get("QueryResult", {}).get("RecordsFound", 0)
-                        if total_fetched >= record_count:
-                            break
-                            
-                        log_message(log_widget, f"Abgerufen: {total_fetched}/{record_count} Ergebnisse...")
-                        
-                    except Exception as e:
-                        log_message(log_widget, f"Fehler beim Verarbeiten der WoS-Antwort: {str(e)}")
-                        break
-                        
-            return all_results
+                        error_data = response.json()
+                        error_message = error_data.get("message", response.text)
+                        raise Exception(f"WoS API error ({response.status_code}): {error_message}")
+                    except ValueError:
+                        raise Exception(f"WoS API error ({response.status_code}): {response.text}")
+
+                data = response.json()
+                logger.debug(f"WoS API Response Data (first 500 chars): {str(data)[:500]}")
+
+                records_data = data.get("Data", {}).get("Records", {})
+                if not records_data or not records_data.get("records"):
+                    logger.info("No 'Records' field in WoS response or it's empty.")
+                    break
+
+                actual_records = records_data.get("records", {}).get("REC", [])
+                if not isinstance(actual_records, list): # If "REC" is a single dict
+                    actual_records = [actual_records]
+
+                if not actual_records:
+                    logger.info("No actual records list found in this WoS page or REC is empty.")
+                    break
+
+                search_context_name = person_names[0] if person_names and person_names[0] else "General Search"
+                parsed_page_results = self.parse_results(actual_records, search_context_name)
+                all_results.extend(parsed_page_results)
+
+                total_fetched += len(parsed_page_results)
+                current_record += len(parsed_page_results) # WoS uses 1-based indexing for firstRecord
+
+                query_result_info = data.get("QueryResult", {})
+                records_found_total = query_result_info.get("RecordsFound", 0)
+
+                logger.info(f"Fetched {len(parsed_page_results)} WoS records in this page. Total fetched so far: {total_fetched}/{records_found_total}")
+
+                if total_fetched >= records_found_total or total_fetched >= effective_max_results:
+                    break
+
+            logger.info(f"Total {len(all_results)} WoS results found for query.")
+            return self.format_results(all_results)
             
+        except requests.RequestException as e:
+            logger.error(f"WoS API request error: {e}", exc_info=True)
+            raise Exception(f"WoS API request error: {str(e)}")
         except Exception as e:
-            from utils.logging_manager import log_message
-            log_message(log_widget, f"Fehler bei Web of Science-Suche: {str(e)}")
             logger.error(f"Web of Science search error: {e}", exc_info=True)
-            return []
-            
-    def _dummy_search(self, query, params=None, log_widget=None):
+            raise Exception(f"WoS search error: {str(e)}")
+
+    def _dummy_search(self, query_context: str, max_results: int, person_names: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Generate dummy results for testing.
         
         Args:
-            query (str): The query string.
-            params (dict, optional): Additional search parameters.
-            log_widget (object, optional): A widget for logging messages.
+            query_context (str): The query string context for dummy results.
+            max_results (int): Number of dummy results to generate.
+            person_names (Optional[List[str]]): Person names for context.
             
         Returns:
             List[Dict[str, Any]]: The dummy search results.
         """
-        from utils.logging_manager import log_message
-        log_message(log_widget, "Generiere Dummy-Ergebnisse für Web of Science...")
+        logger.info(f"Generating {max_results} dummy results for WoS. Query context: {query_context}")
         
-        # Generate some dummy results for testing without API key
         dummy_results = []
-        names = params.get('names', [])
-        person_name = names[0] if names else "General Search"
+        context_name = person_names[0] if person_names and person_names[0] else "General Search"
         
-        # Generate 10 dummy results
-        for i in range(1, 11):
-            year = 2020 - (i % 5)
+        for i in range(1, int(max_results) + 1): # Ensure max_results is int
+            year = 2024 - (i % 5)
+            month_num = (i % 12) + 1
+            month = f"{month_num:02d}"
             result = {
-                "Database": "Web of Science",
-                "Name": person_name,
-                "Title": f"Dummy WoS Publication {i}: {query}",
-                "Authors": f"Author A, Author B, {person_name if person_name != 'General Search' else 'Author C'}",
-                "Publication Year": str(year),
-                "Publication Month": f"{(i % 12) + 1}",
-                "Publication Types": ["Article"],
-                "Abstract": f"This is a dummy abstract for testing Web of Science integration. Search query: {query}",
-                "Affiliations": "Dummy University, Department of Testing",
-                "Publisher": "Dummy Publisher",
-                "URL": f"https://www.webofscience.com/record/dummy-{i}",
-                "DOI": f"10.1234/dummy.{year}.{i}",
-                "Citation Count": str(i * 5),
-                "Identifier": f"WOS:{i}000000000000",
-                "Subjects": ["Testing", "Dummy Data", "API Integration"]
+                'Title': f"Dummy WoS Publication {i}: {query_context}",
+                'Authors': f"Doe, John; Smith, Jane; {context_name if context_name != 'General Search' else 'Tester, Adam'}",
+                'Journal': f"Journal of Dummy Studies {i % 10}",
+                'Publication Year': str(year),
+                'Publication Month': month,
+                'Abstract': f"This is a dummy abstract for result {i} related to '{query_context}'. It demonstrates the structure of a WoS search result.",
+                'DOI': f"10.0000/dummy.wos.{year}.{i}",
+                'URL': f"https://www.webofknowledge.com/dummy/wos/{i}",
+                'Database': 'Web of Science',
+                'Publication Type': "Article" if i % 2 == 0 else "Review",
+                'Language': "English",
+                'Keywords': "dummy; testing; wos; example",
+                'Citation Count': str(i * 3),
+                'Identifier': f"WOS:000FAKEID{i:09d}",
+                'Affiliations': "Dummy University, Test Department, City, Country",
+                'Name': context_name
             }
             dummy_results.append(result)
             
-        log_message(log_widget, f"Generierte {len(dummy_results)} Dummy-Ergebnisse für Web of Science")
-        return dummy_results
-        
-    def parse_results(self, records, name, log_widget):
+        logger.info(f"Generated {len(dummy_results)} dummy WoS results.")
+        return self.format_results(dummy_results)
+
+    def parse_results(self, records: List[Dict[str, Any]], search_context_name: str) -> List[Dict[str, Any]]:
         """Parse the results from Web of Science API.
         
         Args:
-            records (List[Dict[str, Any]]): The records from the Web of Science API.
-            name (str): The name of the person who performed the search.
-            log_widget (object, optional): A widget for logging messages.
+            records (List[Dict[str, Any]]): The records from the Web of Science API (list of REC dicts).
+            search_context_name (str): The context of the search (e.g., person name or "General Search").
             
         Returns:
             List[Dict[str, Any]]: The parsed results.
         """
         parsed_results = []
         
-        for record in records:
+        for record_item in records:
+            # The WoS Lite API seems to wrap each record in a list under REC key like: {"REC": [actual_record_content]}
+            # Or if it's a single record, it might be {"REC": actual_record_content}
+            # The new search logic passes the list of actual records directly if possible.
+            # This function should expect a list of actual record dicts.
+            record = record_item # Assuming 'records' is already the list of actual record dicts.
+            if not isinstance(record, dict): # Basic check
+                logger.warning(f"Skipping non-dictionary record item: {record}")
+                continue
+
             try:
-                # Extract source metadata
-                source_data = record.get("source", {})
+                item_title_info = record.get("static_data", {}).get("summary", {}).get("titles", {}).get("title", [])
+                item_title = ""
+                if isinstance(item_title_info, list):
+                     for s_item in item_title_info:
+                        if s_item.get("type") == "item": # Main title of the article/publication
+                            item_title = s_item.get("content", "")
+                            break
+                if not item_title and isinstance(item_title_info, list) and item_title_info:
+                    item_title = item_title_info[0].get("content", "N/A") # Fallback to first title
+
+                source_data = record.get("static_data", {}).get("summary", {}).get("titles", {}).get("title", [])
+                journal_title = ""
+                if isinstance(source_data, list):
+                    for s_item in source_data:
+                        if s_item.get("type") == "source": # Journal title
+                            journal_title = s_item.get("content", "")
+                            break
                 
-                # Extract record metadata
-                wos_id = record.get("uid", "")
-                title = record.get("title", {}).get("title", "")
+                authors_data = record.get("static_data", {}).get("summary", {}).get("names", {}).get("name", [])
+                authors_list = []
+                if isinstance(authors_data, list):
+                    for author in authors_data:
+                        # Consider only authors, not other roles like 'BookEditor'
+                        if author.get("role") == "author":
+                             authors_list.append(author.get("full_name", ""))
+                authors_str = "; ".join(filter(None, authors_list)) or "N/A"
                 
-                # Extract authors
-                authors_list = record.get("authors", {}).get("authors", [])
-                authors = ", ".join([author.get("full_name", "") for author in authors_list]) if authors_list else ""
-                
-                # Extract publication date
-                pub_info = record.get("source", {}).get("publishinfo", {})
-                pub_year = pub_info.get("pubyear", "")
-                pub_month = pub_info.get("pubmonth", "")
-                
-                # Extract publication types
-                doc_type = record.get("doctype", {}).get("doctype", "")
-                pub_types = [doc_type] if doc_type else []
-                
-                # Extract journal/source info
-                journal_info = source_data.get("sourceTitle", "")
-                publisher = source_data.get("publisher", "")
-                
-                # Extract identifiers
-                ids = record.get("identifiers", {}).get("identifier", [])
+                pub_info = record.get("static_data", {}).get("summary", {}).get("pub_info", {})
+                pub_year = str(pub_info.get("pubyear", "N/A"))
+                pub_month_str = pub_info.get("pubmonth", "")
+                if pub_month_str and not pub_month_str.isdigit():
+                    try:
+                        month_dt = datetime.strptime(pub_month_str, "%b") # e.g. "Jan"
+                        pub_month = f"{month_dt.month:02d}"
+                    except ValueError:
+                        pub_month = "N/A"
+                elif pub_month_str.isdigit():
+                    pub_month = f"{int(pub_month_str):02d}"
+                else:
+                    pub_month = "N/A"
+
+                doc_types_list = record.get("static_data", {}).get("summary", {}).get("doctypes", {}).get("doctype", [])
+                if not isinstance(doc_types_list, list):
+                    doc_types_list = [doc_types_list] if doc_types_list else []
+                pub_types_str = "; ".join(filter(None, doc_types_list)) or "N/A"
+
+                wos_id = record.get("UID", "N/A")
                 doi = ""
-                for id_item in ids:
-                    if id_item.get("type", "") == "doi":
-                        doi = id_item.get("value", "")
-                        break
-                        
-                # Extract citation count
-                citation_count = record.get("citation_data", {}).get("total_cites", "0")
+                other_ids = record.get("dynamic_data", {}).get("cluster_related", {}).get("identifiers", {}).get("identifier", [])
+                if isinstance(other_ids, list):
+                    for item_id_obj in other_ids: # Iterate through list of id objects
+                        if isinstance(item_id_obj, dict) and item_id_obj.get("type") == "doi":
+                            doi = item_id_obj.get("value", "")
+                            break
                 
-                # Extract subjects
-                categories = record.get("categories", {}).get("category", [])
-                subjects = [cat.get("name", "") for cat in categories] if categories else []
-                
-                # Extract URL
-                url = f"https://www.webofscience.com/wos/woscc/full-record/{wos_id}" if wos_id else ""
-                
-                # Extract language
-                languages = record.get("languages", {}).get("language", [])
-                language = languages[0].get("name", "") if languages else ""
-                
-                # Extract affiliations
-                addresses = record.get("addresses", {}).get("address_name", [])
-                affiliations = ", ".join([addr.get("full_address", "") for addr in addresses]) if addresses else ""
-                
-                # Create result dictionary
+                citation_count_val = record.get("dynamic_data", {}).get("citation_related", {}).get("tc_list", {}).get("silo_tc", {}).get("content")
+                citation_count = str(citation_count_val) if citation_count_val is not None else "0"
+
+
+                keywords_list = []
+                keywords_data = record.get("static_data", {}).get("item", {}).get("keywords_plus", {}).get("keyword", [])
+                if isinstance(keywords_data, list):
+                    keywords_list.extend(filter(None, keywords_data))
+                elif isinstance(keywords_data, str): # If it's a single string
+                     keywords_list.append(keywords_data)
+                keywords_str = "; ".join(keywords_list) or "N/A"
+
+                abstract_text = "N/A" # WoS Lite often doesn't provide full abstract easily
+                abstracts_section = record.get("static_data", {}).get("fullrecord_metadata", {}).get("abstracts", {}).get("abstract", [])
+                if abstracts_section: # It's a list of abstract sections
+                    if isinstance(abstracts_section, list) and abstracts_section[0].get("abstract_text_count", 0) > 0:
+                        # Assuming the first paragraph of the first abstract section
+                        first_abstract_paragraphs = abstracts_section[0].get("p", [])
+                        if first_abstract_paragraphs:
+                            abstract_text = first_abstract_paragraphs[0]
+
+                url = f"https://www.webofscience.com/wos/woscc/full-record/{wos_id}" if wos_id != "N/A" else ""
+
+                language = "N/A"
+                language_section = record.get("static_data", {}).get("fullrecord_metadata", {}).get("languages", {}).get("language", [])
+                if language_section: # It's a list
+                    if isinstance(language_section, list) and language_section[0].get("type") == "primary_language":
+                        language = language_section[0].get("content", "N/A")
+
                 result = {
-                    "Database": "Web of Science",
-                    "Name": name,
-                    "Title": title,
-                    "Authors": authors,
-                    "Publication Year": pub_year,
-                    "Publication Month": pub_month,
-                    "Publication Types": pub_types,
-                    "Affiliations": affiliations,
-                    "Publisher": publisher,
-                    "Subjects": subjects,
-                    "Language": language,
-                    "DOI": doi,
-                    "URL": url,
-                    "Citation Count": citation_count,
-                    "Identifier": wos_id
+                    'Title': item_title,
+                    'Authors': authors_str,
+                    'Journal': journal_title,
+                    'Publication Year': pub_year,
+                    'Publication Month': pub_month,
+                    'Abstract': abstract_text,
+                    'DOI': doi,
+                    'URL': url,
+                    'Database': 'Web of Science',
+                    'Publication Type': pub_types_str,
+                    'Language': language,
+                    'Keywords': keywords_str,
+                    'Citation Count': citation_count,
+                    'Identifier': wos_id,
+                    'Name': search_context_name
                 }
-                
                 parsed_results.append(result)
                 
             except Exception as e:
-                from utils.logging_manager import log_message
-                log_message(log_widget, f"Fehler beim Parsen eines WoS-Eintrags: {str(e)}")
-                logger.error(f"Error parsing WoS entry: {e}", exc_info=True)
+                logger.error(f"Error parsing WoS entry (UID: {record.get('UID', 'UNKNOWN')}): {e}", exc_info=True)
+                continue
                 
         return parsed_results
+
+    def validate_api_key(self, api_key: str = None) -> bool:
+        """
+        Validate the Web of Science API key by making a test request.
+        Args:
+            api_key (str, optional): The API key to validate. If None, use the one from the instance.
+        Returns:
+            bool: True if the API key is valid, False otherwise.
+        """
+        key_to_validate = api_key if api_key else self.api_key
+        if not key_to_validate:
+            logger.warning("No WoS API key provided for validation.")
+            return False
+
+        headers = {"X-APIKey": key_to_validate, "Accept": "application/json"}
+        # A simple query that should return quickly
+        payload = {"databaseId": "WOS", "usrQuery": "TI=(test)", "count": 1, "firstRecord": 1}
         
-    def get_citation_count(self, wos_id):
+        try:
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=10)
+            if response.status_code == 200:
+                logger.info("WoS API key validation successful.")
+                return True
+            elif response.status_code == 401: # Unauthorized
+                logger.warning(f"WoS API key validation failed (Unauthorized): {response.text}")
+                return False
+            else: # Other errors
+                logger.warning(f"WoS API key validation returned status {response.status_code}: {response.text}")
+                return False
+        except requests.RequestException as e:
+            logger.error(f"WoS API key validation request failed: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error during WoS API key validation: {e}")
+            return False
+
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test the connection to the Web of Science API.
+        Returns:
+            dict: A dictionary containing the test results.
+        """
+        import time
+        start_time = time.time()
+
+        if not self.api_key:
+            return {
+                'status': 'Error',
+                'message': 'No Web of Science API key configured.',
+                'response_time': None
+            }
+
+        headers = {"X-APIKey": self.api_key, "Accept": "application/json"}
+        payload = {"databaseId": "WOS", "usrQuery": "TS=(cardiology)", "count": 1, "firstRecord": 1} # Test with a common term
+
+        try:
+            response = requests.post(self.base_url, headers=headers, json=payload, timeout=20)
+            response_time = time.time() - start_time
+
+            if response.status_code == 200:
+                data = response.json()
+                records_found = data.get("QueryResult", {}).get("RecordsFound", 0)
+                return {
+                    'status': 'OK',
+                    'message': f'Successfully connected to WoS. Found {records_found} results for "cardiology".',
+                    'response_time': round(response_time, 2)
+                }
+            elif response.status_code == 401:
+                return {
+                    'status': 'Error',
+                    'message': 'WoS API Key is invalid or expired.',
+                    'response_time': round(response_time, 2)
+                }
+            else:
+                return {
+                    'status': 'Error',
+                    'message': f'Error connecting to WoS: {response.status_code} - {response.text}',
+                    'response_time': round(response_time, 2)
+                }
+        except requests.exceptions.Timeout:
+            return {
+                'status': 'Error',
+                'message': 'Connection to WoS timed out.',
+                'response_time': None
+            }
+        except requests.exceptions.RequestException as e:
+            return {
+                'status': 'Error',
+                'message': f'Network error connecting to WoS: {str(e)}',
+                'response_time': None
+            }
+        except Exception as e:
+            logger.error(f"WoS connection test unexpected error: {e}", exc_info=True)
+            return {
+                'status': 'Error',
+                'message': f'Unexpected error testing WoS connection: {str(e)}',
+                'response_time': None
+            }
+
+    # get_citation_count seems to be for individual lookups, not used in main search flow
+    # It might be useful for a different feature (e.g., updating citation for a specific record)
+    # For now, I will leave it as is but ensure it's not called during the main search.
+    def get_citation_count(self, wos_id: str) -> int:
         """Get the citation count for a publication.
         
         Args:

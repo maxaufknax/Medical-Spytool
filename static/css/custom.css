@@ -87,17 +87,6 @@
     border-color: transparent;
 }
 
-/* Datenbank-Selection Checkboxen */
-.database-checkbox-container {
-    display: inline-block;
-    margin-right: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.database-checkbox-container .form-check-input {
-    margin-right: 6px;
-}
-
 /* Personendetails Anzeige */
 #personDetails {
     background-color: rgba(0, 123, 255, 0.05);
@@ -147,17 +136,6 @@
 /* Erweiterte Fortschrittsanzeige */
 #searchDetailsPanel {
     transition: all 0.3s ease-in-out;
-}
-
-#databaseSearchStatus > div {
-    padding: 8px;
-    border-radius: 4px;
-    background-color: rgba(0, 0, 0, 0.1);
-    margin-bottom: 6px;
-}
-
-#databaseSearchStatus > div:last-child {
-    margin-bottom: 0;
 }
 
 /* Stilanpassungen für die API-Key-Karten */
@@ -254,10 +232,7 @@
 
 /* Anpassungen für mobile Geräte */
 @media (max-width: 767.98px) {
-    .database-checkbox-container {
-        display: block;
-        margin-bottom: 0.75rem;
-    }
+    /* .database-checkbox-container removed */
     
     .card-header {
         padding: 0.75rem;
@@ -266,4 +241,26 @@
     .card-body {
         padding: 1rem;
     }
+}
+
+/* General styling for <pre> blocks for code/config/log display */
+pre {
+    background-color: var(--bs-tertiary-bg); /* Uses Bootstrap's tertiary background color */
+    color: var(--bs-tertiary-color); /* Uses Bootstrap's tertiary text color */
+    padding: 1rem;
+    border-radius: 0.375rem; /* Standard Bootstrap border-radius */
+    border: 1px solid var(--bs-border-color);
+    overflow-x: auto; /* Allow horizontal scrolling */
+    font-size: 0.875em; /* Slightly smaller than normal text */
+    line-height: 1.6;
+    white-space: pre-wrap; /* Wrap long lines but preserve formatting */
+    word-wrap: break-word;
+}
+
+/* General styling for <mark> tag for highlighting text */
+mark {
+    background-color: var(--bs-warning-bg-subtle); /* Bootstrap subtle warning background */
+    color: var(--bs-emphasis-color); /* Ensure good contrast */
+    padding: 0.15em 0.3em;
+    border-radius: 0.25rem;
 }

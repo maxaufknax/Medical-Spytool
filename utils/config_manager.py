@@ -1,6 +1,17 @@
 """
-Configuration Manager
-This module provides functions for loading and saving configuration settings.
+Configuration Manager for Medical Spytool.
+
+This module handles loading, saving, and managing the application's
+configuration settings. It uses a default configuration (`assets/default_config.json`)
+as a base, which is overridden by a user-specific configuration
+(`medicalspytool_config.json`) stored in a writable location.
+
+Key functionalities include:
+- Initializing user configuration from defaults if it doesn't exist.
+- Merging user settings over default settings.
+- Saving configuration changes securely using temporary files and backups.
+- Ensuring necessary application directories (for output, logs, person lists)
+  are created at startup.
 """
 import os
 import json
@@ -46,18 +57,11 @@ class ConfigManager:
                 "enable_logging": True
             }
             logger.info("Minimale Standardkonfiguration erstellt")
-            
-            # Try to create default config file for future use
-            try:
-                os.makedirs(os.path.dirname(default_config_path), exist_ok=True)
-                with open(default_config_path, 'w', encoding='utf-8') as f:
-                    json.dump(self.config, f, indent=4)
-                logger.info(f"Standard-Konfigurationsdatei erstellt: {default_config_path}")
-            except Exception as create_e:
-                logger.warning(f"Konnte Standard-Konfigurationsdatei nicht erstellen: {str(create_e)}")
+            # Removed attempt to write back to default_config_path as it should be read-only resource.
+            # If default_config.json is missing from assets, it's a build/packaging issue.
                 
         except json.JSONDecodeError as e:
-            logger.error(f"Fehler beim Parsen der Standard-Konfiguration: {str(e)}")
+            logger.error(f"Fehler beim Parsen der Standard-Konfiguration ({default_config_path}): {str(e)}")
             # Erstelle minimal notwendige Standardkonfiguration
             self.config = {
                 "output_path": get_writeable_path("output"),
@@ -251,9 +255,7 @@ def ensure_directories(config):
                 if not os.path.exists(persons_file):
                     try:
                         with open(persons_file, 'w', encoding='utf-8') as f:
-                            json.dump({
-                                "persons": []
-                            }, f, indent=4)
+                            json.dump([], f, indent=4) # Create as an empty list
                         logger.info(f"Leere Personenliste erstellt: {persons_file}")
                     except Exception as pf_e:
                         logger.error(f"Konnte keine leere Personenliste erstellen: {str(pf_e)}")

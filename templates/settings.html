@@ -134,35 +134,75 @@
                     </div>
                 </div>
                 
+                <!-- GEPRIS API Key section removed as it's not used by the current connector -->
+
+                <hr class="my-4">
+
+                <h2 class="h4 mb-3">Speicherpfade und Exportoptionen</h2>
                 <div class="row">
-                    <div class="col-md-6">
-                        <div class="card mb-3 h-100 border-left-info">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-university me-2 text-info"></i>GEPRIS API-Schlüssel
-                                    <span class="badge bg-info ms-2">Optional</span>
-                                </h5>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="gepris_api_key" name="gepris_api_key" value="{{ config.gepris_api_key }}">
-                                    <span class="input-group-text api-key-status"></span>
-                                </div>
-                                <div class="error-message text-danger mt-1"></div>
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle me-1"></i> Für GEPRIS-Abfragen können einige Funktionen einen API-Schlüssel erfordern.
-                                    </small>
-                                </div>
-                                <div class="mt-2">
-                                    <a href="https://gepris.dfg.de/" target="_blank" class="btn btn-sm btn-outline-info">
-                                        <i class="fas fa-external-link-alt me-1"></i> GEPRIS-Website
-                                    </a>
-                                </div>
-                            </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="output_path" class="form-label">Ausgabeverzeichnis für Exporte</label>
+                        <input type="text" class="form-control" id="output_path" name="output_path" value="{{ config.output_path }}">
+                        <small class="form-text text-muted">Pfad, in dem exportierte Dateien gespeichert werden (z.B. ./output).</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="person_list_path" class="form-label">Verzeichnis für Personenlisten</label>
+                        <input type="text" class="form-control" id="person_list_path" name="person_list_path" value="{{ config.person_list_path }}">
+                        <small class="form-text text-muted">Pfad, in dem Personenlisten gespeichert werden (z.B. ./person_lists).</small>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="unique_filenames" name="unique_filenames" {% if config.unique_filenames %}checked{% endif %}>
+                            <label class="form-check-label" for="unique_filenames">
+                                Eindeutige Dateinamen für Exporte generieren (mit Zeitstempel)
+                            </label>
                         </div>
                     </div>
                 </div>
-                
+
                 <hr class="my-4">
+                <h2 class="h4 mb-3">Allgemeine Sucheinstellungen</h2>
+                 <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="default_database" class="form-label">Standard-Datenbank für spezifische Suche</label>
+                        <select class="form-select" id="default_database" name="default_database">
+                            <option value="PubMed" {% if config.default_database == 'PubMed' %}selected{% endif %}>PubMed</option>
+                            <option value="DNB" {% if config.default_database == 'DNB' %}selected{% endif %}>DNB</option>
+                            <option value="Scopus" {% if config.default_database == 'Scopus' %}selected{% endif %}>Scopus</option>
+                            <option value="WoS" {% if config.default_database == 'WoS' %}selected{% endif %}>Web of Science</option>
+                            <option value="GEPRIS" {% if config.default_database == 'GEPRIS' %}selected{% endif %}>GEPRIS</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Output Columns - This section might be extensive. Consider if it belongs here or on export page. -->
+                <!-- For now, adding it as per main.py's settings save logic -->
+                <hr class="my-4">
+                <h2 class="h4 mb-3">Spaltenauswahl für Export (Standard)</h2>
+                <div class="row">
+                    {% set available_export_columns = [
+                        "Database", "Name", "Title", "Publication Year", "Publication Month",
+                        "Authors", "Publication Types", "Affiliations", "Publisher", "Subjects",
+                        "Language", "PubMed URL", "DOI URL", "PubMed ID", "PMCID", "DOI",
+                        "ISBN", "Identifier", "URL", "Citation Count",
+                        "Project ID", "Investigators", "Institution", "Period", "Subject Area"
+                    ] %}
+                    {% for column in available_export_columns %}
+                    <div class="col-md-4 mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   name="column_{{ column|replace(' ', '_')|replace('(', '')|replace(')', '') }}"
+                                   id="column_{{ column|replace(' ', '_')|replace('(', '')|replace(')', '') }}"
+                                   {% if column in config.output_columns %}checked{% endif %}>
+                            <label class="form-check-label" for="column_{{ column|replace(' ', '_')|replace('(', '')|replace(')', '') }}">
+                                {{ column }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
                 
                 <div class="mt-4">
                     <button type="submit" class="btn btn-primary">

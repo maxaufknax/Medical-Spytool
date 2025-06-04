@@ -42,31 +42,49 @@ from utils.config_manager import load_settings, save_settings, ensure_directorie
 from utils.logging_manager import log_message
 from utils.export_manager import export_to_excel, export_to_csv, get_unique_filename
 
+
 # Setup logging
 def setup_logging():
+    """
+    Configures the application's logging.
+
+    Sets up logging to file (`medicalspytool.log` in a writable path) and
+    to the console. If file logging setup fails, it falls back to console-only
+    logging.
+
+    Returns:
+        logging.Logger: The configured logger instance for the application.
+    """
     try:
-        log_path = get_writeable_path("medicalspytool.log")
+        log_file_path = get_writeable_path("medicalspytool.log")
+        # Ensure the directory for the log file exists
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format='%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s',
             handlers=[
-                logging.FileHandler(log_path),
-                logging.StreamHandler()
+                logging.FileHandler(log_file_path, encoding='utf-8'),
+                logging.StreamHandler(sys.stdout) # Ensure console output goes to stdout
             ]
         )
-        return logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
+        logger.info("Logging configured to file and console.")
+        return logger
     except Exception as e:
-        # Emergency fallback if logging setup fails
-        print(f"Error setting up logging: {e}")
+        # Emergency fallback if logging setup fails (e.g., permission issues)
+        print(f"CRITICAL: Error setting up file logging: {e}. Falling back to console-only logging.")
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[logging.StreamHandler()]
+            format='%(asctime)s - %(name)s - %(levelname)s - %(module)s - %(funcName)s - %(message)s',
+            handlers=[logging.StreamHandler(sys.stdout)]
         )
-        return logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
+        logger.warning("File logging setup failed. Using console-only logging.")
+        return logger
 
 logger = setup_logging()
-logger.info(f"MedicalSpyTool starting up. Python version: {sys.version}")
+logger.info(f"Medical Spytool starting up. Python version: {sys.version}")
 logger.info(f"Running in frozen mode: {getattr(sys, 'frozen', False)}")
 
 # Initialize Flask app with proper paths for template and static folders
@@ -99,50 +117,63 @@ loaded_profile = None
 loaded_profile_name = None
 
 # Timeout für API-Validierungsanfragen (in Sekunden)
-API_VALIDATION_TIMEOUT = 5
+API_VALIDATION_TIMEOUT = 5  # seconds
 
-# Cleanup temporary files when exiting
+
+@atexit.register # Ensures this function is called on program exit
 def cleanup_temp_files():
-    """Clean up temporary files when exiting."""
-    try:
-        temp_dir = tempfile.gettempdir()
-        # Lösche nur temporäre Dateien die zu unserer Anwendung gehören
-        patterns = [
-            'medicalspytool*.tmp',
-            'medicalspytool*.bak',
-            'search_results_*.tmp',
-            'export_*.tmp'
-        ]
-        
-        for pattern in patterns:
-            for filename in glob.glob(os.path.join(temp_dir, pattern)):
-                try:
-                    if os.path.exists(filename):
-                        os.remove(filename)
-                        logger.debug(f"Temporäre Datei gelöscht: {filename}")
-                except (PermissionError, OSError) as e:
-                    logger.warning(f"Konnte temporäre Datei nicht löschen: {filename}, Fehler: {e}")
-                    continue
-                    
-        # Lösche auch .tmp und .bak Dateien im Ausgabeverzeichnis
-        output_dir = app_config.get('output_path', './output')
-        if os.path.exists(output_dir):
-            for pattern in patterns:
-                for filename in glob.glob(os.path.join(output_dir, pattern)):
-                    try:
-                        if os.path.exists(filename):
-                            os.remove(filename)
-                            logger.debug(f"Temporäre Datei im Ausgabeverzeichnis gelöscht: {filename}")
-                    except (PermissionError, OSError) as e:
-                        logger.warning(f"Konnte temporäre Datei nicht löschen: {filename}, Fehler: {e}")
-                        continue
-                        
-    except Exception as e:
-        # Ignoriere Fehler beim Aufräumen komplett
-        logger.warning(f"Fehler beim Aufräumen temporärer Dateien: {e}")
-        pass
+    """
+    Cleans up temporary files created by the application upon exiting.
 
-atexit.register(cleanup_temp_files)
+    This function searches for and removes files matching specific patterns
+    (e.g., '*.tmp', '*.bak') in the system's temporary directory and
+    the application's configured output directory. This helps prevent
+    accumulation of temporary data.
+    """
+    logger.info("Starting cleanup of temporary files...")
+    # Define patterns for files to be cleaned up
+    patterns = [
+        'medicalspytool*.tmp',
+        'medicalspytool*.bak',
+        'search_results_*.tmp',
+        'export_*.tmp'
+    ]
+
+    # Get standard temporary directory
+    temp_dir = tempfile.gettempdir()
+    paths_to_check = [temp_dir]
+
+    # Also check application's output directory if defined in config
+    if app_config and 'output_path' in app_config:
+        output_dir = app_config.get('output_path')
+        if os.path.exists(output_dir) and os.path.isdir(output_dir): # Check if path is valid directory
+            paths_to_check.append(output_dir)
+        else:
+            logger.warning(f"Output directory '{output_dir}' not found or not a directory. Skipping cleanup there.")
+
+    files_deleted_count = 0
+    for path_to_check in paths_to_check:
+        for pattern in patterns:
+            try:
+                for filename in glob.glob(os.path.join(path_to_check, pattern)):
+                    try:
+                        if os.path.exists(filename): # Check if file still exists before attempting removal
+                            os.remove(filename)
+                            logger.debug(f"Temporary file deleted: {filename}")
+                            files_deleted_count += 1
+                    except (PermissionError, OSError) as e:
+                        # Log specific error but continue cleanup
+                        logger.warning(f"Could not delete temporary file '{filename}': {e}")
+                        continue # to the next file
+            except Exception as e:
+                # Log error related to glob or path joining but continue
+                logger.error(f"Error during globbing for pattern '{pattern}' in '{path_to_check}': {e}")
+                continue # to the next pattern
+
+    if files_deleted_count > 0:
+        logger.info(f"Temporary file cleanup finished. Deleted {files_deleted_count} file(s).")
+    else:
+        logger.info("Temporary file cleanup finished. No relevant files found to delete.")
 
 @app.route('/')
 def index():
@@ -347,6 +378,92 @@ def analysis():
                           config=app_config,
                           now=datetime.now())
 
+@app.route('/api/get_visualization', methods=['GET'])
+def get_visualization():
+    """Generate and return chart visualizations for analysis."""
+    import matplotlib
+    matplotlib.use('Agg') # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import io
+    import base64
+    from collections import Counter
+
+    global search_results
+    if not search_results:
+        return jsonify({'error': 'No search results available for visualization.'}), 400
+
+    chart_type = request.args.get('type', 'year') # Default to year chart
+    plt.style.use('seaborn-v0_8-darkgrid') # Using a seaborn style available in newer versions
+
+    try:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        img = io.BytesIO()
+        title = ""
+
+        if chart_type == 'year':
+            title = 'Publikationen nach Jahr'
+            years = [str(r.get('Publication Year', 'N/A')) for r in search_results if r.get('Publication Year')]
+            year_counts = Counter(sorted(years))
+            if not year_counts:
+                 return jsonify({'error': 'Keine gültigen Publikationsjahre für die Visualisierung gefunden.'}), 400
+
+            sns.barplot(x=list(year_counts.keys()), y=list(year_counts.values()), ax=ax, palette="viridis")
+            ax.set_ylabel('Anzahl Publikationen')
+            ax.set_xlabel('Jahr')
+            plt.xticks(rotation=45, ha="right")
+
+        elif chart_type == 'database':
+            title = 'Publikationen nach Datenbank'
+            databases = [r.get('Database', 'N/A') for r in search_results]
+            db_counts = Counter(databases)
+            if not db_counts:
+                return jsonify({'error': 'Keine Datenbankinformationen für die Visualisierung gefunden.'}), 400
+
+            sns.barplot(x=list(db_counts.keys()), y=list(db_counts.values()), ax=ax, palette="crest")
+            ax.set_ylabel('Anzahl Publikationen')
+            ax.set_xlabel('Datenbank')
+            plt.xticks(rotation=45, ha="right")
+
+        elif chart_type == 'person':
+            # This assumes 'Name' field in results refers to the person searched for,
+            # or some other relevant person identifier from the search context.
+            # This might need refinement based on how person-specific results are tagged.
+            title = 'Publikationen nach Person (Suchkontext)'
+            # 'Name' field in each result dict is assumed to hold the context of the search (e.g. searched person)
+            # This is a simplification. A more robust solution would require results to be explicitly tagged with person IDs.
+            persons_in_results = [r.get('Name', 'Unbekannt') for r in search_results if r.get('Name')]
+            if not persons_in_results: # Check if list is empty
+                 return jsonify({'error': 'Keine Personeninformationen in den Ergebnissen für die Visualisierung gefunden.'}), 400
+
+            person_counts = Counter(persons_in_results)
+            if not person_counts: # Check if Counter is empty
+                 return jsonify({'error': 'Keine zählbaren Personeninformationen für die Visualisierung gefunden.'}), 400
+
+            sns.barplot(x=list(person_counts.keys()), y=list(person_counts.values()), ax=ax, palette="magma")
+            ax.set_ylabel('Anzahl Publikationen')
+            ax.set_xlabel('Person (Suchkontext)')
+            plt.xticks(rotation=45, ha="right")
+
+        else:
+            return jsonify({'error': 'Invalid chart type specified.'}), 400
+
+        ax.set_title(title, fontsize=16)
+        plt.tight_layout()
+        fig.savefig(img, format='png', bbox_inches='tight')
+        plt.close(fig) # Close the figure to free memory
+        img.seek(0)
+
+        img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
+        return jsonify({'image': img_base64})
+
+    except Exception as e:
+        logger.error(f"Error generating visualization (type: {chart_type}): {e}", exc_info=True)
+        # Ensure figure is closed on error too
+        if 'fig' in locals() and plt.fignum_exists(fig.number): plt.close(fig)
+        return jsonify({'error': f'Fehler beim Erstellen der Visualisierung: {str(e)}'}), 500
+
+
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     """Handle settings page."""
@@ -399,16 +516,36 @@ def export_page():
     global search_results, app_config
     from datetime import datetime
     
-    # Liste aller verfügbaren Spalten für den Export
-    available_columns = [
-        "Titel", "Autor(en)", "Jahr", "Quelle", "Publikationstyp", "DOI", "URL", 
-        "PMID", "Abstract", "Keywords", "Sprache", "Datenbank"
-    ]
+    dynamic_available_columns = []
+    if search_results:
+        # Collect all unique keys from all result dictionaries
+        all_keys = set()
+        for result in search_results:
+            if isinstance(result, dict):
+                all_keys.update(result.keys())
+        # Sort for consistent order, can be customized further
+        # Standard fields first, then others alphabetically
+        standard_fields_ordered = [
+            'Title', 'Authors', 'Publication Year', 'Publication Month', 'Journal',
+            'Database', 'DOI', 'URL', 'Abstract', 'Keywords', 'Publication Type',
+            'Language', 'Citation Count', 'PMID', 'ISBN', 'Identifier', 'Name',
+            'Project ID', 'Investigators', 'Institution', 'Period', 'Subject Area', 'Publisher'
+        ]
+
+        # Prioritize standard fields that are present, then add others
+        present_standard_fields = [field for field in standard_fields_ordered if field in all_keys]
+        other_fields = sorted(list(all_keys - set(present_standard_fields)))
+        dynamic_available_columns = present_standard_fields + other_fields
     
+    if not dynamic_available_columns: # Fallback if no results or no keys
+        dynamic_available_columns = [
+            "Title", "Authors", "Publication Year", "Journal", "Database", "DOI", "URL"
+        ]
+
     return render_template('export.html', 
                           results=search_results,
                           count=len(search_results) if search_results else 0,
-                          available_columns=available_columns,
+                          available_columns=dynamic_available_columns, # Use dynamically generated columns
                           config=app_config,
                           now=datetime.now())
                           
@@ -1385,6 +1522,91 @@ def info():
                          now=datetime.now(),
                          version="2.0.0")  # Add version information
 
+# API Key Validation Routes
+@app.route('/validate_api_key/<database_name>', methods=['POST'])
+def validate_api_key_route(database_name):
+    """Validate API key for a given database."""
+    from utils.api_key_manager import validate_api_key as validate_key_util
+
+    try:
+        data = request.get_json()
+        if not data or 'api_key' not in data:
+            return jsonify({'valid': False, 'message': 'API key not provided in request.'}), 400
+
+        api_key_to_validate = data['api_key']
+
+        connector_map = {
+            'pubmed': PubMedConnector,
+            'dnb': DNBConnector,
+            'scopus': ScopusConnector,
+            'wos': WoSConnector,
+            'gepris': GeprisConnector # Gepris doesn't use API keys, but manager handles it.
+        }
+
+        connector_class = connector_map.get(database_name.lower())
+        if not connector_class:
+            return jsonify({'valid': False, 'message': 'Invalid database specified.'}), 404
+
+        # Instantiate connector (API key here is for the instance, validation will use key_to_validate)
+        # For connectors that don't strictly need a key for instantiation, this is fine.
+        # For those that do, they usually fetch from config if not provided.
+        # The api_key_manager's validate_api_key will use the one passed to it.
+        connector_instance = connector_class(api_key=app_config.get(f'{database_name.lower()}_api_key', ''), settings=app_config)
+
+        # Use the validation utility which includes timeout and caching
+        is_valid, message = validate_key_util(connector_instance, api_key_to_validate)
+
+        return jsonify({'valid': is_valid, 'message': message})
+
+    except Exception as e:
+        logger.error(f"Error validating API key for {database_name}: {e}", exc_info=True)
+        return jsonify({'valid': False, 'message': f'Error during validation: {str(e)}'}), 500
+
+# API endpoint for dynamic search options
+@app.route('/api/database_options/<database_name>')
+def get_database_options(database_name):
+    """Return dynamic options for a given database (search fields, pub types, languages)."""
+    options = {
+        'search_fields': [],
+        'pub_types': [],
+        'languages': [] # Common languages, can be expanded
+    }
+
+    # Default common languages, can be overridden by specific connectors if needed
+    common_languages = ["English", "German", "French", "Spanish", "Chinese", "Japanese", "Russian"]
+
+    if database_name.lower() == 'pubmed':
+        options['search_fields'] = ['All Fields', 'Title', 'Author', 'Journal', 'Abstract', 'MeSH Terms', 'Affiliation']
+        options['pub_types'] = [
+            'Journal Article', 'Review', 'Clinical Trial', 'Letter', 'Editorial',
+            'Meta-Analysis', 'Systematic Review', 'Case Reports'
+        ] # These are common PubMed types, actual list is vast.
+        options['languages'] = common_languages
+    elif database_name.lower() == 'dnb':
+        options['search_fields'] = ['Alle Felder', 'Titel', 'Autor', 'Schlagwort', 'Verlag', 'ISBN']
+        options['pub_types'] = [ # DNB uses specific material types
+            'Monographie', 'Zeitschrift', 'Online-Ressource', 'Karte', 'Hochschulschrift', 'Tonträger'
+        ]
+        options['languages'] = common_languages
+    elif database_name.lower() == 'scopus':
+        options['search_fields'] = ['All Fields', 'Title', 'Author', 'Abstract', 'Keywords', 'Affiliation', 'Source Title']
+        options['pub_types'] = ['Article', 'Review', 'Conference Paper', 'Book', 'Book Chapter', 'Editorial', 'Letter']
+        options['languages'] = common_languages # Scopus supports many, these are examples
+    elif database_name.lower() == 'wos':
+        # WoSConnector has get_available_fields, but it's not static.
+        # For simplicity here, providing a common list. A better way would be to instantiate connector.
+        options['search_fields'] = ["All Fields", "Author", "Title", "Abstract", "Keywords", "Address", "DOI", "ISSN", "Journal", "Conference"]
+        options['pub_types'] = ["Article", "Review", "Proceedings Paper", "Book Chapter", "Editorial", "Letter"]
+        options['languages'] = ["English", "German", "French", "Spanish", "Portuguese", "Russian", "Japanese", "Chinese"]
+    elif database_name.lower() == 'gepris':
+        options['search_fields'] = ['All Fields', 'Project Title', 'Person', 'Institution'] # Gepris is project/person focused
+        options['pub_types'] = ['Project', 'Person', 'Institution'] # Conceptual types for Gepris
+        options['languages'] = ["German", "English"] # Gepris is primarily German/English
+    else:
+        return jsonify({'error': 'Unknown database name'}), 404
+
+    return jsonify(options)
+
 # Globale Fehlerbehandlung
 @app.errorhandler(404)
 def not_found_error(error):
@@ -1413,17 +1635,31 @@ def unhandled_exception(e):
 
 if __name__ == '__main__':
     try:
-        # Stelle sicher, dass alle benötigten Verzeichnisse existieren
-        ensure_directories(app_config)
+        ensure_directories(app_config) # Ensure writable directories like logs, output, person_lists exist
+
+        is_frozen = getattr(sys, 'frozen', False)
         
-        # Server im Entwicklungsmodus starten
-        if not getattr(sys, 'frozen', False):
-            # Öffne Browser nur im Entwicklungsmodus
-            webbrowser.open('http://127.0.0.1:5000/')
-            app.run(debug=True)
+        if is_frozen:
+            # Running as a PyInstaller bundle
+            logger.info("Application is running as a frozen executable.")
+            # Optionally, prevent webbrowser.open if it's a background process or not desired
+            # if app_config.get("auto_open_browser", True): # Make it configurable
+            #    webbrowser.open('http://127.0.0.1:5000/') # Or the configured host/port
+
+            from waitress import serve
+            # Use a configured host and port, or defaults
+            # Ensure host is 0.0.0.0 or specific IP if network access is needed,
+            # 127.0.0.1 for local access only.
+            host = app_config.get("server_host", "127.0.0.1") # Default to local access for bundled app
+            port = app_config.get("server_port", 5000)
+            logger.info(f"Starting Waitress WSGI server on {host}:{port}")
+            serve(app, host=host, port=port)
         else:
-            # Im gefrorenen Zustand (exe) ohne Debug-Modus starten
-            app.run(debug=False)
+            # Running as a script (development mode)
+            logger.info("Application is running in development mode.")
+            if os.environ.get("WERKZEUG_RUN_MAIN") != "true": # Avoid opening browser twice with reloader
+                 webbrowser.open('http://127.0.0.1:5000/')
+            app.run(debug=True, host="127.0.0.1", port=5000) # Standard Flask dev server
             
     except Exception as e:
         logger.error(f"Application startup error: {e}", exc_info=True)

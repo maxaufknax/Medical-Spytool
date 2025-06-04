@@ -28,26 +28,29 @@ let searchProgress = {
 
 function initializeSearch() {
     const searchForms = document.querySelectorAll('form[data-search-form]');
-    let activeSearchForm = null;
-    
+    // let activeSearchForm = null; // activeSearchForm is not used
+
     // Suchformular-Handler
     searchForms.forEach(form => {
-        const initialState = new FormData(form);
-        
+        // const initialState = new FormData(form); // initialState is not used effectively for restore
+
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
-            activeSearchForm = this;
-            
-            // Validiere Formulardaten
+            // activeSearchForm = this; // Not used
+
             if (!validateSearchForm(this)) {
+                // Use global error display from base.html if available, otherwise local
+                if (window.showError) window.showError(form.dataset.lastError || 'Formularvalidierung fehlgeschlagen.');
+                else console.error(form.dataset.lastError || 'Formularvalidierung fehlgeschlagen.');
                 return;
             }
             
+            if (window.searchProgressTracker && typeof window.searchProgressTracker.start === 'function') {
+                window.searchProgressTracker.start();
+            }
+            showLoadingState(); // Shows the #detailedSearchProgressContainer
+
             try {
-                // Zeige Ladezustand
-                showLoadingState();
-                startSearchProgress();
-                
                 // Sende Formular
                 const formData = new FormData(this);
                 const response = await fetch(this.action, {
@@ -63,41 +66,65 @@ function initializeSearch() {
                 }
                 
                 const contentType = response.headers.get('content-type');
-                if (contentType && contentType.includes('application/json')) {
-                    const data = await response.json();
+                if (contentType && contentType.includes('application/json')) { // Should be HTML for search results
+                    const data = await response.json(); // This path might be an error from backend
                     if (data.error) {
                         throw new Error(data.error);
                     }
-                    // Erfolgreich - zur Ergebnisseite weiterleiten
-                    window.location.href = '/results';
-                } else {
-                    const html = await response.text();
-                    if (html.includes('error-message') || html.includes('alert-danger')) {
-                        // Fehler in der Antwort
-                        document.documentElement.innerHTML = html;
-                        restoreFormState(initialState);
+                     // If backend returns JSON with a redirect URL:
+                    if (data.redirect_url) {
+                        window.location.href = data.redirect_url;
                     } else {
-                        // Erfolg - Seiteninhalt ersetzen
-                        document.documentElement.innerHTML = html;
+                         // Fallback or handle other JSON responses if necessary
+                        document.getElementById('detailedSearchProgressContainer').innerHTML = '<div class="alert alert-info">Suche abgeschlossen, verarbeite Ergebnisse...</div>';
+                        // Potentially update parts of the page with JSON data if that's the design
                     }
+                } else { // Expecting HTML response
+                    const html = await response.text();
+                    // Check if the response is the results page or an error page
+                    if (response.url.includes("/results") || !html.match(/class="alert alert-danger"|class="error-message"/i)) {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                        // Force reload or re-init JS if needed after writing to document
+                        // This is a full page replacement, so scripts in new page should run.
+                    } else {
+                        // It's likely an error page or search page with error messages
+                        // Display the error within the current page structure if possible
+                        // For simplicity now, still replacing content, but could be improved
+                        // to inject into a specific div.
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    }
+                }
+                if (window.searchProgressTracker && typeof window.searchProgressTracker.completeSearch === 'function') {
+                    window.searchProgressTracker.completeSearch();
                 }
             } catch (error) {
                 console.error('Search error:', error);
-                showError(error.message || 'Ein Fehler ist bei der Suche aufgetreten');
-                restoreFormState(initialState);
+                if (window.showError) window.showError(error.message || 'Ein Fehler ist bei der Suche aufgetreten');
+                else alert(error.message || 'Ein Fehler ist bei der Suche aufgetreten');
+
+                if (window.searchProgressTracker && typeof window.searchProgressTracker.handleError === 'function') {
+                    window.searchProgressTracker.handleError(error);
+                }
             } finally {
-                hideLoadingState();
-                stopSearchProgress();
+                // hideLoadingState() might be called too soon if page navigates.
+                // searchProgressTracker.stop() is better handled by completeSearch/handleError.
             }
         });
         
-        // Datenbankauswahl-Handler
-        const databaseSelect = form.querySelector('select[name="database"]');
-        if (databaseSelect) {
-            databaseSelect.addEventListener('change', function() {
-                updateSearchFields(this.value, form);
+        // Datenbankauswahl-Handler for specific search tab
+        const specificDbSelect = document.querySelector('#specific select[name="database"]');
+        if (specificDbSelect) {
+            specificDbSelect.addEventListener('change', function() {
+                fetchAndUpdateDynamicOptions(this.value, this.form);
             });
-            updateSearchFields(databaseSelect.value, form);
+            // Initial population if a database is pre-selected
+            if (specificDbSelect.value) {
+                fetchAndUpdateDynamicOptions(specificDbSelect.value, specificDbSelect.form);
+            }
         }
     });
     
@@ -122,312 +149,163 @@ function initializeSearch() {
 }
 
 function validateSearchForm(form) {
-    const searchTerm = form.querySelector('[name="search_term"]')?.value.trim();
-    const personNames = form.querySelector('[name="person_names"]')?.value.trim();
+    // Store error message in a data attribute to be picked up by caller
+    form.dataset.lastError = '';
+    const searchTermInput = form.querySelector('[name="search_term"]');
+    const searchTerm = searchTermInput ? searchTermInput.value.trim() : '';
+
+    const personNamesInput = form.querySelector('[name="person_names"]');
+    const personNames = personNamesInput ? personNamesInput.value.trim() : '';
+
     const database = form.querySelector('[name="database"]')?.value;
     
-    // For Combined search (Einfache Suche), only search term is required
     if (database === 'Combined') {
-        if (!searchTerm) {
-            showError('Bitte geben Sie einen Suchbegriff ein.');
+        if (!searchTerm && !personNames) { // Allow person names in combined search too
+            form.dataset.lastError = 'Für die einfache Suche geben Sie bitte einen Suchbegriff oder eine Person ein.';
             return false;
         }
-    } else {
-        // For other searches, require either search term or person names
+    } else if (database !== 'Person') { // For specific DB, not person tab
         if (!searchTerm && !personNames) {
-            showError('Bitte geben Sie mindestens einen Suchbegriff oder eine Person ein.');
+            form.dataset.lastError = 'Bitte geben Sie mindestens einen Suchbegriff oder eine Person ein.';
+            return false;
+        }
+    } else if (database === 'Person') { // For person tab
+        const personSelector = form.querySelector('#person_selector');
+        if (!personSelector || !personSelector.value) {
+            form.dataset.lastError = 'Bitte wählen Sie eine Person für die personenspezifische Suche aus.';
             return false;
         }
     }
     
     if (!database) {
-        showError('Bitte wählen Sie eine Datenbank aus.');
+        form.dataset.lastError = 'Bitte wählen Sie eine Datenbank aus.';
         return false;
     }
     
-    const maxResults = parseInt(form.querySelector('[name="max_results"]')?.value);
-    if (isNaN(maxResults) || maxResults < 1 || maxResults > 10000) {
-        showError('Bitte geben Sie eine gültige Anzahl von Ergebnissen an (1-10000).');
-        return false;
+    const maxResultsInput = form.querySelector('[name="max_results"]');
+    if (maxResultsInput) { // Max results is not on Person tab form
+        const maxResults = parseInt(maxResultsInput.value);
+        if (isNaN(maxResults) || maxResults < 1 || maxResults > 10000) {
+            form.dataset.lastError = 'Bitte geben Sie eine gültige Anzahl von Ergebnissen an (1-10000).';
+            return false;
+        }
     }
     
     return true;
 }
 
-function updateSearchFields(database, form) {
+async function fetchAndUpdateDynamicOptions(databaseName, form) {
+    if (!databaseName) {
+        // Clear dependent selects if no database is chosen
+        populateSelect(form.querySelector('select[name="search_field"]'), [], 'Alle Felder', 'Alle Felder');
+        populateSelect(form.querySelector('select[name="pub_type"]'), [], 'Alle Typen', '');
+        populateSelect(form.querySelector('select[name="language"]'), [], 'Alle Sprachen', '');
+        return;
+    }
+
     const searchFieldSelect = form.querySelector('select[name="search_field"]');
-    if (!searchFieldSelect) return;
-    
-    searchFieldSelect.innerHTML = '';
-    addOption(searchFieldSelect, 'Alle Felder', 'Alle Felder');
-    
-    const fields = getDatabaseFields(database);
-    fields.forEach(field => {
-        addOption(searchFieldSelect, field, field);
-    });
-    
-    updateDatabaseSpecificElements(database, form);
-}
-
-function getDatabaseFields(database) {
-    const fieldMap = {
-        'PubMed': [
-            'Titel', 'Autor', 'Abstract', 'Journal', 'DOI', 'PMID', 'Affiliation'
-        ],
-        'DNB': [
-            'Titel', 'Autor', 'Schlagwort', 'ISBN', 'Verlag', 'Erscheinungsort'
-        ],
-        'Scopus': [
-            'Titel', 'Autor', 'Abstract', 'Keywords', 'DOI', 'ISSN'
-        ],
-        'WoS': [
-            'Titel', 'Autor', 'Topic', 'Publication Name', 'DOI'
-        ],
-        'GEPRIS': [
-            'Projekttitel', 'Institution', 'Person', 'Fach'
-        ]
-    };
-    
-    return fieldMap[database] || [];
-}
-
-function updateDatabaseSpecificElements(database, form) {
     const pubTypeSelect = form.querySelector('select[name="pub_type"]');
     const languageSelect = form.querySelector('select[name="language"]');
+
+    // Add a simple loading indicator if desired, e.g., disable selects
+    if (searchFieldSelect) searchFieldSelect.disabled = true;
+    if (pubTypeSelect) pubTypeSelect.disabled = true;
+    if (languageSelect) languageSelect.disabled = true;
     
-    if (pubTypeSelect) {
-        pubTypeSelect.innerHTML = '';
-        addOption(pubTypeSelect, 'Alle Typen', '');
-        
-        const types = getDatabasePubTypes(database);
-        types.forEach(type => {
-            addOption(pubTypeSelect, type.text, type.value);
-        });
-    }
-    
-    if (languageSelect) {
-        updateLanguageOptions(database, languageSelect);
+    try {
+        const response = await fetch(`/api/database_options/${databaseName}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch options: ${response.statusText}`);
+        }
+        const options = await response.json();
+
+        if (searchFieldSelect) {
+            populateSelect(searchFieldSelect, options.search_fields || [], 'Alle Felder', 'Alle Felder');
+        }
+        if (pubTypeSelect) {
+            // Convert simple list to {value: item, text: item} if needed, or expect backend to provide this
+            const pubTypesForSelect = options.pub_types.map(pt => (typeof pt === 'string' ? {value: pt, text: pt} : pt));
+            populateSelect(pubTypeSelect, pubTypesForSelect, 'Alle Typen', '');
+        }
+        if (languageSelect) {
+            const languagesForSelect = options.languages.map(lang => (typeof lang === 'string' ? {value: lang, text: lang} : lang));
+            populateSelect(languageSelect, languagesForSelect, 'Alle Sprachen', '');
+        }
+
+    } catch (error) {
+        console.error('Error updating dynamic select fields:', error);
+        if(window.showError) window.showError('Fehler beim Laden der datenbankspezifischen Optionen.');
+        // Optionally clear or set to default if fetch fails
+        if (searchFieldSelect) populateSelect(searchFieldSelect, [], 'Alle Felder', 'Alle Felder');
+        if (pubTypeSelect) populateSelect(pubTypeSelect, [], 'Alle Typen', '');
+        if (languageSelect) populateSelect(languageSelect, [], 'Alle Sprachen', '');
+    } finally {
+        if (searchFieldSelect) searchFieldSelect.disabled = false;
+        if (pubTypeSelect) pubTypeSelect.disabled = false;
+        if (languageSelect) languageSelect.disabled = false;
     }
 }
 
-function getDatabasePubTypes(database) {
-    const typeMap = {
-        'PubMed': [
-            {value: 'Journal Article', text: 'Journalartikel'},
-            {value: 'Review', text: 'Review'},
-            {value: 'Clinical Trial', text: 'Klinische Studie'},
-            {value: 'Meta-Analysis', text: 'Meta-Analyse'},
-            {value: 'Practice Guideline', text: 'Praxisleitlinie'}
-        ],
-        'DNB': [
-            {value: 'Book', text: 'Buch'},
-            {value: 'Article', text: 'Artikel'},
-            {value: 'Thesis', text: 'Dissertation'},
-            {value: 'Conference', text: 'Konferenzband'}
-        ],
-        'Scopus': [
-            {value: 'Article', text: 'Artikel'},
-            {value: 'Review', text: 'Review'},
-            {value: 'Conference Paper', text: 'Konferenzbeitrag'},
-            {value: 'Book Chapter', text: 'Buchkapitel'}
-        ],
-        'WoS': [
-            {value: 'Article', text: 'Artikel'},
-            {value: 'Review', text: 'Review'},
-            {value: 'Proceedings Paper', text: 'Konferenzbeitrag'},
-            {value: 'Book Chapter', text: 'Buchkapitel'}
-        ],
-        'GEPRIS': [
-            {value: 'Project', text: 'Projekt'},
-            {value: 'Institution', text: 'Institution'},
-            {value: 'Person', text: 'Person'}
-        ]
-    };
+function populateSelect(selectElement, optionsArray, defaultOptionText, defaultOptionValue) {
+    if (!selectElement) return;
+    selectElement.innerHTML = ''; // Clear existing options
     
-    return typeMap[database] || [];
-}
-
-function updateLanguageOptions(database, select) {
-    select.innerHTML = '';
-    addOption(select, 'Alle Sprachen', '');
+    addOption(selectElement, defaultOptionText, defaultOptionValue); // Add the "All/Default" option
     
-    const languages = [
-        {value: 'German', text: 'Deutsch'},
-        {value: 'English', text: 'Englisch'},
-        {value: 'French', text: 'Französisch'},
-        {value: 'Spanish', text: 'Spanisch'}
-    ];
-    
-    if (database === 'DNB') {
-        languages.push(
-            {value: 'Italian', text: 'Italienisch'},
-            {value: 'Latin', text: 'Latein'}
-        );
-    }
-    
-    languages.forEach(lang => {
-        addOption(select, lang.text, lang.value);
+    optionsArray.forEach(option => {
+        if (typeof option === 'string') { // Simple list of strings
+            addOption(selectElement, option, option);
+        } else { // Assuming {value: 'val', text: 'Display Text'}
+            addOption(selectElement, option.text, option.value);
+        }
     });
 }
 
-function addOption(select, text, value) {
+function addOption(selectElement, text, value) {
     const option = document.createElement('option');
     option.value = value;
     option.textContent = text;
-    select.appendChild(option);
+    selectElement.appendChild(option);
 }
 
 function showLoadingState() {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.removeProperty('display');
-        loadingIndicator.style.display = 'flex';
+    // This function now primarily ensures the detailedSearchProgressContainer is visible.
+    // The actual progress animation and text updates are handled by SearchProgressTracker.
+    const loadingContainer = document.getElementById('detailedSearchProgressContainer');
+    if (loadingContainer) {
+        loadingContainer.style.removeProperty('display'); // Remove potential 'display: none !important;'
+        loadingContainer.style.display = 'flex'; // Show it
     }
     
     document.querySelectorAll('button[type="submit"]').forEach(button => {
         button.disabled = true;
     });
     
-    document.addEventListener('keydown', handleEscapeKey);
+    // Use the global escape key handler from base.html for the global indicator,
+    // search_progress.js might have its own for the detailed one if needed.
 }
 
 function hideLoadingState() {
-    const loadingIndicator = document.getElementById('loadingIndicator');
-    if (loadingIndicator) {
-        loadingIndicator.style.setProperty('display', 'none', 'important');
+    const loadingContainer = document.getElementById('detailedSearchProgressContainer');
+    if (loadingContainer) {
+        // Important to use !important if the HTML has it, or ensure it's removed.
+        loadingContainer.style.setProperty('display', 'none', 'important');
     }
     
     document.querySelectorAll('button[type="submit"]').forEach(button => {
         button.disabled = false;
     });
-    
-    document.removeEventListener('keydown', handleEscapeKey);
 }
 
-function handleEscapeKey(event) {
-    if (event.key === 'Escape') {
-        hideLoadingState();
-        stopSearchProgress();
-    }
-}
+// Removed local showError, hideError, restoreFormState as they are less robust or handled by base.html / form reset.
+// Removed local progress functions (startSearchProgress, stopSearchProgress, updateProgressBar, animateProgress, updateSearchStatus)
+// as these are now the responsibility of the SearchProgressTracker class in search_progress.js
 
-function showError(message) {
-    const errorContainer = document.createElement('div');
-    errorContainer.className = 'alert alert-danger alert-dismissible fade show';
-    errorContainer.innerHTML = `
-        <i class="fas fa-exclamation-triangle me-2"></i>${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    const container = document.querySelector('.container');
-    if (container) {
-        container.insertBefore(errorContainer, container.firstChild);
-    }
-}
-
-function hideError() {
-    const errorAlert = document.querySelector('.alert-danger');
-    if (errorAlert) {
-        errorAlert.remove();
-    }
-}
-
-function restoreFormState(formData) {
-    if (!formData) return;
-    
-    const form = document.querySelector('form[data-search-form]');
-    if (!form) return;
-    
-    for (const [key, value] of formData.entries()) {
-        const input = form.querySelector(`[name="${key}"]`);
-        if (input) {
-            if (input.type === 'checkbox') {
-                input.checked = value === 'on';
-            } else {
-                input.value = value;
-            }
-        }
-    }
-}
-
-function startSearchProgress() {
-    searchProgress.isSearching = true;
-    searchProgress.currentProgress = 0;
-    searchProgress.searchLog = [];
-    updateProgressBar(0);
-    
-    // Initialisiere UI-Elemente
-    const detailsPanel = document.getElementById('searchDetailsPanel');
-    const toggleBtn = document.getElementById('toggleSearchDetails');
-    const cancelBtn = document.getElementById('cancelSearch');
-    
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
-            const collapse = new bootstrap.Collapse(detailsPanel);
-            this.querySelector('i').classList.toggle('fa-chevron-down');
-            this.querySelector('i').classList.toggle('fa-chevron-up');
-        });
-    }
-    
-    if (cancelBtn) {
-        cancelBtn.addEventListener('click', cancelSearch);
-    }
-    
-    // Starte Fortschrittsanimation
-    animateProgress();
-}
-
-function stopSearchProgress() {
-    searchProgress.isSearching = false;
-    updateProgressBar(100);
-}
-
-function updateProgressBar(progress) {
-    const progressBar = document.getElementById('searchProgressBar');
-    if (progressBar) {
-        progressBar.style.width = `${progress}%`;
-        progressBar.setAttribute('aria-valuenow', progress);
-        progressBar.textContent = `${Math.round(progress)}%`;
-    }
-}
-
-function animateProgress() {
-    if (!searchProgress.isSearching) return;
-    
-    // Simuliere Fortschritt basierend auf aktuellem Stand
-    const increment = Math.random() * 15;
-    const newProgress = Math.min(searchProgress.currentProgress + increment, 90);
-    searchProgress.currentProgress = newProgress;
-    
-    updateProgressBar(newProgress);
-    
-    // Fortschrittsanimation fortsetzen
-    if (searchProgress.isSearching) {
-        setTimeout(animateProgress, 500 + Math.random() * 1000);
-    }
-}
-
-function updateSearchStatus(database, message) {
-    const statusElement = document.getElementById('currentDatabaseStatus');
-    const logElement = document.getElementById('searchLog');
-    
-    if (statusElement) {
-        statusElement.textContent = `Durchsuche ${database}...`;
-    }
-    
-    if (logElement && message) {
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `
-            <span class="text-muted">[${new Date().toLocaleTimeString()}]</span>
-            <span class="ms-2">${message}</span>
-        `;
-        logElement.appendChild(logEntry);
-        logElement.scrollTop = logElement.scrollHeight;
-    }
-}
-
-async function cancelSearch() {
+// cancelSearch is specific to the detailed search progress UI, so it can remain here or move to search_progress.js
+// For now, assuming search_progress.js's cancelSearch is primary if that's where the button listener is.
+// If the button is in search.html and this script adds listener, it can stay.
+// The current search_progress.js has its own cancelSearch. This one can be removed if redundant.
+async function localCancelSearch() { // Renamed to avoid conflict if search_progress.js also has one globally
     try {
         const response = await fetch('/cancel_search', {
             method: 'POST',

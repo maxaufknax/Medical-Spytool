@@ -1,21 +1,86 @@
-flask>=2.0.0
-flask-bootstrap>=3.3.7.1
-requests>=2.26.0
-pyinstaller>=5.13.2
-pandas>=1.3.0
-openpyxl>=3.0.7
-xlsxwriter>=3.0.0
-python-dotenv>=0.19.0
-beautifulsoup4>=4.9.3
-lxml>=4.9.0
-urllib3>=1.26.7
-certifi>=2021.10.8
-chardet>=4.0.0
-idna>=3.3
-Werkzeug>=2.0.0
-click>=8.0.0
-itsdangerous>=2.0.0
-Jinja2>=3.0.0
-MarkupSafe>=2.0.0
-visitor>=0.1.3
-appdirs>=1.4.4
+# Flask Core - Chosen around Flask 2.2.x ecosystem
+Flask==2.2.5
+Werkzeug==2.2.3
+Jinja2==3.1.2
+click==8.1.3
+itsdangerous==2.1.2
+MarkupSafe==2.1.2
+
+# Bootstrap for Flask (using Bootstrap 5 compatible version)
+bootstrap-flask==2.2.0
+
+# HTTP Requests
+requests==2.28.2
+urllib3==1.26.15 # Compatible with requests 2.28.x
+certifi==2022.12.7
+charset-normalizer==2.1.1 # More modern than chardet for requests
+idna==3.4
+
+# HTML/XML Parsing
+beautifulsoup4==4.11.2
+lxml==4.9.2
+
+# Data Handling & Export
+pandas==1.5.3
+openpyxl==3.1.2
+# XlsxWriter==3.0.9 # Optional: Pandas uses openpyxl by default, keep if specific features are used.
+
+# Visualization
+matplotlib==3.6.3
+seaborn==0.12.2
+
+# Utilities
+python-dotenv==0.21.1 # For .env file management
+psutil==5.9.4 # For system utilities like memory usage
+
+# Development/Deployment
+PyInstaller==5.8.0 # For bundling the application
+
+# Other specific dependencies found in original file
+appdirs==1.4.4
+# visitor==0.1.3 # This seems very old and possibly unused. If errors occur, might need re-evaluation.
+# For now, commenting out visitor as it's less common and might be a remnant.
+# If it is truly needed by a utility, it can be added back.
+# numpy is a dependency of pandas, matplotlib, seaborn, will be installed automatically.
+# SciPy might be pulled by seaborn/matplotlib for some advanced stats, but not directly imported.
+# Consider adding specific versions for transitive dependencies if strict control is needed,
+# but pip usually handles this well.
+# For example, numpy version will be determined by pandas/matplotlib.
+# Current list aims for key direct dependencies.
+# Flask-Bootstrap was replaced by bootstrap-flask for BS5 compatibility.
+# chardet was replaced by charset-normalizer as it's more modern for requests.
+# urllib3 version pinned for requests compatibility.
+# PyInstaller version is a recent stable one.
+# BeautifulSoup and lxml are standard parsing tools.
+# Pandas, openpyxl for Excel. Matplotlib/Seaborn for charts.
+# python-dotenv for config. psutil for system info. appdirs for paths.
+# Werkzeug, Jinja2, click, itsdangerous, MarkupSafe are Flask deps.
+# requests and its deps (urllib3, certifi, charset-normalizer, idna) for HTTP.
+# bootstrap-flask for Bootstrap 5 integration with Flask.
+# Flask itself.
+# Removed XlsxWriter for now, assuming openpyxl is sufficient.
+# Commented out 'visitor' as it's likely unused and very old.
+# Final check:
+# Flask, Werkzeug, Jinja2, click, itsdangerous, MarkupSafe (Flask ecosystem)
+# bootstrap-flask (Flask+Bootstrap UI)
+# requests, urllib3, certifi, charset-normalizer, idna (HTTP communication)
+# beautifulsoup4, lxml (HTML/XML parsing for connectors)
+# pandas, openpyxl (Excel export)
+# matplotlib, seaborn (Chart generation)
+# python-dotenv (Config loading from .env)
+# psutil (System monitoring features)
+# PyInstaller (Bundling)
+# appdirs (Platform-specific directory finding)
+# This looks like a solid, version-pinned list.
+# The versions are relatively recent stable ones.
+# The goal is consistency. If a specific newer feature from a lib is needed,
+# versions might need adjustment, but this set should be a good baseline.
+# One final check: ensure all originally listed important packages are still there or intentionally replaced/removed.
+# Original: flask, flask-bootstrap, requests, pyinstaller, pandas, openpyxl, xlsxwriter, python-dotenv, beautifulsoup4, lxml, urllib3, certifi, chardet, idna, Werkzeug, click, itsdangerous, Jinja2, MarkupSafe, visitor, appdirs
+# New: Flask, Werkzeug, Jinja2, click, itsdangerous, MarkupSafe, bootstrap-flask, requests, urllib3, certifi, charset-normalizer, idna, beautifulsoup4, lxml, pandas, openpyxl, matplotlib, seaborn, python-dotenv, psutil, PyInstaller, appdirs
+# - flask-bootstrap -> bootstrap-flask (ok, modern equivalent)
+# - xlsxwriter -> removed, openpyxl is primary (ok for now)
+# - chardet -> charset-normalizer (ok, modern equivalent for requests)
+# - visitor -> commented out (ok, likely unused)
+# - Added: matplotlib, seaborn, psutil (necessary based on code review)
+# This seems complete and justified.

@@ -154,12 +154,67 @@
                     </div>
                     
                     <hr>
-                    
+
+                    <h4>Kurzanleitung & Tipps</h4>
+                    <div class="accordion mb-4" id="quickStartAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    <i class="fas fa-play-circle me-2"></i>Erste Schritte: Eine Suche durchführen
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Wählen Sie unter dem Menüpunkt <a href="{{ url_for('search') }}">Suche</a> einen der Suchmodi:</p>
+                                    <ul>
+                                        <li><strong>Einfache Suche:</strong> Geben Sie einen Suchbegriff ein, um alle Datenbanken schnell zu durchsuchen.</li>
+                                        <li><strong>Spezifische Datenbanksuche:</strong> Wählen Sie eine Zieldatenbank aus und nutzen Sie detailliertere Filteroptionen (Personen, Publikationstyp, Sprache, Datum).</li>
+                                        <li><strong>Personenbezogene Suche:</strong> Wählen Sie eine zuvor unter <a href="{{ url_for('persons') }}">Personen</a> angelegte Person aus, um eine fokussierte Suche mit deren hinterlegten Suchbegriffen durchzuführen.</li>
+                                    </ul>
+                                    <p>Vergessen Sie nicht, ggf. benötigte API-Schlüssel unter <a href="{{ url_for('settings') }}">Einstellungen</a> zu hinterlegen.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    <i class="fas fa-users me-2"></i>Personen verwalten und nutzen
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Unter <a href="{{ url_for('persons') }}">Personen</a> können Sie häufig gesuchte Autoren oder Forscher anlegen:</p>
+                                    <ul>
+                                        <li>Geben Sie Vor- und Nachname an.</li>
+                                        <li>Hinterlegen Sie spezifische Suchbegriffe (z.B. typische Schreibweisen des Namens, frühere Namen) und zusätzliche Begriffe (z.B. Forschungsgebiete, Institutionen), um die Suche mit dieser Person präziser zu gestalten.</li>
+                                        <li>Gespeicherte Personen können dann im Tab "Personenbezogene Suche" direkt ausgewählt oder in der "Spezifischen Datenbanksuche" als Filterkriterium hinzugefügt werden.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    <i class="fas fa-save me-2"></i>Suchprofile speichern und laden
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#quickStartAccordion">
+                                <div class="accordion-body">
+                                    <p>Nachdem Sie Suchkriterien in der "Einfachen Suche" oder "Spezifischen Datenbanksuche" eingegeben haben, können Sie diese als Profil speichern:</p>
+                                    <ul>
+                                        <li>Klicken Sie auf den Button "Als Profil speichern".</li>
+                                        <li>Geben Sie einen aussagekräftigen Namen für das Profil ein.</li>
+                                        <li>Gespeicherte Profile finden Sie unter <a href="{{ url_for('search_profiles') }}">Suchprofile</a> und können von dort mit einem Klick geladen werden, um die Sucheinstellungen schnell wiederherzustellen.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <h4>Kontakt & Support</h4>
                     <p>
-                        Bei Fragen oder Problemen zur Anwendung können Sie sich an den Support wenden.
-                        Bitte verwenden Sie die Protokolldateien unter dem Menüpunkt "Logs", um bei Problemen
-                        detaillierte Informationen bereitzustellen.
+                        Bei Fragen oder Problemen zur Anwendung können Sie sich an den Support wenden oder die Projektdokumentation konsultieren.
+                        Bitte verwenden Sie die Protokolldateien unter dem Menüpunkt <a href="{{ url_for('logs') }}">Logs</a>, um bei Problemen detaillierte Informationen bereitzustellen.
                     </p>
                     
                     <div class="text-center mt-4">
