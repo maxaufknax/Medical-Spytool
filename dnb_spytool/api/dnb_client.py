@@ -216,11 +216,13 @@ class DNBClient(DatabaseInterface):
             # Parse the response and return publications directly
             raw_publications = self.parser.parse_publications(response_text.encode('utf-8'))
             
-            # Normalize publications to standard schema
+            # Normalize publications to standard schema and extract URLs
             publications = []
             for pub in raw_publications:
                 pub['database_source'] = 'DNB'  # Mark source
                 normalized_pub = PublicationSchema.normalize_publication(pub)
+                # Extract URLs from the publication
+                self._enhance_publication_with_urls(normalized_pub)
                 publications.append(normalized_pub)
             
             # Parse total records count for pagination
@@ -426,3 +428,164 @@ class DNBClient(DatabaseInterface):
             'error': None,
             'cleaned_query': cleaned_query
         }
+    
+    def extract_publication_urls(self, publication: Dict) -> List[str]:
+        """
+        Extract all available URLs for a publication.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            List of URLs
+        """
+        urls = []
+        
+        # Check for DOI URL
+        if publication.get('doi'):
+            urls.append(f"https://doi.org/{publication['doi']}")
+        
+        # Check for DNB permalink/URL
+        if publication.get('url'):
+            urls.append(publication['url'])
+        
+        # Check for ISBN-based URLs (for books)
+        if publication.get('isbn'):
+            # DNB catalog URL based on ISBN
+            isbn = publication['isbn'].replace('-', '').replace(' ', '')
+            urls.append(f"https://portal.dnb.de/opac.htm?method=simpleSearch&query={isbn}")
+        
+        # Check for ISSN-based URLs (for serials)
+        if publication.get('issn'):
+            issn = publication['issn'].replace('-', '').replace(' ', '')
+            urls.append(f"https://portal.dnb.de/opac.htm?method=simpleSearch&query={issn}")
+        
+        # Generate DNB catalog search URL based on title
+        if publication.get('title'):
+            title_query = publication['title'].replace(' ', '+')
+            urls.append(f"https://portal.dnb.de/opac.htm?method=simpleSearch&query={title_query}")
+        
+        return urls
+    
+    def get_primary_url(self, publication: Dict) -> Optional[str]:
+        """
+        Get the primary/preferred URL for a publication.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            Primary URL or None
+        """
+        # Priority order: DOI, direct URL, DNB catalog search
+        if publication.get('doi'):
+            return f"https://doi.org/{publication['doi']}"
+        
+        if publication.get('url'):
+            return publication['url']
+        
+        # Generate DNB catalog search URL as fallback
+        if publication.get('isbn'):
+            isbn = publication['isbn'].replace('-', '').replace(' ', '')
+            return f"https://portal.dnb.de/opac.htm?method=simpleSearch&query={isbn}"
+        
+        if publication.get('title'):
+            title_query = publication['title'].replace(' ', '+')
+            return f"https://portal.dnb.de/opac.htm?method=simpleSearch&query={title_query}"
+        
+        return None
+
+    def extract_urls_from_publication(self, publication: Dict) -> Dict:
+        """
+        Extract all available URLs from a DNB publication record.
+        
+        Args:
+            publication: Publication dictionary from DNB
+            
+        Returns:
+            Dictionary with URL types and their values
+        """
+        urls = {}
+        
+        try:
+            # DNB URL based on record ID
+            if publication.get('record_id'):
+                urls['dnb_record'] = f"https://portal.dnb.de/opac.htm?method=simpleSearch&cqlMode=true&query=idn%3D{publication['record_id']}"
+            
+            # ISBN-based URLs
+            if publication.get('isbn'):
+                isbn = publication['isbn'].replace('-', '').replace(' ', '')
+                urls['worldcat'] = f"https://www.worldcat.org/isbn/{isbn}"
+                urls['google_books'] = f"https://books.google.com/books?vid=ISBN{isbn}"
+            
+            # DOI URL
+            if publication.get('doi'):
+                urls['doi'] = f"https://doi.org/{publication['doi']}"
+            
+            # ISSN-based URL for journals
+            if publication.get('issn'):
+                issn = publication['issn'].replace('-', '')
+                urls['issn_portal'] = f"https://portal.issn.org/resource/ISSN/{issn}"
+            
+            # Publisher-specific URLs
+            publisher = publication.get('publisher', '').lower()
+            title = publication.get('title', '')
+            
+            if 'springer' in publisher and publication.get('isbn'):
+                urls['springer'] = f"https://link.springer.com/book/{publication['isbn']}"
+            elif 'elsevier' in publisher and publication.get('doi'):
+                urls['sciencedirect'] = f"https://www.sciencedirect.com/science/article/pii/{publication['doi']}"
+            
+            # Add the primary URL to the publication record
+            if urls:
+                publication['url'] = self._get_primary_url(urls)
+                publication['all_urls'] = urls
+            
+        except Exception as e:
+            print(f"Warning: URL extraction failed for DNB publication: {e}")
+        
+        return urls
+    
+    def _get_primary_url(self, urls: Dict) -> str:
+        """
+        Get the primary URL from available URLs with priority order.
+        
+        Args:
+            urls: Dictionary of URL types and values
+            
+        Returns:
+            Primary URL string
+        """
+        priority_order = [
+            'doi',
+            'dnb_record', 
+            'springer',
+            'sciencedirect',
+            'worldcat',
+            'google_books',
+            'issn_portal'
+        ]
+        
+        for url_type in priority_order:
+            if url_type in urls:
+                return urls[url_type]
+        
+        # Return any available URL if no priority match
+        return next(iter(urls.values())) if urls else None
+    
+    def _enhance_publication_with_urls(self, publication: Dict) -> Dict:
+        """
+        Enhance publication record with extracted URLs.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            Enhanced publication dictionary with URLs
+        """
+        try:
+            self.extract_urls_from_publication(publication)
+        except Exception as e:
+            print(f"Warning: Failed to enhance publication with URLs: {e}")
+        
+        return publication
