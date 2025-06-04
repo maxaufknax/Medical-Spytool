@@ -1,0 +1,67 @@
+{
+  "publications": [
+    {
+      "title": "Anwaltliches Berufsrecht",
+      "authors": "Kilian, Matthias, Koch, Ludwig",
+      "publication_year": 2026,
+      "database_source": "dnb",
+      "abstract": null,
+      "journal": null,
+      "isbn": "9783406780400",
+      "issn": null,
+      "doi": null,
+      "pmid": null,
+      "url": null,
+      "publisher": "C.H.Beck",
+      "language": "ger",
+      "subject_headings": null,
+      "publication_type": null,
+      "search_author": "Koch"
+    },
+    {
+      "title": "Arbeitsrecht von A-Z : verständlich, übersichtlich, klar",
+      "authors": "Schaub, Günter, Koch, Ulrich, Ahrendt, Martina, Bepler, Klaus, Eylert, Mario, Gräfl, Edith, Klose, Oliver, Koch, Ulrich, Linck, Rüdiger, Rennpferdt, Maren, Rinck, Ursula, Roloff, Sebastian, Schmidt, Kristina, Spinner, Günter, Wemheuer, Claudia, Wullenkord, Sandra",
+      "publication_year": 2026,
+      "database_source": "dnb",
+      "abstract": null,
+      "journal": null,
+      "isbn": "9783423512978",
+      "issn": null,
+      "doi": null,
+      "pmid": null,
+      "url": null,
+      "publisher": "dtv Verlagsgesellschaft",
+      "language": "ger",
+      "subject_headings": null,
+      "publication_type": null,
+      "search_author": "Koch"
+    },
+    {
+      "title": "Artificially Intelligent Sensing : Advances and Applications",
+      "authors": "Koch, Wolfgang",
+      "publication_year": 2026,
+      "database_source": "dnb",
+      "abstract": null,
+      "journal": null,
+      "isbn": "9783110795097",
+      "issn": null,
+      "doi": null,
+      "pmid": null,
+      "url": null,
+      "publisher": "",
+      "language": "eng",
+      "subject_headings": null,
+      "publication_type": null,
+      "search_author": "Koch"
+    }
+  ],
+  "metadata": {
+    "export_date": "2025-06-04T14:04:41.216174",
+    "total_records": 3,
+    "database_sources": {
+      "dnb": 3
+    },
+    "format_version": "1.0",
+    "search_type": "single_database"
+  }
+}
