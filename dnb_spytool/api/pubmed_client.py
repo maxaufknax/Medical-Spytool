@@ -247,6 +247,8 @@ class PubMedClient(DatabaseInterface):
             for article in root.findall('.//PubmedArticle'):
                 pub = self._extract_publication_data(article)
                 if pub:
+                    # Enhance with URLs before normalization
+                    pub = self._enhance_publication_with_urls(pub)
                     # Normalize to standard schema
                     normalized_pub = PublicationSchema.normalize_publication(pub)
                     publications.append(normalized_pub)
@@ -350,6 +352,66 @@ class PubMedClient(DatabaseInterface):
             print(f"Error extracting publication data: {e}")
             return None
     
+    def extract_publication_urls(self, publication: Dict) -> List[str]:
+        """
+        Extract all available URLs for a publication.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            List of URLs
+        """
+        urls = []
+        
+        # Check for DOI URL
+        if publication.get('doi'):
+            urls.append(f"https://doi.org/{publication['doi']}")
+        
+        # Check for PubMed URL
+        if publication.get('pmid'):
+            urls.append(f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/")
+        
+        # Check for PMC URL (if available)
+        if publication.get('pmc_id'):
+            urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{publication['pmc_id']}/")
+        
+        # Check for direct URL
+        if publication.get('url'):
+            urls.append(publication['url'])
+        
+        # Generate PubMed search URL based on title as fallback
+        if publication.get('title'):
+            title_query = publication['title'].replace(' ', '+')
+            urls.append(f"https://pubmed.ncbi.nlm.nih.gov/?term={title_query}")
+        
+        return urls
+    
+    def get_primary_url(self, publication: Dict) -> Optional[str]:
+        """
+        Get the primary/preferred URL for a publication.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            Primary URL or None
+        """
+        # Priority order: DOI, PubMed, PMC, direct URL
+        if publication.get('doi'):
+            return f"https://doi.org/{publication['doi']}"
+        
+        if publication.get('pmid'):
+            return f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/"
+        
+        if publication.get('pmc_id'):
+            return f"https://www.ncbi.nlm.nih.gov/pmc/articles/{publication['pmc_id']}/"
+        
+        if publication.get('url'):
+            return publication['url']
+        
+        return None
+
     def search_publications(self, query: str, max_results: int = 100, **kwargs) -> List[Dict]:
         """
         Search for publications in PubMed.
@@ -422,3 +484,110 @@ class PubMedClient(DatabaseInterface):
             'author': author_name,
             'database': 'PubMed'
         }
+    
+    def extract_urls_from_publication(self, publication: Dict) -> Dict:
+        """
+        Extract all available URLs from a PubMed publication record.
+        
+        Args:
+            publication: Publication dictionary from PubMed
+            
+        Returns:
+            Dictionary with URL types and their values
+        """
+        urls = {}
+        
+        try:
+            # PubMed URL based on PMID
+            if publication.get('pmid'):
+                urls['pubmed'] = f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/"
+                urls['pubmed_abstract'] = f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/?format=abstract"
+            
+            # PMC (PubMed Central) URL if available
+            if publication.get('pmc'):
+                urls['pmc'] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{publication['pmc']}/"
+                urls['pmc_pdf'] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{publication['pmc']}/pdf/"
+            
+            # DOI URL
+            if publication.get('doi'):
+                urls['doi'] = f"https://doi.org/{publication['doi']}"
+            
+            # Journal-specific URLs
+            journal = publication.get('journal', '').lower()
+            if journal and publication.get('pmid'):
+                if 'nature' in journal:
+                    urls['nature'] = f"https://www.nature.com/articles/pmid{publication['pmid']}"
+                elif 'science' in journal:
+                    urls['science'] = f"https://science.sciencemag.org/lookup/pmid/{publication['pmid']}"
+                elif 'cell' in journal:
+                    urls['cell'] = f"https://www.cell.com/action/showCitFormats?pii=S0092-8674&doi={publication.get('doi', '')}"
+            
+            # PubMed LinkOut URLs (external publisher links)
+            if publication.get('pmid'):
+                urls['linkout'] = f"https://www.ncbi.nlm.nih.gov/sites/linkout?pmid={publication['pmid']}"
+            
+            # ClinicalTrials.gov if mentioned
+            abstract = publication.get('abstract', '').lower()
+            if 'clinicaltrials.gov' in abstract:
+                # Try to extract clinical trial number
+                import re
+                ct_match = re.search(r'nct\d{8}', abstract, re.IGNORECASE)
+                if ct_match:
+                    ct_number = ct_match.group().upper()
+                    urls['clinicaltrials'] = f"https://clinicaltrials.gov/study/{ct_number}"
+            
+            # Add the primary URL to the publication record
+            if urls:
+                publication['url'] = self._get_primary_url(urls)
+                publication['all_urls'] = urls
+            
+        except Exception as e:
+            print(f"Warning: URL extraction failed for PubMed publication: {e}")
+        
+        return urls
+    
+    def _get_primary_url(self, urls: Dict) -> str:
+        """
+        Get the primary URL from available URLs with priority order.
+        
+        Args:
+            urls: Dictionary of URL types and values
+            
+        Returns:
+            Primary URL string
+        """
+        priority_order = [
+            'doi',
+            'pmc',
+            'pubmed',
+            'nature',
+            'science', 
+            'cell',
+            'linkout',
+            'clinicaltrials',
+            'pubmed_abstract'
+        ]
+        
+        for url_type in priority_order:
+            if url_type in urls:
+                return urls[url_type]
+        
+        # Return any available URL if no priority match
+        return next(iter(urls.values())) if urls else None
+    
+    def _enhance_publication_with_urls(self, publication: Dict) -> Dict:
+        """
+        Enhance publication record with extracted URLs.
+        
+        Args:
+            publication: Publication dictionary
+            
+        Returns:
+            Enhanced publication dictionary with URLs
+        """
+        try:
+            self.extract_urls_from_publication(publication)
+        except Exception as e:
+            print(f"Warning: Failed to enhance publication with URLs: {e}")
+        
+        return publication

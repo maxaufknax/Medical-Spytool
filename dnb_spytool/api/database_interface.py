@@ -80,7 +80,9 @@ class PublicationSchema:
         'issn',
         'doi',
         'pmid',
+        'pmc',
         'url',
+        'all_urls',
         'publisher',
         'language',
         'subject_headings',
@@ -155,5 +157,23 @@ class PublicationSchema:
                 normalized['publication_year'] = int(normalized['publication_year'])
             except (ValueError, TypeError):
                 normalized['publication_year'] = None
+        
+        # Normalize URL fields
+        if normalized.get('all_urls') and isinstance(normalized['all_urls'], dict):
+            # Keep all_urls as dict for URL extraction results
+            pass
+        elif normalized.get('all_urls'):
+            # Convert to dict if it's not already
+            normalized['all_urls'] = {}
+        
+        # Ensure primary URL is set if available
+        if not normalized.get('url'):
+            # Try to set primary URL from available sources
+            if normalized.get('doi'):
+                normalized['url'] = f"https://doi.org/{normalized['doi']}"
+            elif normalized.get('pmid'):
+                normalized['url'] = f"https://pubmed.ncbi.nlm.nih.gov/{normalized['pmid']}/"
+            elif normalized.get('pmc'):
+                normalized['url'] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/{normalized['pmc']}/"
         
         return normalized

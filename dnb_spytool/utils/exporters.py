@@ -76,7 +76,8 @@ class DataExporter:
             
             # Define default fieldnames even for empty dataset
             default_fieldnames = ['id', 'title', 'authors', 'publication_year', 'publisher', 
-                               'isbn', 'subjects', 'description', 'languages', 'type', 'urls', 'database_source']
+                               'isbn', 'subjects', 'description', 'languages', 'type', 'primary_url', 
+                               'doi', 'pmid', 'pmc', 'all_urls', 'database_source']
             
             # Flatten the data for CSV export
             flattened_data = []
@@ -128,7 +129,20 @@ class DataExporter:
                 else:
                     language_list = [str(language_data)]
                     
-                # URLs - handle string, list, or None
+                # URLs - handle comprehensive URL data
+                primary_url = pub.get('primary_url', '')
+                doi = pub.get('doi', '')
+                pmid = pub.get('pmid', '')
+                pmc = pub.get('pmc', '')
+                
+                # Handle all_urls dictionary
+                all_urls_data = pub.get('all_urls', {})
+                if isinstance(all_urls_data, dict):
+                    all_urls_str = '; '.join([f"{k}: {v}" for k, v in all_urls_data.items() if v])
+                else:
+                    all_urls_str = str(all_urls_data) if all_urls_data else ''
+                
+                # Legacy URL field for backward compatibility
                 url_data = pub.get('url', [])
                 if url_data is None:
                     url_list = []
@@ -150,7 +164,11 @@ class DataExporter:
                     'description': pub.get('description', ''),
                     'languages': '; '.join(language_list),
                     'type': pub.get('type', ''),
-                    'urls': '; '.join(url_list),
+                    'primary_url': primary_url,
+                    'doi': doi,
+                    'pmid': pmid,
+                    'pmc': pmc,
+                    'all_urls': all_urls_str,
                     'database_source': pub.get('database_source', 'Unknown')
                 }
                 flattened_data.append(flat_pub)
@@ -303,7 +321,20 @@ class DataExporter:
                 else:
                     language_list = [str(language_data)]
                     
-                # URLs - handle string, list, or None
+                # URLs - handle comprehensive URL data
+                primary_url = pub.get('primary_url', '')
+                doi = pub.get('doi', '')
+                pmid = pub.get('pmid', '')
+                pmc = pub.get('pmc', '')
+                
+                # Handle all_urls dictionary
+                all_urls_data = pub.get('all_urls', {})
+                if isinstance(all_urls_data, dict):
+                    all_urls_str = '; '.join([f"{k}: {v}" for k, v in all_urls_data.items() if v])
+                else:
+                    all_urls_str = str(all_urls_data) if all_urls_data else ''
+                
+                # Legacy URL field for backward compatibility
                 url_data = pub.get('url', [])
                 if url_data is None:
                     url_list = []
@@ -325,7 +356,11 @@ class DataExporter:
                     'Description': pub.get('description', ''),
                     'Languages': '; '.join(language_list),
                     'Type': pub.get('type', ''),
-                    'URLs': '; '.join(url_list),
+                    'Primary URL': primary_url,
+                    'DOI': doi,
+                    'PMID': pmid,
+                    'PMC': pmc,
+                    'All URLs': all_urls_str,
                     'Database Source': pub.get('database_source', 'Unknown')
                 }
                 flattened_data.append(flat_pub)

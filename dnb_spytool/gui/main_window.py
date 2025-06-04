@@ -252,6 +252,20 @@ class DNBSpytoolGUI:
         tree_frame.grid_rowconfigure(0, weight=1)
         tree_frame.grid_columnconfigure(0, weight=1)
         
+        # URL Action buttons frame
+        url_frame = ttk.Frame(results_frame)
+        url_frame.pack(fill=tk.X, padx=10, pady=(5, 10))
+        
+        self.open_url_button = ttk.Button(url_frame, text="🔗 Open Publication", 
+                                         command=self.open_selected_publication_url,
+                                         state=tk.DISABLED)
+        self.open_url_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.copy_url_button = ttk.Button(url_frame, text="📋 Copy URL", 
+                                         command=self.copy_selected_publication_url,
+                                         state=tk.DISABLED)
+        self.copy_url_button.pack(side=tk.LEFT)
+        
         # Details frame
         details_frame = ttk.LabelFrame(results_frame, text="Publication Details", padding=10)
         details_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
@@ -260,8 +274,9 @@ class DNBSpytoolGUI:
                                                     font=('Arial', 9), wrap=tk.WORD)
         self.details_text.pack(fill=tk.BOTH, expand=True)
         
-        # Bind selection
+        # Bind selection and double-click
         self.results_tree.bind('<<TreeviewSelect>>', self.on_result_select)
+        self.results_tree.bind('<Double-1>', self.on_publication_double_click)
     
     def create_analytics_tab(self):
         """Create the analytics tab."""
@@ -563,7 +578,7 @@ License: MIT License
             
             validation = self.validator.validate_author_name(author)
             if not validation['is_valid']:
-                error_msg = "Invalid author name:\n" + "\n".join(validation['errors'])
+                error_msg = "Invalid author name:\n" + self.safe_join(validation['errors'], '\n')
                 messagebox.showerror("Validation Error", error_msg)
                 return False
         else:
@@ -575,7 +590,7 @@ License: MIT License
             authors = [line.strip() for line in authors_text.split('\n') if line.strip()]
             validation = self.validator.validate_author_list(authors)
             if not validation['is_valid']:
-                error_msg = "Invalid author names:\n" + "\n".join(validation['errors'])
+                error_msg = "Invalid author names:\n" + self.safe_join(validation['errors'], '\n')
                 messagebox.showerror("Validation Error", error_msg)
                 return False
         
@@ -606,7 +621,8 @@ License: MIT License
             database_names = [db.value.upper() for db in databases]
             total_steps = len(authors) * len(databases)
             
-            self.result_queue.put(('status', f"🔍 Starting search across {', '.join(database_names)} for {len(authors)} author(s)..."))
+            database_names_str = self.safe_join(database_names)
+            self.result_queue.put(('status', f"🔍 Starting search across {database_names_str} for {len(authors)} author(s)..."))
             self.result_queue.put(('progress', 10))
             
             # Add timing information
@@ -652,7 +668,8 @@ License: MIT License
                 
                 status_msg = f"✅ Found {pub_count} publications in {search_time:.2f}s"
                 if len(db_breakdown) > 1:
-                    breakdown = ", ".join([f"{db}: {count}" for db, count in db_breakdown.items()])
+                    breakdown_items = [f"{db}: {count}" for db, count in db_breakdown.items()]
+                    breakdown = self.safe_join(breakdown_items)
                     status_msg += f" ({breakdown})"
                 
                 # Add deduplication info if applicable
@@ -764,7 +781,8 @@ License: MIT License
                     for db, count in sorted(database_counts.items()):
                         breakdown_parts.append(f"{db}: {count}")
                     if breakdown_parts:
-                        status_msg += f" ({', '.join(breakdown_parts)})"
+                        breakdown_str = self.safe_join(breakdown_parts)
+                        status_msg += f" ({breakdown_str})"
                         
                     # Show deduplication info if applicable
                     if results.get('deduplication_stats', {}).get('duplicates_removed', 0) > 0:
@@ -862,12 +880,7 @@ License: MIT License
                 
                 # Handle authors - can be list or string
                 authors_raw = pub.get('author', []) or pub.get('authors', []) or []
-                if isinstance(authors_raw, str):
-                    authors = authors_raw[:50]
-                elif isinstance(authors_raw, list):
-                    authors = ', '.join([str(a) for a in authors_raw if a])[:50]
-                else:
-                    authors = 'Unknown'
+                authors = self.safe_join(authors_raw)[:50]
                 
                 year = str(pub.get('publication_year', '') or pub.get('year', '') or '')
                 publisher = str(pub.get('publisher', '') or '')[:50]
@@ -894,7 +907,8 @@ License: MIT License
             
             count_text = f"{len(self.current_publications)} publications"
             if len(database_counts) > 1:
-                breakdown = ", ".join([f"{db}: {count}" for db, count in sorted(database_counts.items())])
+                breakdown_items = [f"{db}: {count}" for db, count in sorted(database_counts.items())]
+                breakdown = self.safe_join(breakdown_items)
                 count_text += f" ({breakdown})"
             
             self.results_count_label.config(text=count_text)
@@ -917,6 +931,9 @@ License: MIT License
         """Handle result selection in tree."""
         selection = self.results_tree.selection()
         if not selection:
+            # Disable URL buttons when no selection
+            self.open_url_button.config(state=tk.DISABLED)
+            self.copy_url_button.config(state=tk.DISABLED)
             return
         
         # Get selected index
@@ -926,49 +943,271 @@ License: MIT License
         if 0 <= index < len(self.current_publications):
             pub = self.current_publications[index]
             self.show_publication_details(pub)
+            
+            # Enable URL buttons if publication has URLs
+            has_urls = self._publication_has_urls(pub)
+            state = tk.NORMAL if has_urls else tk.DISABLED
+            self.open_url_button.config(state=state)
+            self.copy_url_button.config(state=state)
+        else:
+            self.open_url_button.config(state=tk.DISABLED)
+            self.copy_url_button.config(state=tk.DISABLED)
+    
+    def on_publication_double_click(self, event):
+        """Handle double-click on publication to open URL."""
+        selection = self.results_tree.selection()
+        if not selection:
+            return
+        
+        item = selection[0]
+        index = self.results_tree.index(item)
+        
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            self._open_publication_url(pub)
+    
+    def open_selected_publication_url(self):
+        """Open URL for currently selected publication."""
+        selection = self.results_tree.selection()
+        if not selection:
+            messagebox.showinfo("No Selection", "Please select a publication first.")
+            return
+        
+        item = selection[0]
+        index = self.results_tree.index(item)
+        
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            self._open_publication_url(pub)
+    
+    def copy_selected_publication_url(self):
+        """Copy URL of currently selected publication to clipboard."""
+        selection = self.results_tree.selection()
+        if not selection:
+            messagebox.showinfo("No Selection", "Please select a publication first.")
+            return
+        
+        item = selection[0]
+        index = self.results_tree.index(item)
+        
+        if 0 <= index < len(self.current_publications):
+            pub = self.current_publications[index]
+            urls = self._get_publication_urls(pub)
+            
+            if not urls:
+                messagebox.showinfo("No URLs", "No URLs available for this publication.")
+                return
+            
+            # If multiple URLs, let user choose
+            if len(urls) > 1:
+                url = self._select_url_dialog(urls)
+                if not url:
+                    return
+            else:
+                url = urls[0]
+            
+            # Copy to clipboard
+            try:
+                self.root.clipboard_clear()
+                self.root.clipboard_append(url)
+                self.root.update()  # Ensure clipboard is updated
+                messagebox.showinfo("URL Copied", f"URL copied to clipboard:\n{url}")
+            except Exception as e:
+                messagebox.showerror("Copy Error", f"Failed to copy URL to clipboard:\n{str(e)}")
+    
+    def _get_publication_urls(self, publication: Dict) -> List[str]:
+        """Extract all available URLs from a publication."""
+        urls = []
+        
+        try:
+            # Primary URLs in priority order
+            if publication.get('doi'):
+                urls.append(f"https://doi.org/{publication['doi']}")
+            
+            if publication.get('pmid'):
+                urls.append(f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/")
+            
+            if publication.get('pmc'):
+                urls.append(f"https://www.ncbi.nlm.nih.gov/pmc/articles/{publication['pmc']}/")
+            
+            if publication.get('url'):
+                urls.append(publication['url'])
+            
+            # Check for all_urls field from URL extraction
+            all_urls = publication.get('all_urls', {})
+            if all_urls and isinstance(all_urls, dict):
+                for url_type, url in all_urls.items():
+                    if url and url not in urls:
+                        urls.append(url)
+            
+        except Exception as e:
+            print(f"Error extracting URLs: {e}")
+        
+        return urls
+    
+    def _select_url_dialog(self, urls: List[str]) -> Optional[str]:
+        """Allow user to select from multiple URLs."""
+        try:
+            import tkinter.simpledialog as simpledialog
+            
+            # Create a simple selection dialog
+            choice_text = "Multiple URLs available. Select one:\n\n"
+            for i, url in enumerate(urls, 1):
+                # Truncate long URLs for display
+                display_url = url[:80] + "..." if len(url) > 80 else url
+                choice_text += f"{i}. {display_url}\n"
+            
+            choice_text += "\nEnter number (1-{}):".format(len(urls))
+            
+            selection = simpledialog.askstring(
+                "Select URL", 
+                choice_text
+            )
+            
+            if selection and selection.isdigit():
+                index = int(selection) - 1
+                if 0 <= index < len(urls):
+                    return urls[index]
+            
+        except Exception as e:
+            print(f"Error in URL selection dialog: {e}")
+        
+        return None
+    
+    def safe_join(self, items, separator=', '):
+        """Safely join items with error handling for non-iterable items."""
+        try:
+            if items is None:
+                return ""
+            if isinstance(items, str):
+                return items
+            if hasattr(items, '__iter__'):
+                return separator.join([str(item) for item in items if item])
+            else:
+                return str(items)
+        except (TypeError, AttributeError):
+            return str(items) if items else ""
     
     def show_publication_details(self, publication: Dict):
-        """Show detailed information about a publication."""
-        self.details_text.delete(1.0, tk.END)
-        
-        # Helper function to safely join values
-        def safe_join(value, default='N/A'):
-            if value is None:
-                return default
-            elif isinstance(value, list):
-                return ', '.join(str(item) for item in value if item) or default
-            elif isinstance(value, str):
-                return value or default
-            else:
-                return str(value) or default
-
-        details = f"""Title: {publication.get('title', 'N/A')}
-
-Authors: {safe_join(publication.get('author', ['N/A']))}
-
-Publication Year: {publication.get('publication_year', 'N/A')}
-
-Publisher: {publication.get('publisher', 'N/A')}
-
-Type: {publication.get('type', 'N/A')}
-
-Database Source: {str(publication.get('database_source', 'N/A')).upper()}
-
-ISBN: {safe_join(publication.get('isbn', ['N/A']))}
-
-Languages: {safe_join(publication.get('language', ['N/A']))}
-
-Subjects: {safe_join(publication.get('subject', ['N/A']))}
-
-Description: {publication.get('description', 'N/A')}
-
-URLs: {safe_join(publication.get('url', ['N/A']))}
-
-Record ID: {publication.get('id', 'N/A')}
-"""
-        
-        self.details_text.insert(1.0, details)
+        """Display detailed information about a selected publication."""
+        try:
+            if not self.details_text:
+                return
+                
+            # Clear previous content
+            self.details_text.delete('1.0', tk.END)
+            
+            # Format publication details
+            details = []
+            
+            # Title
+            title = publication.get('title', 'No title available')
+            details.append(f"Title: {title}\n")
+            
+            # Authors
+            authors = publication.get('authors') or publication.get('author', [])
+            authors_str = self.safe_join(authors)
+            details.append(f"Authors: {authors_str}\n")
+            
+            # Year
+            year = publication.get('publication_year') or publication.get('year', '')
+            details.append(f"Year: {year}\n")
+            
+            # Journal/Publisher
+            journal = publication.get('journal', '')
+            publisher = publication.get('publisher', '')
+            if journal:
+                details.append(f"Journal: {journal}\n")
+            elif publisher:
+                details.append(f"Publisher: {publisher}\n")
+            
+            # Publication Type
+            pub_type = publication.get('publication_type') or publication.get('type', '')
+            if pub_type:
+                details.append(f"Type: {pub_type}\n")
+            
+            # Database Source
+            db_source = publication.get('database_source', 'Unknown')
+            details.append(f"Source: {db_source.upper()}\n")
+            
+            # Abstract
+            abstract = publication.get('abstract', '')
+            if abstract:
+                details.append(f"\nAbstract:\n{abstract}\n")
+            
+            # URLs
+            urls = []
+            if publication.get('doi'):
+                urls.append(f"DOI: https://doi.org/{publication['doi']}")
+            if publication.get('pmid'):
+                urls.append(f"PubMed: https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/")
+            if publication.get('url'):
+                urls.append(f"URL: {publication['url']}")
+            
+            if urls:
+                details.append(f"\nLinks:\n" + "\n".join(urls))
+            
+            # ISBN/ISSN
+            identifiers = []
+            if publication.get('isbn'):
+                identifiers.append(f"ISBN: {publication['isbn']}")
+            if publication.get('issn'):
+                identifiers.append(f"ISSN: {publication['issn']}")
+            
+            if identifiers:
+                details.append(f"\nIdentifiers:\n" + "\n".join(identifiers))
+            
+            # Subject headings/Keywords
+            subjects = publication.get('subject_headings') or publication.get('subjects', '')
+            if subjects:
+                details.append(f"\nSubjects: {subjects}\n")
+            
+            # Language
+            language = publication.get('language', '')
+            if language:
+                details.append(f"Language: {language}")
+            
+            # Insert all details
+            self.details_text.insert('1.0', ''.join(details))
+            
+        except Exception as e:
+            error_text = f"Error displaying publication details: {str(e)}"
+            self.details_text.delete('1.0', tk.END)
+            self.details_text.insert('1.0', error_text)
     
+    def _publication_has_urls(self, publication: Dict) -> bool:
+        """Check if publication has any accessible URLs."""
+        try:
+            return bool(
+                publication.get('doi') or 
+                publication.get('pmid') or 
+                publication.get('url')
+            )
+        except (AttributeError, TypeError):
+            return False
+    
+    def _open_publication_url(self, publication: Dict):
+        """Open the most appropriate URL for a publication."""
+        try:
+            url = None
+            
+            # Priority order: DOI, PubMed, direct URL
+            if publication.get('doi'):
+                url = f"https://doi.org/{publication['doi']}"
+            elif publication.get('pmid'):
+                url = f"https://pubmed.ncbi.nlm.nih.gov/{publication['pmid']}/"
+            elif publication.get('url'):
+                url = publication['url']
+            
+            if url:
+                import webbrowser
+                webbrowser.open(url)
+            else:
+                messagebox.showinfo("No URL", "No accessible URL found for this publication.")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open URL: {str(e)}")
+
     def generate_analytics(self):
         """Generate analytics for current publications."""
         if not self.current_publications:
