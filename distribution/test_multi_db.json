@@ -1,0 +1,50 @@
+{
+  "publications": [
+    {
+      "title": "Faust I, II und Urfaust : Illustrierte Ausgabe",
+      "authors": "Goethe, Johann Wolfgang von",
+      "publication_year": 2050,
+      "database_source": "dnb",
+      "abstract": null,
+      "journal": null,
+      "isbn": "9783755300274",
+      "issn": null,
+      "doi": null,
+      "pmid": null,
+      "url": null,
+      "publisher": "Petersberg Verlag",
+      "language": "ger",
+      "subject_headings": null,
+      "publication_type": null,
+      "search_author": "Goethe"
+    },
+    {
+      "title": "C-METTA reduces PTSD-related guilt and shame following interpersonal violence.",
+      "authors": "Schreiber, Corinna, Kümmerle, Stella, Müller-Engelmann, Meike",
+      "publication_year": 2025,
+      "database_source": "pubmed",
+      "abstract": null,
+      "journal": "European journal of psychotraumatology",
+      "isbn": null,
+      "issn": "2000-8066",
+      "doi": "10.1080/20008066.2025.2501823",
+      "pmid": "40387779",
+      "url": null,
+      "publisher": null,
+      "language": "eng",
+      "subject_headings": "Humans, Stress Disorders, Post-Traumatic, Shame, Female, Guilt, Male, Adult, Middle Aged, Meditation, Young Adult, Cognitive Behavioral Therapy, Violence",
+      "publication_type": "Journal Article",
+      "search_author": "Goethe"
+    }
+  ],
+  "metadata": {
+    "export_date": "2025-06-03T08:54:37.569028",
+    "total_records": 2,
+    "database_sources": {
+      "dnb": 1,
+      "pubmed": 1
+    },
+    "format_version": "1.0",
+    "search_type": "multi_database"
+  }
+}

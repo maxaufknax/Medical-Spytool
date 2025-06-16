@@ -1,0 +1,102 @@
+{
+  "validation_time": 2.46150803565979,
+  "total_tests": 21,
+  "passed_tests": 17,
+  "success_rate": 80.95238095238095,
+  "detailed_results": {
+    "search_manager_tests": {
+      "callback_registration": {
+        "status": "PASS",
+        "details": "Registered 1 progress callbacks"
+      },
+      "circuit_breakers": {
+        "status": "PASS",
+        "details": "Circuit breakers initialized for 2 databases"
+      },
+      "rate_limiters": {
+        "status": "FAIL",
+        "error": "'RateLimiter' object has no attribute 'base_delay'"
+      },
+      "search_statistics": {
+        "status": "PASS",
+        "details": "Statistics include: state, progress, circuit_breakers, cache_stats"
+      },
+      "cancel_functionality": {
+        "status": "PASS",
+        "details": "Search cancellation works correctly"
+      }
+    },
+    "cache_manager_tests": {
+      "basic_operations": {
+        "status": "PASS",
+        "details": "Put/Get operations work correctly"
+      },
+      "cache_statistics": {
+        "status": "PASS",
+        "details": "Statistics available, hit rate: 100.00%"
+      },
+      "pattern_invalidation": {
+        "status": "FAIL",
+        "error": ""
+      },
+      "cache_optimization": {
+        "status": "FAIL",
+        "error": "'QueryCacheManager' object has no attribute 'optimize_cache'"
+      },
+      "export_import": {
+        "status": "FAIL",
+        "error": "'QueryCacheManager' object has no attribute 'export_cache_data'"
+      }
+    },
+    "result_processor_tests": {
+      "basic_processing": {
+        "status": "PASS",
+        "details": "Processed 3 publications successfully"
+      },
+      "quality_scoring": {
+        "status": "PASS",
+        "details": "Quality scoring metrics generated correctly"
+      },
+      "categorization": {
+        "status": "PASS",
+        "details": "Assigned categories: Biology, Medical"
+      },
+      "deduplication": {
+        "status": "PASS",
+        "details": "Processed 4 inputs to 4 outputs"
+      },
+      "processing_statistics": {
+        "status": "PASS",
+        "details": "Statistics: 13 processed, 5 features"
+      }
+    },
+    "integration_tests": {
+      "search_cache_integration": {
+        "status": "PASS",
+        "details": "Search manager and cache integration verified"
+      },
+      "processor_cache_workflow": {
+        "status": "PASS",
+        "details": "Result processor and cache workflow verified"
+      },
+      "full_pipeline": {
+        "status": "PASS",
+        "details": "Complete enhanced functionality pipeline verified"
+      }
+    },
+    "error_handling_tests": {
+      "search_error_recovery": {
+        "status": "PASS",
+        "details": "Error callback triggered with 1 messages"
+      },
+      "cache_error_handling": {
+        "status": "PASS",
+        "details": "Cache operations handle errors gracefully"
+      },
+      "processor_error_tolerance": {
+        "status": "PASS",
+        "details": "Processed 4 malformed records without crashing"
+      }
+    }
+  }
+}
