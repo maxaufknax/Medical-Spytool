@@ -1411,6 +1411,19 @@ def unhandled_exception(e):
                           config=app_config,
                           now=datetime.now()), 500
 
+@app.route('/shutdown', methods=['POST'])
+def shutdown():
+    """Shutdown the Flask server (for desktop mode)."""
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        # Alternative shutdown method
+        import os
+        import signal
+        os.kill(os.getpid(), signal.SIGTERM)
+    else:
+        func()
+    return 'Server shutting down...'
+
 if __name__ == '__main__':
     try:
         # Stelle sicher, dass alle benötigten Verzeichnisse existieren
