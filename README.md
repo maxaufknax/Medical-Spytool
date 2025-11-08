@@ -1,7 +1,5 @@
 # Medical Spytool - Wissenschaftliches Publikations-Suchwerkzeug
 
-![MedicalSpy Logo](generated-icon.png)
-
 MedicalSpy ist eine umfassende Webanwendung zur Suche, Analyse und Verwaltung wissenschaftlicher medizinischer Publikationen. Sie bietet eine intuitive Oberfläche für die Abfrage mehrerer wissenschaftlicher Datenbanken, die Verwaltung von Forscherprofilen, die Visualisierung von Ergebnissen und den Export von Daten in verschiedenen Formaten.
 
 ## ✨ Projekt-Status
